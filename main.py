@@ -1,7 +1,7 @@
 import streamlit as st
 
 # Título de la aplicación
-st.title("invento")
+st.title("invento_nuevo")
 
 # Mensaje de bienvenida
 st.write("Bienvenido a la solucion.")
