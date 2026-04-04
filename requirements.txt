@@ -4,4 +4,6 @@ pandas
 plotly
 pytz
 scikit-learn
+numpy
 Pillow
+pytesseract
