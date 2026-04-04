@@ -1,8 +1,6 @@
 streamlit
-streamlit-gsheets
 pandas
 plotly
 pytz
 scikit-learn
 numpy
-Pillow
