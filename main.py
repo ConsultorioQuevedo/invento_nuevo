@@ -9,7 +9,7 @@ import pytz
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
-# 1. CONFIGURACIÓN E INTERFAZ
+# 1. CONFIGURACIÓN E INTERFAZ "NUEVA GENERACIÓN"
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
 
 if not os.path.exists("archivador_quevedo"):
@@ -29,7 +29,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. BASE DE DATOS CON AUTO-REPARACIÓN (Evita el KeyError)
+# 2. BASE DE DATOS (AUTO-REPARABLE)
 def iniciar_db():
     conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
     c = conn.cursor()
@@ -38,19 +38,14 @@ def iniciar_db():
     c.execute('CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)')
     c.execute('CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, horario TEXT)')
     c.execute('CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT)')
-    
-    # PARCHE DE SEGURIDAD: Si la columna 'fecha' no existe en finanzas, la crea
-    try:
-        c.execute("SELECT fecha FROM finanzas LIMIT 1")
-    except sqlite3.OperationalError:
-        c.execute("ALTER TABLE finanzas ADD COLUMN fecha TEXT DEFAULT 'Sin Fecha'")
-        
+    try: c.execute("SELECT fecha FROM finanzas LIMIT 1")
+    except: c.execute("ALTER TABLE finanzas ADD COLUMN fecha TEXT DEFAULT '01/01/2026'")
     conn.commit()
     return conn
 
 conn = iniciar_db()
 
-# 3. CONTACTOS
+# 3. CONTACTOS PARA WHATSAPP
 contactos = {
     "Mi Hijo": "18292061693", "Mi Hija": "18292581449", "Franklin (Hno)": "16463746377",
     "Hermanito Loco": "14077975432", "Dorka Carpio": "18298811692", "Rosa": "18293800425",
@@ -60,8 +55,7 @@ contactos = {
 # 4. MOTOR IA
 def motor_ia(df):
     if len(df) > 2:
-        X = np.arange(len(df)).reshape(-1, 1)
-        y = df['monto'].cumsum().values
+        X = np.arange(len(df)).reshape(-1, 1); y = df['monto'].cumsum().values
         return round(LinearRegression().fit(X, y).predict([[len(df) + 1]])[0], 2)
     return None
 
@@ -73,131 +67,130 @@ menu = st.sidebar.radio("MENÚ", ["💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 A
 if menu == "💰 FINANZAS IA":
     st.header("💰 Inteligencia Financiera")
     
-    # Presupuesto
     res_pre = pd.read_sql_query("SELECT limite FROM presupuesto ORDER BY id DESC LIMIT 1", conn)
     limite_actual = res_pre['limite'].iloc[0] if not res_pre.empty else 0.0
     with st.expander("⚙️ Configurar Presupuesto"):
-        n_limite = st.number_input("RD$", value=float(limite_actual))
-        if st.button("Guardar"):
+        n_limite = st.number_input("Establecer Límite RD$", value=float(limite_actual))
+        if st.button("Guardar Límite"):
             conn.execute("INSERT INTO presupuesto (limite) VALUES (?)", (n_limite,))
             conn.commit(); st.rerun()
 
     with st.form("f", clear_on_submit=True):
         c1, c2, c3 = st.columns(3)
         t = c1.selectbox("TIPO", ["INGRESO", "GASTO"])
-        cat = c2.text_input("CONCEPTO").upper()
-        mon = c3.number_input("RD$", min_value=0.0)
+        cat = c2.text_input("CONCEPTO").upper(); mon = c3.number_input("RD$", min_value=0.0)
         if st.form_submit_button("REGISTRAR"):
             v = mon if t == "INGRESO" else -mon
-            fecha_hoy = datetime.now().strftime("%d/%m/%Y")
-            conn.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?,?,?,?)", (t, cat, v, fecha_hoy))
+            conn.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?,?,?,?)", (t, cat, v, datetime.now().strftime("%d/%m/%Y")))
             conn.commit(); st.rerun()
 
     df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC", conn)
     if not df_f.empty:
-        bal = df_f['monto'].sum()
-        gastos = abs(df_f[df_f['monto'] < 0]['monto'].sum())
-        pred = motor_ia(df_f)
-        
-        m1, m2, m3 = st.columns(3)
+        bal = df_f['monto'].sum(); gastos_t = abs(df_f[df_f['monto'] < 0]['monto'].sum())
+        m1, m2 = st.columns(2)
         m1.metric("BALANCE NETO", f"RD$ {bal:,.2f}")
-        m2.metric("GASTOS", f"RD$ {gastos:,.2f}")
-        if pred: m3.metric("PROYECCIÓN IA", f"RD$ {pred:,.2f}", delta=round(pred-bal, 2))
+        if limite_actual > 0:
+            prog = min(gastos_t / limite_actual, 1.0)
+            st.write(f"Consumo Presupuesto: {prog*100:.1f}%")
+            st.progress(prog)
         
-        st.subheader("📋 Historial (Borrado Activo)")
+        st.subheader("📋 Historial de Movimientos")
         for i, r in df_f.iterrows():
-            c_txt, c_btn = st.columns([0.85, 0.15])
-            with c_txt:
+            col_t, col_b = st.columns([0.85, 0.15])
+            with col_t:
                 color = "#4CAF50" if r['monto'] > 0 else "#FF5252"
                 st.markdown(f'<div class="card-datos"><span>{r["fecha"]} | {r["categoria"]}</span> <span style="color:{color}">RD$ {abs(r["monto"]):,.2f}</span></div>', unsafe_allow_html=True)
-            with c_btn:
+            with col_b:
                 if st.button("🗑️", key=f"f_{r['id']}"):
                     conn.execute(f"DELETE FROM finanzas WHERE id={r['id']}"); conn.commit(); st.rerun()
 
-# --- SECCIÓN 2: SALUD ---
+# --- SECCIÓN 2: BIOMONITOR ---
 elif menu == "🩺 BIOMONITOR":
-    st.header("🩺 Control de Salud")
-    val_g = st.number_input("Glucosa mg/dL:", min_value=0)
+    st.header("🩺 Historial de Glucosa")
+    val_g = st.number_input("Nivel mg/dL:", min_value=0)
     
     if val_g > 0:
-        if val_g <= 140: st.markdown('<div class="semaforo-verde">🟢 NORMAL</div>', unsafe_allow_html=True)
-        elif val_g <= 160: st.markdown('<div class="semaforo-amarillo">🟡 ALERTA</div>', unsafe_allow_html=True)
+        if val_g <= 140: st.markdown(f'<div class="semaforo-verde">🟢 NORMAL: {val_g} mg/dL</div>', unsafe_allow_html=True)
+        elif val_g <= 160: st.markdown(f'<div class="semaforo-amarillo">🟡 ALERTA: {val_g} mg/dL</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="semaforo-rojo">🔴 CRÍTICO</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="semaforo-rojo">🔴 CRÍTICO: {val_g} mg/dL</div>', unsafe_allow_html=True)
             cols = st.columns(4)
             for i, (n, num) in enumerate(contactos.items()):
                 link = f"https://api.whatsapp.com/send?phone={num}&text=Urgente%3A%20Luis%20Rafael%20Quevedo%20Glucosa%20en%20{val_g}"
                 cols[i % 4].link_button(f"📲 {n}", link)
 
-    if st.button("GUARDAR"):
+    if st.button("💾 GUARDAR REGISTRO"):
         ahora = datetime.now(pytz.timezone('America/Santo_Domingo'))
         est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRÍTICO"
         conn.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
         conn.commit(); st.rerun()
 
-    df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC", conn)
-    for i, r in df_g.iterrows():
-        c_t, c_b = st.columns([0.85, 0.15])
-        with c_t:
-            color = "#4CAF50" if r['estado'] == "NORMAL" else "#FBC02D" if r['estado'] == "ALERTA" else "#FF5252"
-            st.markdown(f'<div class="card-datos"><span>{r["fecha"]} - {r["hora"]}</span> <span style="color:{color}">{r["valor"]} mg/dL ({r["estado"]})</span></div>', unsafe_allow_html=True)
-        with c_b:
-            if st.button("🗑️", key=f"g_{r['id']}"):
-                conn.execute(f"DELETE FROM glucosa WHERE id={r['id']}"); conn.commit(); st.rerun()
+    df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id ASC", conn)
+    if not df_g.empty:
+        fig = px.line(df_g, x="fecha", y="valor", title="📈 Tendencia de Salud", markers=True)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        for i, r in df_g.sort_index(ascending=False).iterrows():
+            col_t, col_b = st.columns([0.85, 0.15])
+            with col_t:
+                color = "#4CAF50" if r['estado'] == "NORMAL" else "#FBC02D" if r['estado'] == "ALERTA" else "#FF5252"
+                st.markdown(f'<div class="card-datos"><span>{r["fecha"]} - {r["hora"]}</span> <span style="color:{color}">{r["valor"]} mg/dL ({r["estado"]})</span></div>', unsafe_allow_html=True)
+            with col_b:
+                if st.button("🗑️", key=f"g_{r['id']}"):
+                    conn.execute(f"DELETE FROM glucosa WHERE id={r['id']}"); conn.commit(); st.rerun()
 
-# --- SECCIÓN 3: AGENDA + GMAIL ---
+# --- SECCIÓN 3: AGENDA ---
 elif menu == "💊 AGENDA MÉDICA":
-    st.header("📅 Salud y Gmail")
-    st.link_button("📧 ABRIR GMAIL", "https://mail.google.com")
-    col1, col2 = st.columns(2)
-    with col1:
+    st.header("📅 Agenda de Luis Rafael Quevedo")
+    st.link_button("📧 ABRIR MI GMAIL", "https://mail.google.com")
+    c1, c2 = st.columns(2)
+    with c1:
         st.subheader("💊 Medicinas")
         with st.form("m"):
-            nom = st.text_input("Medicina:"); hor = st.text_input("Hora:")
+            nom = st.text_input("Medicina:"); hor = st.text_input("Horario:")
             if st.form_submit_button("Añadir"):
                 conn.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nom.upper(), hor)); conn.commit(); st.rerun()
         for i, r in pd.read_sql_query("SELECT * FROM medicinas", conn).iterrows():
-            st.info(f"{r['nombre']} - {r['horario']}")
-            if st.button("Borrar", key=f"m_{r['id']}"):
-                conn.execute(f"DELETE FROM medicinas WHERE id={r['id']}"); conn.commit(); st.rerun()
-    with col2:
+            ct, cb = st.columns([0.8, 0.2]); ct.info(f"{r['nombre']} - {r['horario']}")
+            if cb.button("🗑️", key=f"m_{r['id']}"): conn.execute(f"DELETE FROM medicinas WHERE id={r['id']}"); conn.commit(); st.rerun()
+    with c2:
         st.subheader("📅 Citas")
         with st.form("c"):
             dr = st.text_input("Doctor:"); fe = st.date_input("Fecha")
             if st.form_submit_button("Agendar"):
                 conn.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (dr.upper(), str(fe))); conn.commit(); st.rerun()
         for i, r in pd.read_sql_query("SELECT * FROM citas", conn).iterrows():
-            st.warning(f"{r['doctor']} - {r['fecha']}")
-            if st.button("Borrar", key=f"c_{r['id']}"):
-                conn.execute(f"DELETE FROM citas WHERE id={r['id']}"); conn.commit(); st.rerun()
+            ct, cb = st.columns([0.8, 0.2]); ct.warning(f"{r['doctor']} - {r['fecha']}")
+            if cb.button("🗑️", key=f"c_{r['id']}"): conn.execute(f"DELETE FROM citas WHERE id={r['id']}"); conn.commit(); st.rerun()
 
 # --- SECCIÓN 4: ESCÁNER ---
 elif menu == "📸 ESCÁNER":
-    st.header("📸 Escáner")
+    st.header("📸 Escáner de Documentos")
     foto = st.camera_input("Capturar")
     if foto:
         n = f"foto_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-        with open(os.path.join("archivador_quevedo", n), "wb") as f:
-            f.write(foto.getbuffer())
-        st.success(f"Archivado: {n}")
-        st.image(foto)
-    if st.button("📄 GENERAR REPORTE PDF"):
-        pdf = FPDF(); pdf.add_page(); pdf.set_font("Arial", 'B', 16)
-        pdf.cell(200, 10, "REPORTE SISTEMA QUEVEDO", ln=True, align='C')
-        n_p = f"reporte_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        pdf.output(os.path.join("archivador_quevedo", n_p))
-        st.success(f"PDF Guardado: {n_p}")
+        with open(os.path.join("archivador_quevedo", n), "wb") as f: f.write(foto.getbuffer())
+        st.success(f"Archivado: {n}"); st.image(foto)
+    if st.button("📄 GENERAR PDF"):
+        pdf = FPDF(); pdf.add_page(); pdf.set_font("Arial", 'B', 16); pdf.cell(200, 10, "REPORTE SISTEMA QUEVEDO", ln=True, align='C')
+        n_p = f"reporte_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"; pdf.output(os.path.join("archivador_quevedo", n_p)); st.success(f"PDF Guardado: {n_p}")
 
 # --- SECCIÓN 5: ARCHIVADOR ---
 elif menu == "📂 ARCHIVADOR":
-    st.header("📂 Archivador")
+    st.header("📂 Archivador Permanente")
     for a in os.listdir("archivador_quevedo"):
         r_c = os.path.join("archivador_quevedo", a)
-        with open(r_c, "rb") as f:
-            st.download_button(f"💾 {a}", f, file_name=a)
+        with open(r_c, "rb") as f: st.download_button(f"💾 Descargar: {a}", f, file_name=a)
 
 # --- CRÉDITOS ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("🚀 CRÉDITOS")
-st.sidebar.write("💎 **SISTEMA QUEVEDO v8.0**")
-st.sidebar.info("👨‍💻 **Desarrollador Principal:** \n\n **Luis Rafael Quevedo**")
+st.sidebar.markdown(f"""
+    <div style="background-color: #1e2130; padding: 15px; border-radius: 10px; border: 1px solid #4CAF50;">
+        <p style="margin: 0; color: #4CAF50; font-weight: bold;">👨‍💻 Desarrollador Principal:</p>
+        <p style="margin: 0; font-size: 1.1em;">Luis Rafael Quevedo</p>
+        <hr style="margin: 10px 0; border: 0.5px solid #3d4466;">
+        <p style="margin: 0; color: #888;">🤖 Asistencia Técnica:</p>
+        <p style="margin: 0; font-style: italic;">Gemini AI</p>
+    </div>
+""", unsafe_allow_html=True)
