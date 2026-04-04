@@ -8,9 +8,15 @@ from datetime import datetime
 import pytz
 import numpy as np
 from sklearn.linear_model import LinearRegression
+import unicodedata
 
 # 1. CONFIGURACIÓN E INTERFAZ DE ALTO NIVEL
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
+
+# Función para limpiar acentos y evitar errores en el PDF
+def limpiar_texto(texto):
+    if not texto: return ""
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
 
 # --- SISTEMA DE SEGURIDAD (LOGIN) ---
 def verificar_acceso():
@@ -52,33 +58,41 @@ if verificar_acceso():
 
     conn = iniciar_db()
 
-    # --- FUNCIONES INTELIGENTES ADICIONALES ---
+    # --- FUNCIÓN GENERAR PDF (CORREGIDA PARA EVITAR ERRORES DE TEXTO) ---
     def generar_pdf_salud(df_g, df_m):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", 'B', 16)
-        pdf.cell(200, 10, "REPORTE MÉDICO - LUIS RAFAEL QUEVEDO", ln=True, align='C')
+        pdf.cell(200, 10, limpiar_texto("REPORTE MEDICO - LUIS RAFAEL QUEVEDO"), ln=True, align='C')
         pdf.ln(10)
         
         pdf.set_font("Arial", 'B', 12)
         pdf.cell(200, 10, "1. MEDICAMENTOS ACTIVOS:", ln=True)
         pdf.set_font("Arial", size=10)
-        for _, r in df_m.iterrows():
-            pdf.cell(200, 8, f"- {r['nombre']} (Horario: {r['horario']})", ln=True)
+        if df_m.empty:
+            pdf.cell(200, 8, "No hay medicamentos registrados.", ln=True)
+        else:
+            for _, r in df_m.iterrows():
+                linea = f"- {r['nombre']} (Horario: {r['horario']})"
+                pdf.cell(200, 8, limpiar_texto(linea), ln=True)
         
         pdf.ln(5)
         pdf.set_font("Arial", 'B', 12)
-        pdf.cell(200, 10, "2. ÚLTIMOS REGISTROS DE GLUCOSA:", ln=True)
+        pdf.cell(200, 10, "2. ULTIMOS REGISTROS DE GLUCOSA:", ln=True)
         pdf.set_font("Arial", size=10)
-        for _, r in df_g.tail(15).iterrows():
-            pdf.cell(200, 8, f"{r['fecha']} {r['hora']}: {r['valor']} mg/dL - {r['estado']}", ln=True)
+        if df_g.empty:
+            pdf.cell(200, 8, "No hay registros de glucosa.", ln=True)
+        else:
+            for _, r in df_g.tail(15).iterrows():
+                linea = f"{r['fecha']} {r['hora']}: {r['valor']} mg/dL - {r['estado']}"
+                pdf.cell(200, 8, limpiar_texto(linea), ln=True)
             
-        nombre = f"Reporte_Salud_{datetime.now().strftime('%Y%m%d')}.pdf"
+        nombre = f"Reporte_Salud_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         ruta = os.path.join("archivador_quevedo", nombre)
         pdf.output(ruta)
         return nombre
 
-    # DISEÑO VISUAL
+    # DISEÑO VISUAL CSS
     st.markdown("""
         <style>
         .main { background-color: #0e1117; }
@@ -94,7 +108,7 @@ if verificar_acceso():
 
     # NAVEGACIÓN
     st.sidebar.title("💎 SISTEMA QUEVEDO")
-    menu = st.sidebar.radio("MÓDULOS", ["💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MÉDICA", "📸 ESCÁNER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
+    menu = st.sidebar.radio("MODULOS", ["💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
 
     # --- SECCIÓN 1: FINANZAS ---
     if menu == "💰 FINANZAS IA":
@@ -103,7 +117,7 @@ if verificar_acceso():
         limite = res_pre['limite'].iloc[0] if not res_pre.empty else 0.0
         
         with st.expander("⚙️ Presupuesto Mensual"):
-            n_limite = st.number_input("RD$ Límite Máximo", value=float(limite))
+            n_limite = st.number_input("RD$ Limite Maximo", value=float(limite))
             if st.button("Guardar"):
                 conn.execute("INSERT INTO presupuesto (limite) VALUES (?)", (n_limite,))
                 conn.commit(); st.rerun()
@@ -125,26 +139,24 @@ if verificar_acceso():
             m1.metric("BALANCE NETO", f"RD$ {bal:,.2f}")
             m2.metric("GASTOS TOTALES", f"RD$ {gastos_t:,.2f}")
             
-            if st.button("🗑️ Borrar Último"):
+            if st.button("🗑️ Borrar Ultimo"):
                 conn.execute("DELETE FROM finanzas WHERE id = (SELECT MAX(id) FROM finanzas)"); conn.commit(); st.rerun()
 
-    # --- SECCIÓN 2: BIOMONITOR (CON ALERTAS DE VARIABILIDAD) ---
+    # --- SECCIÓN 2: BIOMONITOR ---
     elif menu == "🩺 BIOMONITOR":
         st.header("🩺 Salud Inteligente")
         val_g = st.number_input("Glucosa mg/dL:", min_value=0)
         
         df_g = pd.read_sql_query("SELECT * FROM glucosa", conn)
         
-        # Alerta de Variabilidad (Nueva Función)
-        if not df_g.empty:
+        if not df_g.empty and val_g > 0:
             promedio = df_g['valor'].mean()
-            if val_g > 0:
-                cambio = ((val_g - promedio) / promedio) * 100
-                if abs(cambio) > 20:
-                    st.warning(f"⚠️ ¡Atención! Tu glucosa ha variado un {cambio:.1f}% respecto a tu promedio habitual.")
+            cambio = ((val_g - promedio) / promedio) * 100
+            if abs(cambio) > 20:
+                st.warning(f"⚠️ Variacion detectada: {cambio:.1f}% respecto al promedio.")
 
         if val_g > 160:
-            st.markdown(f'<div class="semaforo-rojo">🚨 ALERTA CRÍTICA: {val_g} mg/dL</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="semaforo-rojo">🚨 ALERTA CRITICA: {val_g} mg/dL</div>', unsafe_allow_html=True)
             cols_w = st.columns(4)
             for i, (nombre, num) in enumerate(contactos.items()):
                 msg = f"Emergencia: Luis tiene la glucosa en {val_g}"
@@ -153,7 +165,7 @@ if verificar_acceso():
 
         if st.button("💾 GUARDAR TOMA"):
             tz = pytz.timezone('America/Santo_Domingo'); ahora = datetime.now(tz)
-            est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRÍTICO"
+            est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRITICO"
             conn.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
             conn.commit(); st.rerun()
 
@@ -161,10 +173,10 @@ if verificar_acceso():
             st.plotly_chart(px.line(df_g, x="fecha", y="valor", title="Historial Glucosa", markers=True))
 
     # --- SECCIÓN 3: AGENDA MÉDICA + PDF ---
-    elif menu == "💊 AGENDA MÉDICA":
-        st.header("💊 Gestión Médica")
+    elif menu == "💊 AGENDA MEDICA":
+        st.header("💊 Gestion Medica")
         
-        if st.button("📄 GENERAR REPORTE MÉDICO PDF"):
+        if st.button("📄 GENERAR REPORTE MEDICO PDF"):
             dg = pd.read_sql_query("SELECT * FROM glucosa", conn)
             dm = pd.read_sql_query("SELECT * FROM medicinas", conn)
             archivo = generar_pdf_salud(dg, dm)
@@ -183,38 +195,40 @@ if verificar_acceso():
                 conn.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (c_doc.upper(), str(c_fec))); conn.commit(); st.rerun()
 
     # --- SECCIÓN 4: ESCÁNER ---
-    elif menu == "📸 ESCÁNER":
-        st.header("📸 Escáner de Documentos")
+    elif menu == "📸 ESCANER":
+        st.header("📸 Escaner de Documentos")
         foto = st.camera_input("Capturar")
         if foto:
             fname = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
             with open(os.path.join("archivador_quevedo", fname), "wb") as f: f.write(foto.getbuffer())
             st.success(f"Guardado como: {fname}")
-            st.info("💡 En la siguiente actualización activaremos la lectura automática de texto.")
 
     # --- SECCIÓN 5: ARCHIVADOR ---
     elif menu == "📂 ARCHIVADOR":
         st.header("📂 Archivador")
-        for a in os.listdir("archivador_quevedo"):
+        archivos = os.listdir("archivador_quevedo")
+        if not archivos: st.info("Vacio")
+        for a in archivos:
             with open(os.path.join("archivador_quevedo", a), "rb") as f:
                 st.download_button(f"💾 {a}", f, file_name=a)
 
-    # --- SECCIÓN 6: ASISTENTE (NUEVO) ---
+    # --- SECCIÓN 6: ASISTENTE ---
     elif menu == "🤖 ASISTENTE":
         st.header("🤖 Consultas al Sistema")
-        pregunta = st.text_input("Pregúntame algo (Ej: gasto total, glucosa máxima)")
+        pregunta = st.text_input("Preguntame algo (Ej: gasto total, glucosa maxima)")
         if pregunta:
             pregunta = pregunta.lower()
             if "gasto" in pregunta:
                 r = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas WHERE monto < 0", conn)
-                st.write(f"💸 Tu gasto total registrado es: RD$ {abs(r['total'].iloc[0]):,.2f}")
+                valor = r['total'].iloc[0] if r['total'].iloc[0] else 0
+                st.write(f"💸 Gasto total registrado: RD$ {abs(valor):,.2f}")
             elif "glucosa" in pregunta:
                 r = pd.read_sql_query("SELECT MAX(valor) as maximo FROM glucosa", conn)
-                st.write(f"🩺 Tu nivel máximo de glucosa ha sido: {r['maximo'].iloc[0]} mg/dL")
+                valor = r['maximo'].iloc[0] if r['maximo'].iloc[0] else 0
+                st.write(f"🩺 Nivel maximo de glucosa: {valor} mg/dL")
             else:
-                st.write("Intenta con palabras como 'gasto' o 'glucosa'.")
+                st.write("Prueba con 'gasto' o 'glucosa'.")
 
     # --- CRÉDITOS ---
     st.sidebar.markdown("---")
     st.sidebar.markdown("👨‍💻 **Desarrollador:** Luis Rafael Quevedo")
-    st.sidebar.markdown("🤖 **Asistencia:** Gemini AI")
