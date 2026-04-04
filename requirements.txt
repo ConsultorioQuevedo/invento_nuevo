@@ -4,3 +4,4 @@ plotly
 pytz
 scikit-learn
 numpy
+fpdf
