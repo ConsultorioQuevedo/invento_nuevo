@@ -58,7 +58,7 @@ if verificar_acceso():
 
     conn = iniciar_db()
 
-    # --- FUNCIÓN GENERAR PDF (CORREGIDA PARA EVITAR ERRORES DE TEXTO) ---
+    # --- FUNCIÓN GENERAR PDF ---
     def generar_pdf_salud(df_g, df_m):
         pdf = FPDF()
         pdf.add_page()
@@ -103,7 +103,6 @@ if verificar_acceso():
         </style>
         """, unsafe_allow_html=True)
 
-    # CONTACTOS
     contactos = {"Mi Hijo": "18292061693", "Mi Hija": "18292581449", "Franklin": "16463746377", "Hermanito": "14077975432", "Dorka": "18298811692", "Rosa": "18293800425", "Pedro": "18097100995"}
 
     # NAVEGACIÓN
@@ -118,11 +117,11 @@ if verificar_acceso():
         
         with st.expander("⚙️ Presupuesto Mensual"):
             n_limite = st.number_input("RD$ Limite Maximo", value=float(limite))
-            if st.button("Guardar"):
+            if st.button("Guardar Presupuesto"):
                 conn.execute("INSERT INTO presupuesto (limite) VALUES (?)", (n_limite,))
                 conn.commit(); st.rerun()
 
-        with st.form("finanzas_form"):
+        with st.form("finanzas_form", clear_on_submit=True):
             c1, c2, c3 = st.columns(3)
             tipo = c1.selectbox("TIPO", ["INGRESO", "GASTO"])
             cat = c2.text_input("CONCEPTO").upper()
@@ -138,16 +137,17 @@ if verificar_acceso():
             m1, m2 = st.columns(2)
             m1.metric("BALANCE NETO", f"RD$ {bal:,.2f}")
             m2.metric("GASTOS TOTALES", f"RD$ {gastos_t:,.2f}")
+            st.dataframe(df_f, use_container_width=True)
             
-            if st.button("🗑️ Borrar Ultimo"):
-                conn.execute("DELETE FROM finanzas WHERE id = (SELECT MAX(id) FROM finanzas)"); conn.commit(); st.rerun()
+            if st.button("🗑️ Borrar Historial de Finanzas"):
+                conn.execute("DELETE FROM finanzas"); conn.commit(); st.rerun()
 
     # --- SECCIÓN 2: BIOMONITOR ---
     elif menu == "🩺 BIOMONITOR":
         st.header("🩺 Salud Inteligente")
         val_g = st.number_input("Glucosa mg/dL:", min_value=0)
         
-        df_g = pd.read_sql_query("SELECT * FROM glucosa", conn)
+        df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC", conn)
         
         if not df_g.empty and val_g > 0:
             promedio = df_g['valor'].mean()
@@ -164,15 +164,19 @@ if verificar_acceso():
                 cols_w[i % 4].link_button(f"👤 {nombre}", link)
 
         if st.button("💾 GUARDAR TOMA"):
-            tz = pytz.timezone('America/Santo_Domingo'); ahora = datetime.now(tz)
-            est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRITICO"
-            conn.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
-            conn.commit(); st.rerun()
+            if val_g > 0:
+                tz = pytz.timezone('America/Santo_Domingo'); ahora = datetime.now(tz)
+                est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRITICO"
+                conn.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
+                conn.commit(); st.rerun()
 
         if not df_g.empty:
             st.plotly_chart(px.line(df_g, x="fecha", y="valor", title="Historial Glucosa", markers=True))
+            st.dataframe(df_g, use_container_width=True)
+            if st.button("🗑️ Borrar Historial de Glucosa"):
+                conn.execute("DELETE FROM glucosa"); conn.commit(); st.rerun()
 
-    # --- SECCIÓN 3: AGENDA MÉDICA + PDF ---
+    # --- SECCIÓN 3: AGENDA MÉDICA ---
     elif menu == "💊 AGENDA MEDICA":
         st.header("💊 Gestion Medica")
         
@@ -188,11 +192,24 @@ if verificar_acceso():
             m_nom = st.text_input("Nombre:"); m_hor = st.text_input("Hora:")
             if st.button("Añadir Medicina"):
                 conn.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (m_nom.upper(), m_hor)); conn.commit(); st.rerun()
+            
+            df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+            if not df_m.empty:
+                st.dataframe(df_m, use_container_width=True)
+                if st.button("🗑️ Borrar Medicinas"):
+                    conn.execute("DELETE FROM medicinas"); conn.commit(); st.rerun()
+
         with c2:
             st.subheader("Citas")
             c_doc = st.text_input("Doctor:"); c_fec = st.date_input("Fecha")
             if st.button("Agendar Cita"):
                 conn.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (c_doc.upper(), str(c_fec))); conn.commit(); st.rerun()
+            
+            df_c = pd.read_sql_query("SELECT * FROM citas", conn)
+            if not df_c.empty:
+                st.dataframe(df_c, use_container_width=True)
+                if st.button("🗑️ Borrar Citas"):
+                    conn.execute("DELETE FROM citas"); conn.commit(); st.rerun()
 
     # --- SECCIÓN 4: ESCÁNER ---
     elif menu == "📸 ESCANER":
@@ -209,8 +226,12 @@ if verificar_acceso():
         archivos = os.listdir("archivador_quevedo")
         if not archivos: st.info("Vacio")
         for a in archivos:
+            col_a, col_b = st.columns([3,1])
             with open(os.path.join("archivador_quevedo", a), "rb") as f:
-                st.download_button(f"💾 {a}", f, file_name=a)
+                col_a.download_button(f"💾 {a}", f, file_name=a)
+            if col_b.button("❌", key=a):
+                os.remove(os.path.join("archivador_quevedo", a))
+                st.rerun()
 
     # --- SECCIÓN 6: ASISTENTE ---
     elif menu == "🤖 ASISTENTE":
@@ -229,6 +250,7 @@ if verificar_acceso():
             else:
                 st.write("Prueba con 'gasto' o 'glucosa'.")
 
-    # --- CRÉDITOS ---
+    # --- PIE DE PÁGINA Y CRÉDITOS ---
     st.sidebar.markdown("---")
-    st.sidebar.markdown("👨‍💻 **Desarrollador:** Luis Rafael Quevedo")
+    st.sidebar.markdown("👨‍💻 **Diseño y Desarrollo:**")
+    st.sidebar.markdown("Luis Rafael Quevedo & Gemini AI")
