@@ -48,7 +48,6 @@ with tab1:
         fig = px.bar(df_f, x="categoria", y="monto", color="tipo", title="Movimientos por Categoría")
         st.plotlychart(fig, usecontainer_width=True)
 
---- SALUD ---
 with tab2:
     st.subheader("Gestor de Salud")
     # Glucosa
@@ -69,7 +68,6 @@ with tab2:
         fig = px.line(df_g, x="fecha", y="valor", title="Evolución Glucosa", markers=True)
         st.plotlychart(fig, usecontainer_width=True)
 
---- IA PREDICTIVA ---
 with tab3:
     st.subheader("Motor IA Predictivo")
 
