@@ -7,7 +7,6 @@ import pytz
 from sklearn.linear_model import LinearRegression
 import numpy as np
 
---- BASE DE DATOS ---
 def iniciar_db():
     conn = sqlite3.connect("miapp.db", checksame_thread=False)
     cursor = conn.cursor()
