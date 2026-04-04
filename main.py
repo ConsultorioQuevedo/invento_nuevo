@@ -144,7 +144,7 @@ if verificar_acceso():
             st.info("📲 Notificar de inmediato a:")
             cols_w = st.columns(4)
             for i, (nombre, num) in enumerate(contactos.items()):
-                msg = f"Emergencia: Luis tiene la glucosa en {val_g} mg/dL"
+                msg = f"Ayuda llamen a Pedro: Tengo la glucosa en {val_g} mg/dL"
                 link = f"https://api.whatsapp.com/send?phone={num}&text={msg.replace(' ', '%20')}"
                 cols_w[i % 4].link_button(f"👤 {nombre}", link)
 
