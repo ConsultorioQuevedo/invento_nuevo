@@ -8,19 +8,17 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 
 def iniciar_db():
-    conn = sqlite3.connect("miapp.db", checksame_thread=False)
-    cursor = conn.cursor()
-    # Tablas de Salud
-    cursor.execute('CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY, fecha TEXT, hora TEXT, momento TEXT, valor INTEGER, notas TEXT)')
-    cursor.execute('CREATE TABLE IF NOT EXISTS medicamentos (id INTEGER PRIMARY KEY, nombre TEXT, dosis TEXT, horario TEXT)')
-    cursor.execute('CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY, doctor TEXT, fecha TEXT, motivo TEXT)')
-    # Tablas de Finanzas
-    cursor.execute('CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY, fecha TEXT, tipo TEXT, categoria TEXT, detalle TEXT, monto REAL)')
-    conn.commit()
+    # Nota el guion bajo en check_same_thread
+    conn = sqlite3.connect("miapp.db", check_same_thread=False)
     return conn
 
+# Usar la función para crear la conexión
 conn = iniciar_db()
+c = conn.cursor()
 
+# Crear tabla si no existe
+c.execute('CREATE TABLE IF NOT EXISTS inventario (item TEXT, cantidad INTEGER, fecha TEXT)')
+conn.commit()
 
 st.setpageconfig(page_title="App Finanzas & Salud Quevedo", layout="wide")
 st.title("📊💉 Dashboard Finanzas & Salud Inteligente")
