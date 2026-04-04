@@ -6,8 +6,8 @@ import plotly.express as px
 from datetime import datetime
 import pytz
 
-# --- 1. CONFIGURACIÓN E INTERFAZ PROFESIONAL ---
-st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
+# --- 1. CONFIGURACIÓN E INTERFAZ ---
+st.set_page_config(page_title="SISTEMA QUEVEDO PRO - MODO PRUEBA", layout="wide", page_icon="💎")
 
 st.markdown("""
     <style>
@@ -19,7 +19,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. MOTOR DE DATOS Y PERSISTENCIA ---
+# --- 2. MOTOR DE DATOS ---
 DB_NAME = "sistema_quevedo_integral.db"
 DIR_ARCHIVOS = "archivador_quevedo"
 
@@ -33,46 +33,30 @@ def db_query(query, params=(), fetch=False):
         conn.commit()
         return cursor.fetchall() if fetch else None
 
-# Inicialización de todas las herramientas (Tablas)
+# Inicialización de Tablas
 db_query('CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, cat TEXT, monto REAL, fecha TEXT)')
 db_query('CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT)')
 db_query('CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, hora TEXT)')
 db_query('CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT)')
 db_query('CREATE TABLE IF NOT EXISTS archivador (id INTEGER PRIMARY KEY AUTOINCREMENT, file TEXT, desc TEXT, fecha TEXT)')
 
-# --- 3. SEGURIDAD ---
-if "auth" not in st.session_state: st.session_state.auth = False
-
-if not st.session_state.auth:
-    st.title("💎 SISTEMA QUEVEDO")
-    u = st.text_input("Usuario")
-    p = st.text_input("Contraseña", type="password")
-    if st.button("ENTRAR AL SISTEMA"):
-        if u == "admin" and p == "Quevedo2026":
-            st.session_state.auth = True
-            st.rerun()
-        else: st.error("Acceso Denegado")
-    st.stop()
-
-# --- 4. CONTACTOS DE EMERGENCIA ---
+# --- 3. CONTACTOS ---
 contactos = {
     "Mi Hijo": "18292061693", "Mi Hija": "18292581449", "Franklin": "16463746377",
     "Hermanito": "14077975432", "Dorka": "18298811692", "Rosa": "18293800425", "Pedro": "18097100995"
 }
 
-# --- 5. NAVEGACIÓN Y HERRAMIENTAS RÁPIDAS ---
+# --- 4. NAVEGACIÓN ---
+st.sidebar.title("💎 SISTEMA QUEVEDO")
+st.sidebar.warning("⚠️ MODO PRUEBA: SIN CONTRASEÑA")
 menu = st.sidebar.radio("MENÚ PRINCIPAL", ["🏠 DASHBOARD", "💰 FINANZAS", "🩺 SALUD", "📅 AGENDA", "📂 ARCHIVADOR"])
 st.sidebar.markdown("---")
-# Herramienta Gmail Integrada
 st.sidebar.link_button("📧 ABRIR MI GMAIL", "https://mail.google.com")
-if st.sidebar.button("🔒 CERRAR SESIÓN"):
-    st.session_state.auth = False
-    st.rerun()
 
-# --- 6. MÓDULOS DEL SISTEMA ---
+# --- 5. MÓDULOS ---
 
 if menu == "🏠 DASHBOARD":
-    st.header("🏠 Resumen Luis Rafael Quevedo")
+    st.header("🏠 Resumen Ejecutivo")
     df_f = pd.read_sql_query("SELECT monto FROM finanzas", sqlite3.connect(DB_NAME))
     df_g = pd.read_sql_query("SELECT valor FROM glucosa", sqlite3.connect(DB_NAME))
     
@@ -101,10 +85,7 @@ elif menu == "💰 FINANZAS":
             st.rerun()
     
     df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC", sqlite3.connect(DB_NAME))
-    if not df_f.empty:
-        st.dataframe(df_f.head(15), use_container_width=True)
-        if st.button("🗑️ Borrar Último"):
-            db_query("DELETE FROM finanzas WHERE id = (SELECT MAX(id) FROM finanzas)"); st.rerun()
+    st.dataframe(df_f.head(15), use_container_width=True)
 
 elif menu == "🩺 SALUD":
     st.header("🩺 Monitor de Glucosa")
@@ -121,13 +102,11 @@ elif menu == "🩺 SALUD":
         db_query("INSERT INTO glucosa (valor, fecha, hora) VALUES (?,?,?)", (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p")))
         st.rerun()
 
-    st.subheader("📊 Historial de Registros")
+    st.subheader("📊 Historial Registrado")
     df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id ASC", sqlite3.connect(DB_NAME))
     if not df_g.empty:
-        st.plotly_chart(px.line(df_g, x="fecha", y="valor", markers=True, title="Tendencia de Glucosa"), use_container_width=True)
+        st.plotly_chart(px.line(df_g, x="fecha", y="valor", markers=True), use_container_width=True)
         st.table(df_g.tail(10))
-        if st.button("🗑️ Borrar Última Toma"):
-            db_query("DELETE FROM glucosa WHERE id = (SELECT MAX(id) FROM glucosa)"); st.rerun()
 
 elif menu == "📅 AGENDA":
     st.header("📅 Agenda de Medicinas y Citas")
@@ -136,8 +115,8 @@ elif menu == "📅 AGENDA":
     with col1:
         st.subheader("💊 Medicinas")
         with st.form("form_m", clear_on_submit=True):
-            med = st.text_input("Medicina"); hr = st.text_input("Hora de toma")
-            if st.form_submit_button("Añadir Medicina"):
+            med = st.text_input("Medicina"); hr = st.text_input("Hora")
+            if st.form_submit_button("Añadir"):
                 db_query("INSERT INTO medicinas (nombre, hora) VALUES (?,?)", (med.upper(), hr)); st.rerun()
         for i, r in pd.read_sql_query("SELECT * FROM medicinas", sqlite3.connect(DB_NAME)).iterrows():
             st.info(f"💊 {r['nombre']} - {r['hora']}")
@@ -146,24 +125,23 @@ elif menu == "📅 AGENDA":
         st.subheader("👨‍⚕️ Citas Médicas")
         with st.form("form_c", clear_on_submit=True):
             dr = st.text_input("Doctor/Especialidad"); fca = st.date_input("Fecha"); hr_c = st.text_input("Hora")
-            if st.form_submit_button("Agendar Cita"):
+            if st.form_submit_button("Agendar"):
                 db_query("INSERT INTO citas (doctor, fecha, hora) VALUES (?,?,?)", (dr.upper(), str(fca), hr_c)); st.rerun()
         for i, r in pd.read_sql_query("SELECT * FROM citas", sqlite3.connect(DB_NAME)).iterrows():
             st.warning(f"📅 {r['doctor']} | {r['fecha']} a las {r['hora']}")
 
 elif menu == "📂 ARCHIVADOR":
     st.header("📂 Archivador de Documentos")
-    foto = st.camera_input("Capturar Documento")
+    foto = st.camera_input("Capturar")
     desc = st.text_input("Descripción:").upper()
     
-    if foto and desc and st.button("💾 GUARDAR DEFINITIVAMENTE"):
+    if foto and desc and st.button("💾 GUARDAR"):
         fname = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
         path = os.path.join(DIR_ARCHIVOS, fname)
         with open(path, "wb") as f: f.write(foto.getbuffer())
         db_query("INSERT INTO archivador (file, desc, fecha) VALUES (?,?,?)", (fname, desc, datetime.now().strftime("%d/%m/%Y")))
-        st.success("Documento Guardado"); st.rerun()
+        st.rerun()
 
-    st.markdown("---")
     df_a = pd.read_sql_query("SELECT * FROM archivador ORDER BY id DESC", sqlite3.connect(DB_NAME))
     for i, r in df_a.iterrows():
         with st.expander(f"📄 {r['desc']} ({r['fecha']})"):
@@ -172,10 +150,9 @@ elif menu == "📂 ARCHIVADOR":
                 st.image(fpath)
                 with open(fpath, "rb") as f: 
                     st.download_button("📥 Descargar", f, file_name=r['file'], key=f"dl_{r['id']}")
-            if st.button("🗑️ Eliminar Archivo", key=f"del_{r['id']}"):
+            if st.button("🗑️ Eliminar", key=f"del_{r['id']}"):
                 db_query("DELETE FROM archivador WHERE id=?", (r['id'],))
                 if os.path.exists(fpath): os.remove(fpath)
                 st.rerun()
 
-st.sidebar.markdown(f"---")
-st.sidebar.info(f"Sistema Quevedo v19.0\nLuis Rafael Quevedo")
+st.sidebar.info(f"Sistema Quevedo v20.0\nLuis Rafael Quevedo")
