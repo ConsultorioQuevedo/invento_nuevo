@@ -21,13 +21,13 @@ def iniciar_db():
 
 conn = iniciar_db()
 
---- CONFIGURACIÓN ---
+
 st.setpageconfig(page_title="App Finanzas & Salud Quevedo", layout="wide")
 st.title("📊💉 Dashboard Finanzas & Salud Inteligente")
 
 tab1, tab2, tab3 = st.tabs(["💰 Finanzas", "🩺 Salud", "🧠 IA Predictiva"])
 
---- FINANZAS ---
+
 with tab1:
     st.subheader("Registro Financiero")
     with st.form("formfinanzas", clearon_submit=True):
