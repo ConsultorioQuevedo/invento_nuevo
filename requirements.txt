@@ -4,3 +4,4 @@ pytesseract
 pandas
 plotly
 pytz
+scikit-learn
