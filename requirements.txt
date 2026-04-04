@@ -6,4 +6,3 @@ pytz
 scikit-learn
 numpy
 Pillow
-pytesseract
