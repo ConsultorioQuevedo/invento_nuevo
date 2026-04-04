@@ -8,157 +8,172 @@ import pytz
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
-# 1. CONFIGURACIÓN E INTERFAZ
-st.set_page_config(page_title="SISTEMA QUEVEDO OMNI-IA", layout="wide", page_icon="🧠")
+# 1. CONFIGURACIÓN E INTERFAZ VISUAL DE NUEVA GENERACIÓN
+st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
 
-# 2. MOTOR DE DATOS PERMANENTE (SQLite)
+# Aplicando el "Maquillaje" Premium (CSS)
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3em; background-color: #2e7d32; color: white; border: none; transition: 0.3s; }
+    .stButton>button:hover { background-color: #1b5e20; transform: scale(1.02); }
+    .stMetric { background-color: #1e2130; padding: 20px; border-radius: 15px; border: 1px solid #3d4466; }
+    .card { background-color: #1e2130; padding: 15px; border-radius: 10px; border-left: 5px solid #4CAF50; margin-bottom: 10px; }
+    h1, h2, h3 { color: #ffffff !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .stTextInput>div>div>input { background-color: #262730; color: white; border-radius: 8px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# 2. MOTOR DE DATOS PERMANENTE
 def iniciar_db():
-    conn = sqlite3.connect("sistema_quevedo_total.db", check_same_thread=False)
+    conn = sqlite3.connect("sistema_quevedo_premium.db", check_same_thread=False)
     c = conn.cursor()
     c.execute('CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY, tipo TEXT, categoria TEXT, monto REAL)')
-    c.execute('CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY, valor INTEGER, fecha TEXT, estado TEXT)')
-    c.execute('CREATE TABLE IF NOT EXISTS medicamentos (id INTEGER PRIMARY KEY, nombre TEXT, hora TEXT)')
-    c.execute('CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY, doctor TEXT, fecha TEXT, hora TEXT, motivo TEXT)')
+    c.execute('CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)')
+    c.execute('CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY, nombre TEXT, horario TEXT)')
+    c.execute('CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY, doctor TEXT, fecha TEXT, hora TEXT)')
     conn.commit()
     return conn
 
 conn = iniciar_db()
 
-# 3. NÚCLEO DE INTELIGENCIA ARTIFICIAL
+# 3. BASE DE DATOS DE CONTACTOS (Tus 7 contactos reales)
+contactos = {
+    "Mi Hijo": "18292061693", "Mi Hija": "18292581449", "Franklin (Hno)": "16463746377",
+    "Hermanito Loco": "14077975432", "Dorka Carpio": "18298811692", "Rosa": "18293800425",
+    "Pedro (Hno)": "18097100995"
+}
+
+# 4. INTELIGENCIA ARTIFICIAL (IA)
 def motor_ia_predictivo(df):
     if len(df) > 3:
-        # La IA analiza la tendencia de tu balance acumulado
         X = np.arange(len(df)).reshape(-1, 1)
-        y = df['monto'].cumsum().values 
+        y = df['monto'].cumsum().values
         modelo = LinearRegression().fit(X, y)
-        prediccion = modelo.predict([[len(df) + 1]])[0]
-        return round(prediccion, 2)
+        return round(modelo.predict([[len(df) + 1]])[0], 2)
     return None
 
-# 4. LÓGICA DE SEMÁFORO (90-140 Verde | 140-160 Amarillo | +160 Rojo)
-def obtener_semaforo(v):
-    if v < 140: return "🟢 NORMAL", "#28a745"
-    if v <= 160: return "🟡 ALERTA", "#ffc107"
-    return "🔴 RIESGO", "#dc3545"
-
-# --- MENÚ LATERAL ---
-st.sidebar.title("🚀 SISTEMA QUEVEDO")
-st.sidebar.markdown("---")
-seccion = st.sidebar.radio("SECCIONES", ["💰 FINANZAS & IA", "🩺 SALUD (GLUCOSA)", "💊 MEDICAMENTOS", "📅 CITAS MÉDICAS", "📸 ESCÁNER & PDF"])
+# --- NAVEGACIÓN ---
+st.sidebar.title("💎 QUEVEDO OMNI")
+st.sidebar.info(f"Usuario: Luis Rafael Quevedo")
+menu = st.sidebar.radio("CENTRO DE CONTROL", ["💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MÉDICA", "📸 ESCÁNER & PDF"])
 
 # --- SECCIÓN 1: FINANZAS CON IA ---
-if seccion == "💰 FINANZAS & IA":
-    st.header("💰 Gestión Financiera Inteligente")
-    with st.form("f_fin", clear_on_submit=True):
-        col1, col2, col3 = st.columns(3)
-        with col1: t = st.selectbox("TIPO", ["INGRESO", "GASTO", "PRESUPUESTO"])
-        with col2: c = st.text_input("CONCEPTO").upper()
-        with col3: m = st.number_input("MONTO RD$", min_value=0.0)
-        if st.form_submit_button("REGISTRAR DATO"):
-            val = m if t != "GASTO" else -m
-            conn.execute("INSERT INTO finanzas (tipo, categoria, monto) VALUES (?,?,?)", (t, c, val))
-            conn.commit()
+if menu == "💰 FINANZAS IA":
+    st.title("💰 Inteligencia Financiera")
+    with st.container():
+        with st.form("f_form", clear_on_submit=True):
+            c1, c2, c3 = st.columns(3)
+            t = c1.selectbox("FLUJO", ["INGRESO", "GASTO", "PRESUPUESTO"])
+            cat = c2.text_input("CONCEPTO").upper()
+            mon = c3.number_input("RD$", min_value=0.0)
+            if st.form_submit_button("REGISTRAR MOVIMIENTO"):
+                v = mon if t != "GASTO" else -mon
+                conn.execute("INSERT INTO finanzas (tipo, categoria, monto) VALUES (?,?,?)", (t, cat, v))
+                conn.commit()
 
     df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
     if not df_f.empty:
-        balance = df_f['monto'].sum()
+        bal = df_f['monto'].sum()
         pred = motor_ia_predictivo(df_f)
         
-        c1, c2 = st.columns(2)
-        c1.metric("BALANCE ACTUAL", f"RD$ {balance:,.2f}")
-        if pred is not None:
-            c2.metric("IA: PROYECCIÓN FUTURA", f"RD$ {pred:,.2f}", delta=round(pred-balance, 2))
+        col1, col2 = st.columns(2)
+        col1.metric("BALANCE NETO", f"RD$ {bal:,.2f}")
+        if pred:
+            col2.metric("PROYECCIÓN IA", f"RD$ {pred:,.2f}", delta=round(pred-bal, 2))
             if pred < 1500:
-                st.warning(f"⚠️ IA ALERT: Se proyecta balance bajo (RD$ {pred})")
-                msg = f"Sistema Quevedo: Alerta IA de balance bajo proyectado: RD$ {pred}"
-                st.link_button("📲 ENVIAR ALERTA WHATSAPP", f"https://wa.me/18490000000?text={msg}")
-        
-        st.subheader("Historial de Movimientos")
+                st.warning("⚠️ ALERTA IA: Balance futuro crítico.")
+                st.link_button("📲 Avisar a Mi Hijo", f"https://wa.me/{contactos['Mi Hijo']}?text=Alerta Financiera IA.")
+
+        st.subheader("Historial Permanente")
         for i, r in df_f.iterrows():
-            col_a, col_b = st.columns([6, 1])
-            col_a.info(f"{r['tipo']}: {r['categoria']} | RD$ {r['monto']:,.2f}")
-            if col_b.button("🗑️", key=f"f_{r['id']}"):
+            c_a, c_b = st.columns([6, 1])
+            c_a.markdown(f'<div class="card"><b>{r["tipo"]}</b>: {r["categoria"]} | RD$ {abs(r["monto"]):,.2f}</div>', unsafe_allow_html=True)
+            if c_b.button("🗑️", key=f"f_{r['id']}"):
                 conn.execute(f"DELETE FROM finanzas WHERE id={r['id']}"); conn.commit(); st.rerun()
 
-# --- SECCIÓN 2: SALUD (GLUCOSA Y SEMÁFORO) ---
-elif seccion == "🩺 SALUD (GLUCOSA)":
-    st.header("🩸 Monitor de Glucosa con Semáforo")
-    val_g = st.number_input("Nivel mg/dL:", min_value=0)
-    if st.button("Guardar Nivel"):
-        est, _ = obtener_semaforo(val_g)
-        fecha = datetime.now().strftime("%d/%m %H:%M")
-        conn.execute("INSERT INTO glucosa (valor, fecha, estado) VALUES (?,?,?)", (val_g, fecha, est))
+# --- SECCIÓN 2: BIOMONITOR (SEMÁFORO) ---
+elif menu == "🩺 BIOMONITOR":
+    st.title("🩸 Monitor de Glucosa")
+    val_g = st.number_input("Nivel (mg/dL):", min_value=0)
+    if st.button("GUARDAR EN BIORREGISTRO"):
+        tz = pytz.timezone('America/Santo_Domingo')
+        ahora = datetime.now(tz)
+        est = "🟢 NORMAL" if val_g < 140 else "🟡 ALERTA" if val_g <= 160 else "🔴 CRÍTICO"
+        conn.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
+                     (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
         conn.commit()
 
     df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC", conn)
     if not df_g.empty:
-        st.plotly_chart(px.line(df_g, x="fecha", y="valor", title="Tendencia Glucémica IA", markers=True))
+        st.plotly_chart(px.area(df_g, x="fecha", y="valor", title="Tendencia Bio-Salud", color_discrete_sequence=['#4CAF50']))
+        
+        if val_g > 160:
+            st.error("🚨 EMERGENCIA: NIVEL ROJO")
+            st.write("Avisar a contactos de emergencia:")
+            cols = st.columns(len(contactos))
+            for i, (n, num) in enumerate(contactos.items()):
+                m_g = f"Urgente: Mi nivel de glucosa es {val_g}. Necesito asistencia."
+                cols[i].link_button(f"📲 {n}", f"https://wa.me/{num}?text={m_g.replace(' ', '%20')}")
+
         for i, r in df_g.iterrows():
-            _, color = obtener_semaforo(r['valor'])
-            st.markdown(f'<div style="border-left: 10px solid {color}; padding:10px; background:#1e1e1e; margin-bottom:10px; border-radius:5px"><b>{r["fecha"]}</b> - {r["valor"]} mg/dL ({r["estado"]})</div>', unsafe_allow_html=True)
-            if st.button(f"Eliminar #{r['id']}", key=f"g_{r['id']}"):
+            color = "#28a745" if "NORMAL" in r['estado'] else "#ffc107" if "ALERTA" in r['estado'] else "#dc3545"
+            st.markdown(f'<div style="border-left:10px solid {color}; padding:15px; background:#1e2130; border-radius:10px; margin-bottom:5px">'
+                        f'<b>{r["fecha"]} {r["hora"]}</b> | <b>{r["valor"]} mg/dL</b> | {r["estado"]}</div>', unsafe_allow_html=True)
+            if st.button(f"Borrar #{r['id']}", key=f"g_{r['id']}"):
                 conn.execute(f"DELETE FROM glucosa WHERE id={r['id']}"); conn.commit(); st.rerun()
 
-# --- SECCIÓN 3: MEDICAMENTOS ---
-elif seccion == "💊 MEDICAMENTOS":
-    st.header("💊 Control de Tratamientos")
-    with st.form("f_med"):
-        n = st.text_input("Nombre del Medicamento:").upper()
-        h = st.text_input("Horario / Frecuencia:")
-        if st.form_submit_button("AÑADIR A LA LISTA"):
-            conn.execute("INSERT INTO medicamentos (nombre, hora) VALUES (?,?)", (n, h)); conn.commit()
-    
-    df_m = pd.read_sql_query("SELECT * FROM medicamentos", conn)
-    for i, r in df_m.iterrows():
-        st.write(f"💊 **{r['nombre']}** - Horario: {r['hora']}")
-        if st.button("Borrar", key=f"m_{r['id']}"):
-            conn.execute(f"DELETE FROM medicamentos WHERE id={r['id']}"); conn.commit(); st.rerun()
+# --- SECCIÓN 3: AGENDA MÉDICA ---
+elif menu == "💊 AGENDA MÉDICA":
+    st.title("📅 Gestión Médica")
+    c_m, c_c = st.columns(2)
+    with c_m:
+        st.subheader("Medicamentos")
+        with st.form("m_f"):
+            nom = st.text_input("Medicina:"); hor = st.text_input("Hora/Frecuencia:")
+            if st.form_submit_button("Añadir"):
+                conn.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nom.upper(), hor)); conn.commit()
+        for i, r in pd.read_sql_query("SELECT * FROM medicinas", conn).iterrows():
+            st.info(f"💊 {r['nombre']} - {r['horario']}")
+            if st.button("Eliminar", key=f"m_{r['id']}"):
+                conn.execute(f"DELETE FROM medicinas WHERE id={r['id']}"); conn.commit(); st.rerun()
 
-# --- SECCIÓN 4: CITAS MÉDICAS ---
-elif seccion == "📅 CITAS MÉDICAS":
-    st.header("📅 Agenda de Consultas")
-    with st.form("f_citas"):
-        doc = st.text_input("Doctor/Especialidad:").upper()
-        fec = st.date_input("Fecha")
-        hor = st.time_input("Hora")
-        mot = st.text_input("Motivo")
-        if st.form_submit_button("AGENDAR CITA"):
-            conn.execute("INSERT INTO citas (doctor, fecha, hora, motivo) VALUES (?,?,?,?)", (doc, str(fec), str(hor), mot)); conn.commit()
-    
-    df_c = pd.read_sql_query("SELECT * FROM citas", conn)
-    for i, r in df_c.iterrows():
-        st.write(f"📅 **{r['doctor']}** | {r['fecha']} a las {r['hora']} - Motivo: {r['motivo']}")
-        if st.button("Eliminar Cita", key=f"c_{r['id']}"):
-            conn.execute(f"DELETE FROM citas WHERE id={r['id']}"); conn.commit(); st.rerun()
+    with c_c:
+        st.subheader("Próximas Citas")
+        with st.form("c_f"):
+            dr = st.text_input("Doctor:"); fe = st.date_input("Fecha"); hr = st.time_input("Hora")
+            if st.form_submit_button("Agendar"):
+                conn.execute("INSERT INTO citas (doctor, fecha, hora) VALUES (?,?,?)", (dr.upper(), str(fe), str(hr))); conn.commit()
+        for i, r in pd.read_sql_query("SELECT * FROM citas", conn).iterrows():
+            st.warning(f"📅 {r['doctor']} | {r['fecha']} a las {r['hora']}")
+            if st.button("Eliminar", key=f"c_{r['id']}"):
+                conn.execute(f"DELETE FROM citas WHERE id={r['id']}"); conn.commit(); st.rerun()
 
-# --- SECCIÓN 5: ESCÁNER, PDF Y REDES ---
-elif seccion == "📸 ESCÁNER & PDF":
-    st.header("📄 Herramientas y Documentación")
-    c1, c2 = st.columns(2)
-    c1.link_button("📧 Abrir Gmail", "https://mail.google.com")
-    c2.link_button("💬 WhatsApp Web", "https://web.whatsapp.com")
+# --- SECCIÓN 4: ESCÁNER & REPORTES ---
+elif menu == "📸 ESCÁNER & PDF":
+    st.title("📸 Centro de Documentos")
+    col_a, col_b = st.columns(2)
+    col_a.link_button("📧 Acceder a Gmail", "https://mail.google.com")
+    col_b.link_button("💬 WhatsApp Web", "https://web.whatsapp.com")
     
     st.divider()
-    st.subheader("📸 Escáner de Documentos")
-    foto = st.camera_input("Capturar Receta o Factura")
-    if foto:
-        st.image(foto, caption="Documento en Memoria")
-        st.download_button("Guardar Imagen Escaneada", foto, file_name="escaneo_quevedo.png")
+    img = st.camera_input("Escanear Factura o Receta Médica")
+    if img:
+        st.image(img, caption="Documento Analizado")
+        st.download_button("📥 Guardar Escaneo", img, file_name="quevedo_doc.png")
 
-    st.divider()
-    st.subheader("📥 Generador de Reportes")
-    if st.button("Generar Reporte Integral PDF"):
+    if st.button("📄 GENERAR REPORTE PDF COMPLETO"):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", 'B', 16)
-        pdf.cell(200, 10, "REPORTE SISTEMA QUEVEDO OMNI-IA", ln=True, align='C')
+        pdf.cell(200, 10, "SISTEMA QUEVEDO: REPORTE DE GESTIÓN", ln=True, align='C')
         pdf.set_font("Arial", '', 12)
         pdf.cell(200, 10, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True)
-        pdf.cell(200, 10, "--------------------------------------------------", ln=True)
-        pdf_bin = pdf.output(dest='S').encode('latin-1')
-        st.download_button("⬇️ DESCARGAR PDF", data=pdf_bin, file_name="Reporte_Quevedo.pdf", mime="application/pdf")
+        pdf.cell(200, 10, f"Usuario: Luis Rafael Quevedo", ln=True)
+        out = pdf.output(dest='S').encode('latin-1')
+        st.download_button("⬇️ DESCARGAR PDF", out, "Reporte_Quevedo.pdf", "application/pdf")
 
-# --- PIE DE PÁGINA (CRÉDITOS) ---
+# PIE DE PÁGINA
 st.sidebar.markdown("---")
-st.sidebar.write("**DISEÑADORES:**")
-st.sidebar.write("Luis Rafael Quevedo")
+st.sidebar.write("💎 **SISTEMA QUEVEDO v7.0**")
+st.sidebar.write("Diseño: Luis Rafael Quevedo")
