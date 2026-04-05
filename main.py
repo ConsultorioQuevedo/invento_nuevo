@@ -460,7 +460,7 @@ if entrada:
     except Exception as e:
         st.error("Error de conexión. Revisa si compartiste la hoja con el correo del robot.")   
 # --- SECCIÓN: ASISTENTE INTELIGENTE ROBUSTO ---
-    elif menu == "🤖 ASISTENTE":
+     elif menu == "🤖 ASISTENTE":
         st.header("🤖 Asistente de Control Quevedo")
         st.caption("Análisis de salud, finanzas y comunicación formal.")
 
