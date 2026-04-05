@@ -417,46 +417,53 @@ if verificar_acceso():
             st.caption(f"Total de registros en archivo: {len(lista_documentos)}")
         else:
             st.warning("No se han encontrado documentos digitalizados en el sistema.")            
-# --- SECCIÓN: ASISTENTE CON RESPUESTA REAL ---
+
+# --- SECCIÓN: ASISTENTE ANALÍTICO (SALUD Y CONTROL) ---
     elif menu == "🤖 ASISTENTE":
         st.header("🤖 Asistente de Consulta Quevedo")
-        st.markdown("---")
+        st.info("Puede preguntar: '¿Cuál es mi glucosa más baja?', '¿Cuál es la más alta?' o 'Ver último registro'.")
         
-        pregunta = st.chat_input("Ejemplo: ¿Cómo está mi glucosa? o ¿Cuánto he gastado?")
+        pregunta = st.chat_input("Escriba su consulta aquí...")
         
         if pregunta:
-            st.info(f"**Usted consultó:** {pregunta}")
-            p_low = pregunta.lower()
+            p = pregunta.lower()
+            st.markdown(f"**Análisis para:** `{pregunta}`")
+            
+            # 1. LÓGICA DE SALUD (GLUCOSA)
+            if "glucosa" in p or "azucar" in p:
+                # Caso A: Pregunta por la MÁS BAJA (Mínima)
+                if "baja" in p or "minima" in p or "menor" in p:
+                    df_res = pd.read_sql_query("SELECT valor, fecha, hora FROM glucosa ORDER BY valor ASC LIMIT 1", conn)
+                    tipo_msg = "📉 Su glucosa **más baja** registrada fue:"
+                
+                # Caso B: Pregunta por la MÁS ALTA (Máxima)
+                elif "alta" in p or "maxima" in p or "mayor" in p:
+                    df_res = pd.read_sql_query("SELECT valor, fecha, hora FROM glucosa ORDER BY valor DESC LIMIT 1", conn)
+                    tipo_msg = "🔺 Su glucosa **más alta** registrada fue:"
+                
+                # Caso C: Pregunta general o por la ÚLTIMA
+                else:
+                    df_res = pd.read_sql_query("SELECT valor, fecha, hora FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+                    tipo_msg = "⏱️ Su **última** lectura de glucosa fue:"
 
-            # 1. LÓGICA PARA CONSULTAR GLUCOSA
-            if "glucosa" in p_low or "azucar" in p_low:
-                df_g = pd.read_sql_query("SELECT valor, fecha FROM glucosa ORDER BY id DESC LIMIT 1", conn)
-                if not df_g.empty:
-                    ultimo_valor = df_g['valor'].iloc[0]
-                    fecha_g = df_g['fecha'].iloc[0]
-                    if ultimo_valor > 140:
-                        st.error(f"🤖 Respuesta: Su última glucosa fue de **{ultimo_valor} mg/dL** ({fecha_g}). Está elevada, por favor tome sus precauciones.")
+                # Mostrar el resultado si existe
+                if not df_res.empty:
+                    v = df_res['valor'][0]
+                    f = df_res['fecha'][0]
+                    h = df_res['hora'][0]
+                    
+                    if v > 140:
+                        st.error(f"{tipo_msg} **{v} mg/dL** el {f} a las {h}.")
                     else:
-                        st.success(f"🤖 Respuesta: Su nivel más reciente es **{ultimo_valor} mg/dL** ({fecha_g}). Se encuentra en rango normal.")
+                        st.success(f"{tipo_msg} **{v} mg/dL** el {f} a las {h}.")
                 else:
-                    st.warning("🤖 Respuesta: No tengo registros de glucosa todavía.")
+                    st.warning("No hay registros médicos para analizar.")
 
-            # 2. LÓGICA PARA CONSULTAR FINANZAS
-            elif "gasto" in p_low or "dinero" in p_low or "monto" in p_low:
+            # 2. LÓGICA DE FINANZAS (DINERO)
+            elif "gasto" in p or "dinero" in p or "monto" in p:
                 df_f = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
-                total = df_f['total'].iloc[0] if df_f['total'].iloc[0] else 0
-                st.write(f"🤖 Respuesta: El total de gastos registrados en el sistema es de **RD$ {total:,.2f}**.")
+                total = df_f['total'][0] if df_f['total'][0] else 0
+                st.info(f"💰 El balance total en su cuenta es de **RD$ {total:,.2f}**.")
 
-            # 3. LÓGICA PARA MEDICINAS
-            elif "medicina" in p_low or "pastilla" in p_low:
-                df_m = pd.read_sql_query("SELECT nombre, horario FROM medicinas", conn)
-                if not df_m.empty:
-                    st.write("🤖 Respuesta: Sus medicamentos programados son:")
-                    st.table(df_m)
-                else:
-                    st.write("🤖 Respuesta: No hay medicinas registradas en la agenda.")
-
-            # 4. SI NO ENTIENDE LA PREGUNTA
             else:
-                st.write("🤖 Respuesta: Recibí su mensaje, pero necesito que sea más específico (pregunte por 'glucosa', 'gastos' o 'medicinas') para darle un informe exacto.")
-            # Aquí continuaría la lógica de Tesseract si está configurado
+                st.write("🤖 **IA:** Entendido. Especifique si desea saber la glucosa 'más alta', 'más baja' o el 'último' registro.")
