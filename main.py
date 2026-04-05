@@ -182,33 +182,69 @@ if verificar_acceso():
         with c2: st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("🩺 ÚLTIMA GLUCOSA", f"{df_glu['valor'][0] if not df_glu.empty else 'N/A'} mg/dL"); st.markdown('</div>', unsafe_allow_html=True)
         with c3: st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("💊 MEDICINA ACTUAL", f"{df_med['nombre'][0] if not df_med.empty else 'Ninguna'}"); st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- SECCIÓN 1: FINANZAS (CON BARRA DE PROGRESO) ---
-    elif menu == "💰 FINANZAS IA":
-        st.header("💰 Finanzas Inteligentes")
-        res_pre = pd.read_sql_query("SELECT limite FROM presupuesto ORDER BY id DESC LIMIT 1", conn)
-        limite = res_pre['limite'].iloc[0] if not res_pre.empty else 0.0
+# --- SECCIÓN 1: FINANZAS IA (CORREGIDO CON SU NUMERACIÓN) ---
+elif menu == "💰 FINANZAS IA":
+    st.header("💰 Gestión de Finanzas - SISTEMA QUEVEDO")
+    
+    # 1. ENTRADA DE DATOS
+    with st.expander("➕ Registrar Nuevo Movimiento", expanded=False):
+        with st.form("nuevo_gasto_quevedo"):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                categoria = st.selectbox("Categoría", ["Alimentos", "Salud", "Servicios", "Transporte", "Hogar", "Otros"])
+            with col_b:
+                monto = st.number_input("Monto en RD$", min_value=0.0, step=100.0)
+            
+            detalles = st.text_input("Detalle (ej: Farmacia, Supermercado, Luz)")
+            boton_guardar = st.form_submit_button("Guardar en Base de Datos")
+            
+            if boton_guardar:
+                if monto > 0:
+                    fecha_hoy = datetime.now().strftime("%d/%m/%Y")
+                    # Insertamos respetando su lógica de negocio
+                    c.execute("INSERT INTO finanzas (fecha, categoria, monto) VALUES (?,?,?)", 
+                              (f"{categoria}: {detalles}" if detalles else categoria, fecha_hoy, monto))
+                    conn.commit()
+                    st.success(f"✅ Registrado: RD$ {monto:,.2f}")
+                    st.rerun()
+                else:
+                    st.error("Error: El monto debe ser mayor a cero.")
+
+    # 2. TABLA DE HISTORIAL (DISEÑO PROFESIONAL)
+    st.subheader("📋 Historial de Movimientos")
+    df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC", conn)
+    
+    if not df_f.empty:
+        # Mostramos la tabla limpia para lectura fácil
+        st.dataframe(df_f[['fecha', 'categoria', 'monto']], 
+                     column_config={
+                         "fecha": "Fecha",
+                         "categoria": "Concepto",
+                         "monto": st.column_config.NumberColumn("Monto (RD$)", format="RD$ %.2f")
+                     }, 
+                     use_container_width=True, 
+                     hide_index=True)
         
-        # Barra de Progreso Visual
-        gastos_df = pd.read_sql_query("SELECT SUM(monto) as g FROM finanzas WHERE monto < 0", conn)
-        gastos_act = abs(gastos_df['g'].iloc[0] or 0)
-        porcent = min(gastos_act / limite, 1.0) if limite > 0 else 0.0
-        st.write(f"Presupuesto: RD$ {gastos_act:,.2f} / RD$ {limite:,.2f}")
-        st.progress(porcent)
-        if gastos_act > limite and limite > 0: st.error("🚨 ¡CUIDADO! Ha superado el límite de presupuesto.")
-
-        with st.expander("⚙️ Configurar Presupuesto"):
-            n_limite = st.number_input("Establecer Limite Mensual RD$", value=float(limite))
-            if st.button("Guardar"): conn.execute("INSERT INTO presupuesto (limite) VALUES (?)", (n_limite,)); conn.commit(); st.rerun()
-
-        with st.form("finanzas_form", clear_on_submit=True):
-            tipo = st.selectbox("TIPO", ["INGRESO", "GASTO"])
-            cat = st.text_input("CONCEPTO").upper()
-            mon = st.number_input("MONTO RD$", min_value=0.0)
-            if st.form_submit_button("REGISTRAR"):
-                val = mon if tipo == "INGRESO" else -mon
-                conn.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?,?,?,?)", (tipo, cat, val, datetime.now().strftime("%d/%m/%Y")))
-                conn.commit(); st.rerun()
-        st.dataframe(pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC", conn), use_container_width=True)
+        # 3. EL BORRADOR MAESTRO (Para rectificar errores)
+        st.markdown("---")
+        with st.expander("🗑️ ZONA DE CORRECCIÓN (Eliminar Registro)"):
+            st.write("Seleccione el dato erróneo para sacarlo del sistema:")
+            
+            opciones_borrar = {f"{r['fecha']} | {r['categoria']} | RD$ {r['monto']}": r['id'] 
+                               for _, r in df_f.iterrows()}
+            
+            seleccion = st.selectbox("Movimiento a eliminar:", 
+                                     options=list(opciones_borrar.keys()), 
+                                     key="del_fin_quevedo")
+            
+            if st.button("Confirmar Borrado Permanente", type="primary"):
+                c.execute("DELETE FROM finanzas WHERE id=?", (opciones_borrar[seleccion],))
+                conn.commit()
+                st.success("Registro eliminado satisfactoriamente.")
+                st.rerun()
+                
+    else:
+        st.info("No hay datos financieros registrados.")
 
 # --- SECCIÓN 2: BIOMONITOR (CORREGIDA PARA TIEMPO REAL) ---
     elif menu == "🩺 BIOMONITOR":
