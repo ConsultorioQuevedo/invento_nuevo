@@ -375,51 +375,53 @@ if verificar_acceso():
             else:
                 st.write("No tiene citas pendientes.")
 
-    # --- SECCIÓN 4: ESCÁNER OCR ---
+# --- SECCIÓN: ESCÁNER DE PRECISIÓN (BARRAS Y QR) ---
     elif menu == "📸 ESCANER":
-        st.header("📸 Escaner de Documentos")
-        foto = st.camera_input("Capturar Documento")
-        if foto:
-            fname = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-            path_foto = os.path.join("archivador_quevedo", fname)
-            with open(path_foto, "wb") as f: 
-                f.write(foto.getbuffer())
-            st.success(f"Documento guardado en archivador: {fname}") 
-            
-    # --- MÓDULO: ARCHIVADOR DE DOCUMENTOS (CONTROL FORMAL) ---
-    elif menu == "📂 ARCHIVADOR":
-        st.header("📂 Archivador de Documentos")
-        st.info("Gestión de expedientes, recetas y comprobantes escaneados.")
-        
-        # Asegurar existencia del directorio de almacenamiento
-        path_archivo = "archivador_quevedo"
-        if not os.path.exists(path_archivo):
-            os.makedirs(path_archivo)
-            
-        lista_documentos = os.listdir(path_archivo)
-        
-        if lista_documentos:
-            # Ordenar por nombre (o fecha si se desea)
-            lista_documentos.sort(reverse=True)
-            
-            for doc in lista_documentos:
-                ruta_item = os.path.join(path_archivo, doc)
-                with open(ruta_item, "rb") as f:
-                    col_info, col_btn = st.columns([4, 1])
-                    with col_info:
-                        st.markdown(f"**Archivo:** `{doc}`")
-                    with col_btn:
-                        st.download_button(
-                            label="📥 Descargar",
-                            data=f,
-                            file_name=doc,
-                            key=f"dl_{doc}" # Identificador único de seguridad
-                        )
-            st.divider()
-            st.caption(f"Total de registros en archivo: {len(lista_documentos)}")
-        else:
-            st.warning("No se han encontrado documentos digitalizados en el sistema.")            
+        st.header("📸 Escáner de Insumos y Documentos")
+        st.info("Coloque el código de barras del medicamento frente a la cámara.")
 
+        # 1. Activación de la cámara
+        foto_captura = st.camera_input("Capturar Código")
+
+        if foto_captura:
+            import cv2
+            import numpy as np
+            from pyzbar.pyzbar import decode
+            from PIL import Image
+
+            # 2. Procesar la imagen para que el sistema la "entienda"
+            imagen_pil = Image.open(foto_captura)
+            imagen_cv = cv2.cvtColor(np.array(imagen_pil), cv2.COLOR_RGB2BGR)
+
+            # 3. Buscar códigos de barras o QR
+            codigos_encontrados = decode(imagen_cv)
+
+            if codigos_encontrados:
+                for codigo in codigos_encontrados:
+                    tipo_codigo = codigo.type # Si es EAN13 (Barras) o QR
+                    datos_codigo = codigo.data.decode('utf-8') # El número o link
+                    
+                    st.success(f"✅ DETECTADO: {tipo_codigo}")
+                    
+                    # Mostrar el resultado de forma destacada
+                    st.markdown(f"### 📦 Código: `{datos_codigo}`")
+                    
+                    # Si es un QR con link, ponemos un botón de acceso
+                    if "http" in datos_codigo:
+                        st.link_button("🌐 Ver información en línea", datos_codigo)
+                    
+                    st.balloons() # Pequeña celebración de éxito
+            else:
+                st.warning("⚠️ No se detectó un código claro. Intente con más luz o acerque más el producto.")
+
+            # 4. Guardar siempre la imagen en el Archivador por seguridad
+            nombre_archivo = f"SCAN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            ruta_guardado = os.path.join("archivador_quevedo", nombre_archivo)
+            
+            with open(ruta_guardado, "wb") as f:
+                f.write(foto_captura.getbuffer())
+            
+            st.caption(f"📁 Copia de seguridad guardada como: {nombre_archivo}")    
 # --- SECCIÓN: ASISTENTE INTELIGENTE ROBUSTO ---
     elif menu == "🤖 ASISTENTE":
         st.header("🤖 Asistente de Control Quevedo")
