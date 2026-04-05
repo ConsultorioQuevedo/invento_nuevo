@@ -210,28 +210,73 @@ if verificar_acceso():
                 conn.commit(); st.rerun()
         st.dataframe(pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC", conn), use_container_width=True)
 
-    # --- SECCIÓN 2: BIOMONITOR (CON TABLA DE PÁNICO) ---
+# --- SECCIÓN 2: BIOMONITOR (CORREGIDA PARA TIEMPO REAL) ---
     elif menu == "🩺 BIOMONITOR":
         st.header("🩺 Monitoreo de Glucosa")
-        val_g = st.number_input("Ingresar nivel (mg/dL):", min_value=0)
+        
+        # 1. Entrada de datos
+        val_g = st.number_input("Ingresar nivel actual (mg/dL):", min_value=0, key="input_glucosa")
+        
+        # Alerta de Pánico (Punto 1 de sus mejoras)
         if val_g > 160:
             st.markdown(f'<div class="semaforo-rojo">🚨 ALERTA CRÍTICA: {val_g} mg/dL</div>', unsafe_allow_html=True)
-            st.subheader("🆘 AVISO INMEDIATO A CONTACTOS")
+            st.subheader("🆘 TABLA DE AVISO RÁPIDO")
             for i in range(len(contactos_data["Nombre"])):
                 n, t = contactos_data["Nombre"][i], contactos_data["Telefono"][i]
-                url = f"https://api.whatsapp.com/send?phone={t}&text=Emergencia%20Luis%20Rafael%20Glucosa%20en%20{val_g}"
-                col1, col2 = st.columns([3,1])
-                col1.write(f"👤 {n}")
-                col2.link_button(f"AVISAR A {n.upper()}", url)
+                msg = f"Emergencia: Luis tiene la glucosa en {val_g}. Favor contactar."
+                url = f"https://api.whatsapp.com/send?phone={t}&text={msg.replace(' ', '%20')}"
+                c1, c2 = st.columns([3,1])
+                c1.write(f"👤 **{n}**")
+                c2.link_button(f"📲 AVISAR", url)
+            st.divider()
 
-        if st.button("💾 GUARDAR REGISTRO"):
+        # 2. Botón de Guardar con Refresco Automático
+        if st.button("💾 GUARDAR TOMA ACTUAL"):
             if val_g > 0:
-                tz = pytz.timezone('America/Santo_Domingo'); ahora = datetime.now(tz)
+                tz = pytz.timezone('America/Santo_Domingo')
+                ahora = datetime.now(tz)
+                # Determinamos el estado para la base de datos
                 est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRITICO"
-                conn.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
-                conn.commit(); st.rerun()
-        st.plotly_chart(px.line(pd.read_sql_query("SELECT * FROM glucosa ORDER BY id ASC", conn), x="fecha", y="valor", title="Tendencia"))
+                
+                # Insertar en la base de datos
+                conn.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
+                             (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
+                conn.commit()
+                st.success(f"✅ Registrado: {val_g} mg/dL")
+                # ESTO ES LO QUE HACÍA FALTA: Forzar a Streamlit a leer los datos nuevos
+                st.rerun()
+            else:
+                st.warning("Por favor, ingrese un valor válido.")
 
+        st.markdown("---")
+        
+        # 3. Visualización en Tiempo Real (Historial)
+        st.subheader("📊 Historial de Registros")
+        
+        # Leemos los datos ACTUALIZADOS
+        df_g = pd.read_sql_query("SELECT fecha as Fecha, hora as Hora, valor as Valor, estado as Estado FROM glucosa ORDER BY id DESC", conn)
+        
+        if not df_g.empty:
+            # Gráfico de tendencia (usamos los datos del más viejo al más nuevo para la línea)
+            df_grafico = df_g.iloc[::-1] # Invertimos para el gráfico
+            fig = px.line(df_grafico, x="Fecha", y="Valor", title="Evolución de su Glucosa", markers=True)
+            fig.update_traces(line_color='#4CAF50')
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Tabla de registros (Los últimos 15 primero)
+            st.write("📋 **Últimas mediciones:**")
+            st.dataframe(df_g.head(15), use_container_width=True)
+            
+            # Opción para limpiar (con cuidado)
+            with st.expander("🗑️ Zona de Peligro"):
+                if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
+                    conn.execute("DELETE FROM glucosa")
+                    conn.commit()
+                    st.rerun()
+        else:
+            st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
+
+    
     # --- SECCIÓN 3: AGENDA MÉDICA ---
     elif menu == "💊 AGENDA MEDICA":
         st.header("💊 Salud y Citas")
