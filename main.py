@@ -33,7 +33,7 @@ def verificar_acceso():
             u = st.text_input("Usuario")
             p = st.text_input("Contraseña", type="password")
             if st.button("DESBLOQUEAR SISTEMA"):
-                if u == "admin" and p == "Quevedo2026":
+                if u == "Amin" and p == "1234":
                     st.session_state["autenticado"] = True
                     st.rerun()
                 else:
@@ -243,7 +243,7 @@ elif menu == "💰 FINANZAS IA":
                 st.success("Registro eliminado satisfactoriamente.")
                 st.rerun()
                 
-    else:
+else:
         st.info("No hay datos financieros registrados.")
 
 # --- SECCIÓN 2: BIOMONITOR ---
