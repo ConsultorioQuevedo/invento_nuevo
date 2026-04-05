@@ -372,6 +372,39 @@ if verificar_acceso():
                         st.rerun()
             else:
                 st.write("No tiene citas pendientes.")
+    # --- MÓDULO: ARCHIVADOR DE DOCUMENTOS (CONTROL FORMAL) ---
+    elif menu == "📂 ARCHIVADOR":
+        st.header("📂 Archivador de Documentos")
+        st.info("Gestión de expedientes, recetas y comprobantes escaneados.")
+        
+        # Asegurar existencia del directorio de almacenamiento
+        path_archivo = "archivador_quevedo"
+        if not os.path.exists(path_archivo):
+            os.makedirs(path_archivo)
+            
+        lista_documentos = os.listdir(path_archivo)
+        
+        if lista_documentos:
+            # Ordenar por nombre (o fecha si se desea)
+            lista_documentos.sort(reverse=True)
+            
+            for doc in lista_documentos:
+                ruta_item = os.path.join(path_archivo, doc)
+                with open(ruta_item, "rb") as f:
+                    col_info, col_btn = st.columns([4, 1])
+                    with col_info:
+                        st.markdown(f"**Archivo:** `{doc}`")
+                    with col_btn:
+                        st.download_button(
+                            label="📥 Descargar",
+                            data=f,
+                            file_name=doc,
+                            key=f"dl_{doc}" # Identificador único de seguridad
+                        )
+            st.divider()
+            st.caption(f"Total de registros en archivo: {len(lista_documentos)}")
+        else:
+            st.warning("No se han encontrado documentos digitalizados en el sistema.")            
 
     # --- SECCIÓN 4: ESCÁNER OCR ---
     elif menu == "📸 ESCANER":
