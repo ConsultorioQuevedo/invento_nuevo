@@ -382,8 +382,7 @@ elif menu == "💊 AGENDA MEDICA":
                     c.execute("DELETE FROM citas WHERE id=?", (opciones_c[seleccion_c],))
                     conn.commit()
                     st.rerun()
-        else:
-            st.write("No tiene citas pendientes.")
+     
 
     # --- SECCIÓN 4: ESCÁNER OCR ---
     elif menu == "📸 ESCANER":
