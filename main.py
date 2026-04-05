@@ -10,6 +10,9 @@ import numpy as np
 import unicodedata
 from PIL import Image
 import io
+import sqlite3
+conn = sqlite3.connect('tu_base_de_datos.db')
+c = conn.cursor()
 
 # 1. CONFIGURACIÓN E INTERFAZ DE ALTO NIVEL
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
