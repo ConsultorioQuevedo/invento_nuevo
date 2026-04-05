@@ -418,88 +418,66 @@ if verificar_acceso():
         else:
             st.warning("No se han encontrado documentos digitalizados en el sistema.")            
 
-# --- SECCIÓN: ASISTENTE ANALÍTICO (SALUD Y CONTROL) ---
+# --- SECCIÓN: ASISTENTE INTEGRAL QUEVEDO ---
     elif menu == "🤖 ASISTENTE":
-        st.header("🤖 Asistente de Consulta Quevedo")
-        st.info("Puede preguntar: '¿Cuál es mi glucosa más baja?', '¿Cuál es la más alta?' o 'Ver último registro'.")
+        st.header("🤖 Asistente de Consulta y Control")
+        st.info("Consulte su salud, finanzas o redacte un correo formal.")
         
-        pregunta = st.chat_input("Escriba su consulta aquí...")
+        pregunta = st.chat_input("Ej: 'glucosa baja', 'mis gastos' o 'escribir correo'")
         
         if pregunta:
             p = pregunta.lower()
-            st.markdown(f"**Análisis para:** `{pregunta}`")
+            st.markdown(f"**Procesando:** `{pregunta}`")
             
-            # 1. LÓGICA DE SALUD (GLUCOSA)
+            # 1. ANÁLISIS DE SALUD (GLUCOSA)
             if "glucosa" in p or "azucar" in p:
-                # Caso A: Pregunta por la MÁS BAJA (Mínima)
-                if "baja" in p or "minima" in p or "menor" in p:
-                    df_res = pd.read_sql_query("SELECT valor, fecha, hora FROM glucosa ORDER BY valor ASC LIMIT 1", conn)
-                    tipo_msg = "📉 Su glucosa **más baja** registrada fue:"
-                
-                # Caso B: Pregunta por la MÁS ALTA (Máxima)
-                elif "alta" in p or "maxima" in p or "mayor" in p:
-                    df_res = pd.read_sql_query("SELECT valor, fecha, hora FROM glucosa ORDER BY valor DESC LIMIT 1", conn)
-                    tipo_msg = "🔺 Su glucosa **más alta** registrada fue:"
-                
-                # Caso C: Pregunta general o por la ÚLTIMA
+                if "baja" in p or "minima" in p:
+                    query = "SELECT valor, fecha, hora FROM glucosa ORDER BY valor ASC LIMIT 1"
+                    txt = "📉 Glucosa **más baja**:"
+                elif "alta" in p or "maxima" in p:
+                    query = "SELECT valor, fecha, hora FROM glucosa ORDER BY valor DESC LIMIT 1"
+                    txt = "🔺 Glucosa **más alta**:"
                 else:
-                    df_res = pd.read_sql_query("SELECT valor, fecha, hora FROM glucosa ORDER BY id DESC LIMIT 1", conn)
-                    tipo_msg = "⏱️ Su **última** lectura de glucosa fue:"
-
-                # Mostrar el resultado si existe
+                    query = "SELECT valor, fecha, hora FROM glucosa ORDER BY id DESC LIMIT 1"
+                    txt = "⏱️ **Último** registro de glucosa:"
+                
+                df_res = pd.read_sql_query(query, conn)
                 if not df_res.empty:
-                    v = df_res['valor'][0]
-                    f = df_res['fecha'][0]
-                    h = df_res['hora'][0]
-                    
-                    if v > 140:
-                        st.error(f"{tipo_msg} **{v} mg/dL** el {f} a las {h}.")
-                    else:
-                        st.success(f"{tipo_msg} **{v} mg/dL** el {f} a las {h}.")
+                    v, f, h = df_res['valor'][0], df_res['fecha'][0], df_res['hora'][0]
+                    st.success(f"{txt} **{v} mg/dL** (Registrado el {f} a las {h})")
                 else:
-                    st.warning("No hay registros médicos para analizar.")
+                    st.warning("No hay datos de salud registrados.")
 
-            # 2. LÓGICA DE FINANZAS (DINERO)
-            elif "gasto" in p or "dinero" in p or "monto" in p:
+            # 2. ANÁLISIS DE FINANZAS
+            elif "gasto" in p or "dinero" in p or "balance" in p:
                 df_f = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
                 total = df_f['total'][0] if df_f['total'][0] else 0
-                st.info(f"💰 El balance total en su cuenta es de **RD$ {total:,.2f}**.")
-             # --- FUNCIÓN DE ENVÍO FORMAL POR GMAIL ---
-            elif "correo" in p or "enviar" in p or "gmail" in p:
-                st.subheader("✉️ Redacción de Reporte Oficial")
+                st.info(f"💰 Balance total en sistema: **RD$ {total:,.2f}**")
+
+            # 3. REDACCIÓN DE CORREO (GMAIL)
+            elif "correo" in p or "enviar" in p or "escribir" in p or "gmail" in p:
+                st.markdown("---")
+                st.subheader("✉️ Preparar Reporte para Gmail")
+                destinatario = st.text_input("Correo del médico o familiar:", placeholder="ejemplo@gmail.com")
                 
-                # 1. El receptor se deja vacío por defecto para que usted lo escriba
-                correo_destino = st.text_input("Introduzca el correo del destinatario:", placeholder="ejemplo@doctor.com")
-                
-                # 2. Recopilación de datos para el cuerpo del mensaje
+                # Datos para el cuerpo del mensaje
                 df_salud = pd.read_sql_query("SELECT valor, fecha, hora FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+                valor_g = df_salud['valor'][0] if not df_salud.empty else "N/A"
+                fecha_g = df_salud['fecha'][0] if not df_salud.empty else "N/A"
                 
-                # Definimos Encabezado y Firma
-                encabezado = "ESTIMADO DOCTOR / FAMILIAR:\n\nPor este medio le informo sobre mi estado de salud actual conforme a los registros de mi sistema.\n"
-                firma = "\n\nAtentamente,\nLUIS RAFAEL QUEVEDO\nSanto Domingo, Rep. Dom."
+                cuerpo = (f"ESTIMADO DOCTOR / FAMILIAR:\n\n"
+                          f"Le envío mi reporte de salud actualizado.\n"
+                          f"Última Glucosa: {valor_g} mg/dL ({fecha_g})\n\n"
+                          f"Atentamente,\n{NOMBRE_PROPIETARIO}\n{UBICACION_SISTEMA}")
 
-                if not df_salud.empty:
-                    v = df_salud['valor'][0]
-                    f = df_salud['fecha'][0]
-                    h = df_salud['hora'][0]
-                    detalles = f"REPORTE DE GLUCOSA:\n- Valor: {v} mg/dL\n- Fecha: {f}\n- Hora: {h}"
-                else:
-                    detalles = "No se encontraron registros recientes en la base de datos."
-
-                # Unimos todo el mensaje
-                cuerpo_completo = f"{encabezado}\n{detalles}{firma}"
-
-                # 3. Preparación del enlace para Gmail
                 import urllib.parse
-                cuerpo_encoded = urllib.parse.quote(cuerpo_completo)
-                asunto_encoded = urllib.parse.quote(f"Reporte de Salud - Luis Quevedo ({datetime.now().strftime('%d/%m/%Y')})")
+                link = f"https://mail.google.com/mail/?view=cm&fs=1&to={destinatario}&su=Reporte%20Medico&body={urllib.parse.quote(cuerpo)}"
                 
-                link_final = f"https://mail.google.com/mail/?view=cm&fs=1&to={correo_destino}&su={asunto_encoded}&body={cuerpo_encoded}"
-                
-                if correo_destino:
-                    st.success(f"Listo para enviar a: {correo_destino}")
-                    st.link_button("🚀 ABRIR GMAIL CON REPORTE FORMAL", link_final)
+                if destinatario:
+                    st.link_button("🚀 ABRIR GMAIL AHORA", link)
                 else:
-                    st.warning("Por favor, escriba un correo electrónico arriba para habilitar el envío.")
+                    st.caption("Escriba un correo arriba para habilitar el envío.")
+
+            # 4. CASO NO ENTIENDE
             else:
-                st.write("🤖 **IA:** Entendido. Especifique si desea saber la glucosa 'más alta', 'más baja' o el 'último' registro.")
+                st.write("🤖 No entiendo la instrucción. Pruebe con: 'glucosa alta', 'gastos' o 'enviar correo'.")
