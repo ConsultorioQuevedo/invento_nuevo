@@ -246,7 +246,7 @@ elif menu == "💰 FINANZAS IA":
                  st.info("No hay datos financieros registrados.")
 
 # --- SECCIÓN 2: BIOMONITOR (CORREGIDA PARA TIEMPO REAL) ---
-     elif menu == "🩺 BIOMONITOR":
+    elif menu == "🩺 BIOMONITOR":
         st.header("🩺 Monitoreo de Glucosa")
         
         # 1. Entrada de datos
