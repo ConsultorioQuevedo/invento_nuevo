@@ -242,9 +242,8 @@ elif menu == "💰 FINANZAS IA":
                 conn.commit()
                 st.success("Registro eliminado satisfactoriamente.")
                 st.rerun()
-                
-    else:
-        st.info("No hay datos financieros registrados.")
+             else:
+                 st.info("No hay datos financieros registrados.")
 
 # --- SECCIÓN 2: BIOMONITOR (CORREGIDA PARA TIEMPO REAL) ---
     elif menu == "🩺 BIOMONITOR":
