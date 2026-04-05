@@ -10,6 +10,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 import unicodedata
 from PIL import Image
+import io
 
 # 1. CONFIGURACIÓN E INTERFAZ DE ALTO NIVEL
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
@@ -59,35 +60,92 @@ if verificar_acceso():
 
     conn = iniciar_db()
 
-    # --- FUNCIÓN GENERAR PDF ---
+    # --- NUEVA FUNCIÓN: GENERADOR REPORTE MAESTRO PDF ---
+    def generar_reporte_maestro_pdf():
+        pdf = FPDF()
+        pdf.add_page()
+        
+        # Encabezado Principal
+        pdf.set_font("Arial", 'B', 18)
+        pdf.set_text_color(31, 73, 125)
+        pdf.cell(0, 15, limpiar_texto("REPORTE MAESTRO - SISTEMA QUEVEDO"), ln=True, align='C')
+        pdf.set_font("Arial", 'I', 10)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 10, f"Fecha de emision: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align='R')
+        pdf.ln(5)
+
+        def agregar_seccion(titulo, query, columnas_alias):
+            pdf.set_font("Arial", 'B', 14)
+            pdf.set_fill_color(240, 240, 240)
+            pdf.cell(0, 10, limpiar_texto(titulo), ln=True, fill=True)
+            pdf.ln(2)
+            
+            try:
+                df = pd.read_sql_query(query, conn)
+                if df.empty:
+                    pdf.set_font("Arial", size=10)
+                    pdf.cell(0, 8, "No hay registros disponibles.", ln=True)
+                else:
+                    pdf.set_font("Arial", 'B', 10)
+                    # Dibujar cabeceras
+                    for col in columnas_alias:
+                        pdf.cell(47, 8, limpiar_texto(col), 1)
+                    pdf.ln()
+                    # Dibujar datos
+                    pdf.set_font("Arial", size=9)
+                    for _, row in df.iterrows():
+                        for val in row:
+                            pdf.cell(47, 7, limpiar_texto(str(val)), 1)
+                        pdf.ln()
+            except:
+                pdf.cell(0, 8, "Error al cargar esta seccion.", ln=True)
+            pdf.ln(8)
+
+        # 1. Finanzas: Balance y últimos movimientos
+        df_f = pd.read_sql_query("SELECT SUM(monto) as bal FROM finanzas", conn)
+        balance = df_f['bal'].iloc[0] if df_f['bal'].iloc[0] else 0.0
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, f"BALANCE TOTAL ACUMULADO: RD$ {balance:,.2f}", ln=True)
+        agregar_seccion("FINANZAS: ULTIMOS MOVIMIENTOS", 
+                        "SELECT fecha, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 10", 
+                        ["Fecha", "Concepto", "Monto"])
+
+        # 2. Glucosa: Historial Completo
+        agregar_seccion("GLUCOSA: HISTORIAL COMPLETO", 
+                        "SELECT fecha, hora, valor, estado FROM glucosa ORDER BY id DESC", 
+                        ["Fecha", "Hora", "Valor", "Estado"])
+
+        # 3. Agenda: Medicamentos
+        agregar_seccion("AGENDA: MEDICAMENTOS ACTIVOS", 
+                        "SELECT nombre, horario FROM medicinas", 
+                        ["Medicina", "Horario"])
+
+        # 4. Citas: Consultas Programadas
+        agregar_seccion("CITAS: CONSULTAS MEDICAS", 
+                        "SELECT doctor, fecha FROM citas", 
+                        ["Doctor", "Fecha"])
+
+        return pdf.output(dest='S').encode('latin-1')
+
+    # --- FUNCIÓN GENERAR PDF SALUD (Existente) ---
     def generar_pdf_salud(df_g, df_m):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", 'B', 16)
         pdf.cell(200, 10, limpiar_texto("REPORTE MEDICO - LUIS RAFAEL QUEVEDO"), ln=True, align='C')
         pdf.ln(10)
-        
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(200, 10, "1. MEDICAMENTOS ACTIVOS:", ln=True)
+        pdf.set_font("Arial", 'B', 12); pdf.cell(200, 10, "1. MEDICAMENTOS ACTIVOS:", ln=True)
         pdf.set_font("Arial", size=10)
-        if df_m.empty:
-            pdf.cell(200, 8, "No hay medicamentos registrados.", ln=True)
+        if df_m.empty: pdf.cell(200, 8, "No hay medicamentos registrados.", ln=True)
         else:
             for _, r in df_m.iterrows():
-                linea = f"- {r['nombre']} (Horario: {r['horario']})"
-                pdf.cell(200, 8, limpiar_texto(linea), ln=True)
-        
-        pdf.ln(5)
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(200, 10, "2. ULTIMOS REGISTROS DE GLUCOSA:", ln=True)
+                linea = f"- {r['nombre']} (Horario: {r['horario']})"; pdf.cell(200, 8, limpiar_texto(linea), ln=True)
+        pdf.ln(5); pdf.set_font("Arial", 'B', 12); pdf.cell(200, 10, "2. ULTIMOS REGISTROS DE GLUCOSA:", ln=True)
         pdf.set_font("Arial", size=10)
-        if df_g.empty:
-            pdf.cell(200, 8, "No hay registros de glucosa.", ln=True)
+        if df_g.empty: pdf.cell(200, 8, "No hay registros de glucosa.", ln=True)
         else:
             for _, r in df_g.tail(15).iterrows():
-                linea = f"{r['fecha']} {r['hora']}: {r['valor']} mg/dL - {r['estado']}"
-                pdf.cell(200, 8, limpiar_texto(linea), ln=True)
-            
+                linea = f"{r['fecha']} {r['hora']}: {r['valor']} mg/dL - {r['estado']}"; pdf.cell(200, 8, limpiar_texto(linea), ln=True)
         nombre = f"Reporte_Salud_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         ruta = os.path.join("archivador_quevedo", nombre)
         pdf.output(ruta)
@@ -108,6 +166,24 @@ if verificar_acceso():
 
     # NAVEGACIÓN
     st.sidebar.title("💎 SISTEMA QUEVEDO")
+    
+    # --- INSTALACIÓN: BOTÓN DE REPORTE MAESTRO EN SIDEBAR ---
+    with st.sidebar:
+        st.subheader("🚀 Reportes Globales")
+        if st.button("📊 GENERAR REPORTE MAESTRO"):
+            try:
+                pdf_data = generar_reporte_maestro_pdf()
+                st.download_button(
+                    label="📥 Descargar Reporte Maestro",
+                    data=pdf_data,
+                    file_name=f"MAESTRO_QUEVEDO_{datetime.now().strftime('%Y%m%d')}.pdf",
+                    mime="application/pdf"
+                )
+                st.success("Reporte Maestro generado.")
+            except Exception as e:
+                st.error(f"Error: {e}")
+        st.divider()
+
     menu = st.sidebar.radio("MODULOS", ["💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
     st.sidebar.link_button("📧 ABRIR MI GMAIL", "https://mail.google.com")
 
@@ -225,7 +301,6 @@ if verificar_acceso():
             
             try:
                 import pytesseract
-                # Ajuste inteligente: si está en Windows busca la ruta, si no (Nube) usa la de Linux
                 if os.path.exists(r'C:\Program Files\Tesseract-OCR\tesseract.exe'):
                     pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
                 
@@ -273,4 +348,4 @@ if verificar_acceso():
     # --- PIE DE PÁGINA Y CRÉDITOS ---
     st.sidebar.markdown("---")
     st.sidebar.markdown("👨‍💻 **Diseño y Desarrollo:**")
-    st.sidebar.markdown("Luis Rafael Quevedo & Gemini AI")
+    st.sidebar.write("Luis Rafael Quevedo")
