@@ -276,26 +276,80 @@ if verificar_acceso():
         else:
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
-    # --- SECCIÓN 4: AGENDA MÉDICA (DISEÑO LIMPIO) ---
-    elif menu == "💊 AGENDA MEDICA":
-        st.header("💊 Control Médico")
-        t1, t2 = st.tabs(["Medicinas", "Citas"])
+  # --- MÓDULO 4: AGENDA MÉDICA (CORREGIDO Y COMPLETO) ---
+elif menu == "💊 AGENDA MEDICA":
+    st.header("💊 Gestión Médica Profesional")
+    
+    # Creamos dos pestañas limpias
+    tab1, tab2 = st.tabs(["📋 Medicamentos Actuales", "📅 Control de Citas"])
+    
+    # --- SUB-MÓDULO: MEDICINAS ---
+    with tab1:
+        st.subheader("Registro de Medicinas")
         
-        with t1:
-            df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
-            if not df_m.empty:
-                # Mostramos todo organizado
-                for _, r in df_m.iterrows():
-                    st.write(f"✅ **{r['nombre']}** — ⏰ {r['horario']}")
-                
-                # Un solo selector para borrar al final
-                with st.expander("⚙️ Administrar Medicinas"):
-                    med_opc = {r['nombre']: r['id'] for _, r in df_m.iterrows()}
-                    borrar_m = st.selectbox("¿Cuál desea quitar?", options=list(med_opc.keys()))
-                    if st.button("Eliminar Medicina"):
-                        conn.execute("DELETE FROM medicinas WHERE id=?", (med_opc[borrar_m],))
+        # Formulario para añadir (dentro de un expander para no estorbar)
+        with st.expander("➕ Añadir Nueva Medicina"):
+            with st.form("form_medicina"):
+                nombre_med = st.text_input("Nombre del Medicamento (ej: Metformina)")
+                hora_med = st.text_input("Horario (ej: 8:00 AM / 8:00 PM)")
+                if st.form_submit_button("Guardar en Agenda"):
+                    if nombre_med and hora_med:
+                        c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nombre_med, hora_med))
                         conn.commit()
+                        st.success(f"Registrada: {nombre_med}")
                         st.rerun()
+                    else:
+                        st.warning("Por favor complete ambos campos.")
+
+        # Visualización de la lista
+        df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+        if not df_m.empty:
+            st.markdown("---")
+            for _, r in df_m.iterrows():
+                st.info(f"💊 **{r['nombre']}** — ⏰ Horario: {r['horario']}")
+            
+            # BOTÓN ÚNICO DE BORRADO (Diseño Profesional)
+            with st.expander("🗑️ Quitar una medicina"):
+                opciones_m = {f"{r['nombre']} ({r['horario']})": r['id'] for _, r in df_m.iterrows()}
+                seleccion_m = st.selectbox("Seleccione la que desea eliminar:", options=list(opciones_m.keys()), key="sel_med")
+                if st.button("Confirmar Borrado de Medicina", type="primary"):
+                    c.execute("DELETE FROM medicinas WHERE id=?", (opciones_m[seleccion_m],))
+                    conn.commit()
+                    st.rerun()
+        else:
+            st.write("No hay medicinas registradas aún.")
+
+    # --- SUB-MÓDULO: CITAS ---
+    with tab2:
+        st.subheader("Próximas Consultas")
+        
+        with st.expander("➕ Programar Nueva Cita"):
+            with st.form("form_cita"):
+                doc_cita = st.text_input("Nombre del Doctor / Especialidad")
+                fecha_cita = st.date_input("Fecha de la Cita")
+                if st.form_submit_button("Agendar Cita"):
+                    if doc_cita:
+                        c.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (doc_cita, str(fecha_cita)))
+                        conn.commit()
+                        st.success(f"Cita con {doc_cita} agendada.")
+                        st.rerun()
+        
+        df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
+        if not df_c.empty:
+            st.markdown("---")
+            for _, r in df_c.iterrows():
+                st.warning(f"👨‍⚕️ **{r['doctor']}** — 📅 Fecha: {r['fecha']}")
+            
+            # BOTÓN ÚNICO DE BORRADO (Diseño Profesional)
+            with st.expander("🗑️ Cancelar o borrar una cita"):
+                opciones_c = {f"{r['doctor']} - {r['fecha']}": r['id'] for _, r in df_c.iterrows()}
+                seleccion_c = st.selectbox("Seleccione la cita a eliminar:", options=list(opciones_c.keys()), key="sel_cita")
+                if st.button("Confirmar Borrado de Cita", type="primary"):
+                    c.execute("DELETE FROM citas WHERE id=?", (opciones_c[seleccion_c],))
+                    conn.commit()
+                    st.rerun()
+        else:
+            st.write("No tiene citas pendientes.")
 
     # --- SECCIÓN 4: ESCÁNER OCR ---
     elif menu == "📸 ESCANER":
