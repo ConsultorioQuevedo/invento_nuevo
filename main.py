@@ -9,6 +9,7 @@ import pytz
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import unicodedata
+from PIL import Image
 
 # 1. CONFIGURACIÓN E INTERFAZ DE ALTO NIVEL
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
@@ -108,6 +109,7 @@ if verificar_acceso():
     # NAVEGACIÓN
     st.sidebar.title("💎 SISTEMA QUEVEDO")
     menu = st.sidebar.radio("MODULOS", ["💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
+    st.sidebar.link_button("📧 ABRIR MI GMAIL", "https://mail.google.com")
 
     # --- SECCIÓN 1: FINANZAS ---
     if menu == "💰 FINANZAS IA":
@@ -211,14 +213,32 @@ if verificar_acceso():
                 if st.button("🗑️ Borrar Citas"):
                     conn.execute("DELETE FROM citas"); conn.commit(); st.rerun()
 
-    # --- SECCIÓN 4: ESCÁNER ---
+    # --- SECCIÓN 4: ESCÁNER CON LECTURA DE TEXTO (OCR) ---
     elif menu == "📸 ESCANER":
-        st.header("📸 Escaner de Documentos")
+        st.header("📸 Escaner de Documentos e IA")
         foto = st.camera_input("Capturar")
         if foto:
             fname = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-            with open(os.path.join("archivador_quevedo", fname), "wb") as f: f.write(foto.getbuffer())
+            ruta_img = os.path.join("archivador_quevedo", fname)
+            with open(ruta_img, "wb") as f: f.write(foto.getbuffer())
             st.success(f"Guardado como: {fname}")
+            
+            try:
+                import pytesseract
+                # Ajuste inteligente: si está en Windows busca la ruta, si no (Nube) usa la de Linux
+                if os.path.exists(r'C:\Program Files\Tesseract-OCR\tesseract.exe'):
+                    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+                
+                img = Image.open(foto)
+                with st.spinner("🔍 Leyendo el documento..."):
+                    texto = pytesseract.image_to_string(img, lang='spa')
+                if texto.strip():
+                    st.subheader("📝 Texto Leído:")
+                    st.text_area("Contenido extraído:", texto, height=250)
+                else:
+                    st.warning("⚠️ No se detectó texto claro. Asegúrate de que haya buena luz.")
+            except Exception as e:
+                st.info("💡 Nota: El lector de letras estará listo en unos segundos mientras la Nube se actualiza.")
 
     # --- SECCIÓN 5: ARCHIVADOR ---
     elif menu == "📂 ARCHIVADOR":
