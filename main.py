@@ -420,66 +420,70 @@ if verificar_acceso():
         else:
             st.warning("No se han encontrado documentos digitalizados en el sistema.")            
 
-# --- SECCIÓN: ASISTENTE INTEGRAL QUEVEDO ---
+# --- SECCIÓN: ASISTENTE INTELIGENTE ROBUSTO ---
     elif menu == "🤖 ASISTENTE":
-        st.header("🤖 Asistente de Consulta y Control")
-        st.info("Consulte su salud, finanzas o redacte un correo formal.")
-        
-        pregunta = st.chat_input("Ej: 'glucosa baja', 'mis gastos' o 'escribir correo'")
-        
+        st.header("🤖 Asistente de Control Quevedo")
+        st.caption("Análisis de salud, finanzas y comunicación formal.")
+
+        # Inicializar memoria para el correo si no existe
+        if "ver_correo" not in st.session_state:
+            st.session_state.ver_correo = False
+
+        pregunta = st.chat_input("Escriba su consulta (Ej: 'Análisis de mi salud', 'Resumen de gastos', 'Enviar reporte')")
+
         if pregunta:
             p = pregunta.lower()
-            st.markdown(f"**Procesando:** `{pregunta}`")
+            st.session_state.ver_correo = "correo" in p or "enviar" in p or "gmail" in p
             
-            # 1. ANÁLISIS DE SALUD (GLUCOSA)
-            if "glucosa" in p or "azucar" in p:
-                if "baja" in p or "minima" in p:
-                    query = "SELECT valor, fecha, hora FROM glucosa ORDER BY valor ASC LIMIT 1"
-                    txt = "📉 Glucosa **más baja**:"
-                elif "alta" in p or "maxima" in p:
-                    query = "SELECT valor, fecha, hora FROM glucosa ORDER BY valor DESC LIMIT 1"
-                    txt = "🔺 Glucosa **más alta**:"
+            # --- 1. LÓGICA DE SALUD AVANZADA ---
+            if "salud" in p or "glucosa" in p or "azucar" in p:
+                df_s = pd.read_sql_query("SELECT valor FROM glucosa", conn)
+                if not df_s.empty:
+                    promedio = df_s['valor'].mean()
+                    maximo = df_s['valor'].max()
+                    minimo = df_s['valor'].min()
+                    ultima = df_s['valor'].iloc[-1]
+
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("Última", f"{ultima} mg/dL")
+                    col2.metric("Promedio", f"{promedio:.1f}")
+                    col3.metric("Máxima", f"{maximo}")
+
+                    if promedio > 150:
+                        st.error(f"⚠️ **ALERTA:** Luis, su promedio general ({promedio:.1f}) está elevado. Se recomienda revisar su dieta y consultar con su médico.")
+                    elif promedio < 100:
+                        st.warning(f"⚠️ **ATENCIÓN:** Su promedio está bajo ({promedio:.1f}). Asegúrese de estar rindiendo bien sus comidas.")
+                    else:
+                        st.success("✅ **ESTADO ÓPTIMO:** Sus niveles promedio se mantienen en rango controlado.")
                 else:
-                    query = "SELECT valor, fecha, hora FROM glucosa ORDER BY id DESC LIMIT 1"
-                    txt = "⏱️ **Último** registro de glucosa:"
-                
-                df_res = pd.read_sql_query(query, conn)
-                if not df_res.empty:
-                    v, f, h = df_res['valor'][0], df_res['fecha'][0], df_res['hora'][0]
-                    st.success(f"{txt} **{v} mg/dL** (Registrado el {f} a las {h})")
-                else:
-                    st.warning("No hay datos de salud registrados.")
+                    st.warning("No hay datos de salud para analizar.")
 
-            # 2. ANÁLISIS DE FINANZAS
-            elif "gasto" in p or "dinero" in p or "balance" in p:
-                df_f = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
-                total = df_f['total'][0] if df_f['total'][0] else 0
-                st.info(f"💰 Balance total en sistema: **RD$ {total:,.2f}**")
+            # --- 2. LÓGICA DE FINANZAS ROBUSTA ---
+            elif "gasto" in p or "dinero" in p or "finanza" in p:
+                df_f = pd.read_sql_query("SELECT monto, concepto FROM finanzas ORDER BY id DESC LIMIT 5", conn)
+                total = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)['total'][0] or 0
+                st.info(f"💰 **BALANCE TOTAL:** RD$ {total:,.2f}")
+                if not df_f.empty:
+                    st.write("Últimos movimientos registrados:")
+                    st.table(df_f)
 
-            # 3. REDACCIÓN DE CORREO (GMAIL)
-            elif "correo" in p or "enviar" in p or "escribir" in p or "gmail" in p:
-                st.markdown("---")
-                st.subheader("✉️ Preparar Reporte para Gmail")
-                destinatario = st.text_input("Correo del médico o familiar:", placeholder="ejemplo@gmail.com")
-                
-                # Datos para el cuerpo del mensaje
-                df_salud = pd.read_sql_query("SELECT valor, fecha, hora FROM glucosa ORDER BY id DESC LIMIT 1", conn)
-                valor_g = df_salud['valor'][0] if not df_salud.empty else "N/A"
-                fecha_g = df_salud['fecha'][0] if not df_salud.empty else "N/A"
-                
-                cuerpo = (f"ESTIMADO DOCTOR / FAMILIAR:\n\n"
-                          f"Le envío mi reporte de salud actualizado.\n"
-                          f"Última Glucosa: {valor_g} mg/dL ({fecha_g})\n\n"
-                          f"Atentamente,\n{NOMBRE_PROPIETARIO}\n{UBICACION_SISTEMA}")
+        # --- 3. MÓDULO DE GMAIL (SE MANTIENE VISIBLE) ---
+        if st.session_state.ver_correo:
+            st.markdown("---")
+            st.subheader("✉️ Redacción de Reporte Formal")
+            doc_mail = st.text_input("Correo del Destinatario:", placeholder="doctor@clinica.com.do")
+            
+            # Obtener datos para el cuerpo
+            df_u = pd.read_sql_query("SELECT valor, fecha FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+            v_u = df_u['valor'][0] if not df_u.empty else "N/A"
+            
+            cuerpo = (f"ESTIMADO DOCTOR / FAMILIAR:\n\n"
+                      f"Le informo que mi último registro de glucosa fue de {v_u} mg/dL.\n"
+                      f"Este reporte fue generado automáticamente por mi sistema de control.\n\n"
+                      f"Atentamente,\n{NOMBRE_PROPIETARIO}\n{UBICACION_SISTEMA}")
 
-                import urllib.parse
-                link = f"https://mail.google.com/mail/?view=cm&fs=1&to={destinatario}&su=Reporte%20Medico&body={urllib.parse.quote(cuerpo)}"
-                
-                if destinatario:
-                    st.link_button("🚀 ABRIR GMAIL AHORA", link)
-                else:
-                    st.caption("Escriba un correo arriba para habilitar el envío.")
-
-            # 4. CASO NO ENTIENDE
-            else:
-                st.write("🤖 No entiendo la instrucción. Pruebe con: 'glucosa alta', 'gastos' o 'enviar correo'.")
+            import urllib.parse
+            link = f"https://mail.google.com/mail/?view=cm&fs=1&to={doc_mail}&su=Reporte%20Medico%20Quevedo&body={urllib.parse.quote(cuerpo)}"
+            
+            if doc_mail:
+                st.link_button("🚀 ABRIR GMAIL Y ENVIAR", link)
