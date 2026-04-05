@@ -13,7 +13,11 @@ import io
 import sqlite3
 conn = sqlite3.connect('tu_base_de_datos.db')
 c = conn.cursor()
-
+# Esto asegura que la tabla 'finanzas' SIEMPRE exista
+conn.execute('''CREATE TABLE IF NOT EXISTS finanzas 
+             (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+              monto REAL, categoria TEXT, fecha TEXT)''')
+conn.commit()
 # 1. CONFIGURACIÓN E INTERFAZ DE ALTO NIVEL
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
 
