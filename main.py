@@ -385,7 +385,7 @@ elif menu == "💊 AGENDA MEDICA":
      
 
      # --- SECCIÓN 4: ESCÁNER OCR ---
-elif menu == "📸 ESCANER":
+     elif menu == "📸 ESCANER":
         st.header("📸 Escaner de Documentos")
         foto = st.camera_input("Capturar Documento")
         if foto:
