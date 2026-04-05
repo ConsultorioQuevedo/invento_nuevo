@@ -464,6 +464,42 @@ if verificar_acceso():
                 df_f = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
                 total = df_f['total'][0] if df_f['total'][0] else 0
                 st.info(f"💰 El balance total en su cuenta es de **RD$ {total:,.2f}**.")
+             # --- FUNCIÓN DE ENVÍO FORMAL POR GMAIL ---
+            elif "correo" in p or "enviar" in p or "gmail" in p:
+                st.subheader("✉️ Redacción de Reporte Oficial")
+                
+                # 1. El receptor se deja vacío por defecto para que usted lo escriba
+                correo_destino = st.text_input("Introduzca el correo del destinatario:", placeholder="ejemplo@doctor.com")
+                
+                # 2. Recopilación de datos para el cuerpo del mensaje
+                df_salud = pd.read_sql_query("SELECT valor, fecha, hora FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+                
+                # Definimos Encabezado y Firma
+                encabezado = "ESTIMADO DOCTOR / FAMILIAR:\n\nPor este medio le informo sobre mi estado de salud actual conforme a los registros de mi sistema.\n"
+                firma = "\n\nAtentamente,\nLUIS RAFAEL QUEVEDO\nSanto Domingo, Rep. Dom."
 
+                if not df_salud.empty:
+                    v = df_salud['valor'][0]
+                    f = df_salud['fecha'][0]
+                    h = df_salud['hora'][0]
+                    detalles = f"REPORTE DE GLUCOSA:\n- Valor: {v} mg/dL\n- Fecha: {f}\n- Hora: {h}"
+                else:
+                    detalles = "No se encontraron registros recientes en la base de datos."
+
+                # Unimos todo el mensaje
+                cuerpo_completo = f"{encabezado}\n{detalles}{firma}"
+
+                # 3. Preparación del enlace para Gmail
+                import urllib.parse
+                cuerpo_encoded = urllib.parse.quote(cuerpo_completo)
+                asunto_encoded = urllib.parse.quote(f"Reporte de Salud - Luis Quevedo ({datetime.now().strftime('%d/%m/%Y')})")
+                
+                link_final = f"https://mail.google.com/mail/?view=cm&fs=1&to={correo_destino}&su={asunto_encoded}&body={cuerpo_encoded}"
+                
+                if correo_destino:
+                    st.success(f"Listo para enviar a: {correo_destino}")
+                    st.link_button("🚀 ABRIR GMAIL CON REPORTE FORMAL", link_final)
+                else:
+                    st.warning("Por favor, escriba un correo electrónico arriba para habilitar el envío.")
             else:
                 st.write("🤖 **IA:** Entendido. Especifique si desea saber la glucosa 'más alta', 'más baja' o el 'último' registro.")
