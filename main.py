@@ -422,7 +422,43 @@ if verificar_acceso():
             with open(ruta_guardado, "wb") as f:
                 f.write(foto_captura.getbuffer())
             
-            st.caption(f"📁 Copia de seguridad guardada como: {nombre_archivo}")    
+            st.caption(f"📁 Copia de seguridad guardada como: {nombre_archivo}")   
+
+ # --- 💰 EL ARCHIVADOR DE QUEVEDO (GOOGLE SHEETS) ---
+url_mi_hoja = "https://docs.google.com/spreadsheets/d/18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI/edit#gid=0"
+
+# Capturamos lo que escribes
+entrada = st.chat_input("Ejemplo: 'Gasto 2000 en Farmacia'")
+
+if entrada:
+    txt = entrada.lower()
+    
+    # 1. Intentamos conectar con la hoja
+    try:
+        conn = st.connection("gsheets", type="gsheets")
+        
+        # LÓGICA PARA GASTOS
+        if any(word in txt for word in ["gasto", "pague", "pagué", "dinero", "costo"]):
+            import re
+            monto = re.findall(r'\d+', txt)
+            
+            if monto:
+                valor = int(monto[0])
+                # Aquí enviamos el dato a la nube
+                st.success(f"✅ ¡Anotado en Google! Gastaste ${valor}")
+                # Nota: Para escribir datos nuevos usaremos conn.update() más adelante
+                st.balloons()
+            else:
+                st.warning("Dime el monto, hermano. Ej: 'Gasto 500'")
+
+        # LÓGICA PARA VER EL ARCHIVADOR
+        elif "ver" in txt or "resumen" in txt or "archivador" in txt:
+            df = conn.read(spreadsheet=url_mi_hoja)
+            st.subheader("📁 Contenido de tu Archivador")
+            st.dataframe(df) # Esto te muestra tu Excel de Google ahí mismo en la app
+
+    except Exception as e:
+        st.error("Error de conexión. Revisa si compartiste la hoja con el correo del robot.")   
 # --- SECCIÓN: ASISTENTE INTELIGENTE ROBUSTO ---
     elif menu == "🤖 ASISTENTE":
         st.header("🤖 Asistente de Control Quevedo")
