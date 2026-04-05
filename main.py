@@ -13,7 +13,9 @@ import io
 
 # 1. CONFIGURACIÓN E INTERFAZ DE ALTO NIVEL
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
-
+# --- CONFIGURACIÓN DE IDENTIDAD MAESTRA ---
+NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
+UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 # Función para limpiar acentos y evitar errores en el PDF (Seguro de caracteres)
 def limpiar_texto(texto):
     if not texto: return ""
