@@ -10,21 +10,14 @@ import numpy as np
 import unicodedata
 from PIL import Image
 import io
-import sqlite3
-conn = sqlite3.connect('tu_base_de_datos.db')
-c = conn.cursor()
-# Esto asegura que la tabla 'finanzas' SIEMPRE exista
-conn.execute('''CREATE TABLE IF NOT EXISTS finanzas 
-             (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-              monto REAL, categoria TEXT, fecha TEXT)''')
-conn.commit()
+
 # 1. CONFIGURACIÓN E INTERFAZ DE ALTO NIVEL
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
 
 # Función para limpiar acentos y evitar errores en el PDF (Seguro de caracteres)
 def limpiar_texto(texto):
     if not texto: return ""
-    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if category(c) != 'Mn')
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
 
 # --- SISTEMA DE SEGURIDAD (LOGIN) ---
 def verificar_acceso():
@@ -40,7 +33,7 @@ def verificar_acceso():
             u = st.text_input("Usuario")
             p = st.text_input("Contraseña", type="password")
             if st.button("DESBLOQUEAR SISTEMA"):
-                if u == "Amin" and p == "1234":
+                if u == "admin" and p == "Quevedo2026":
                     st.session_state["autenticado"] = True
                     st.rerun()
                 else:
@@ -175,10 +168,10 @@ if verificar_acceso():
             st.download_button("📥 Descargar Reporte", pdf_data, f"MAESTRO_{datetime.now().strftime('%Y%m%d')}.pdf", "application/pdf")
         st.divider()
 
-menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
+    menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
 
     # --- SECCIÓN INICIO: RESUMEN EJECUTIVO ---
-if menu == "🏠 INICIO (RESUMEN)":
+    if menu == "🏠 INICIO (RESUMEN)":
         st.header("📊 Resumen Ejecutivo del Sistema")
         c1, c2, c3 = st.columns(3)
         
@@ -186,12 +179,15 @@ if menu == "🏠 INICIO (RESUMEN)":
         df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
         df_med = pd.read_sql_query("SELECT nombre FROM medicinas LIMIT 1", conn)
 
-        with c1: st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("💰 BALANCE NETO", f"RD$ {df_fin['total'][0] or 0:,.2f}"); st.markdown('</div>', unsafe_allow_html=True)
-        with c2: st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("🩺 ÚLTIMA GLUCOSA", f"{df_glu['valor'][0] if not df_glu.empty else 'N/A'} mg/dL"); st.markdown('</div>', unsafe_allow_html=True)
-        with c3: st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("💊 MEDICINA ACTUAL", f"{df_med['nombre'][0] if not df_med.empty else 'Ninguna'}"); st.markdown('</div>', unsafe_allow_html=True)
+        with c1: 
+            st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("💰 BALANCE NETO", f"RD$ {df_fin['total'][0] or 0:,.2f}"); st.markdown('</div>', unsafe_allow_html=True)
+        with c2: 
+            st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("🩺 ÚLTIMA GLUCOSA", f"{df_glu['valor'][0] if not df_glu.empty else 'N/A'} mg/dL"); st.markdown('</div>', unsafe_allow_html=True)
+        with c3: 
+            st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("💊 MEDICINA ACTUAL", f"{df_med['nombre'][0] if not df_med.empty else 'Ninguna'}"); st.markdown('</div>', unsafe_allow_html=True)
 
     # --- SECCIÓN 1: FINANZAS IA ---
-elif menu == "💰 FINANZAS IA":
+    elif menu == "💰 FINANZAS IA":
         st.header("💰 Gestión de Finanzas - SISTEMA QUEVEDO")
         
         # 1. ENTRADA DE DATOS
@@ -211,18 +207,19 @@ elif menu == "💰 FINANZAS IA":
                         fecha_hoy = datetime.now().strftime("%d/%m/%Y")
                         # Insertamos respetando su lógica de negocio
                         c.execute("INSERT INTO finanzas (fecha, categoria, monto) VALUES (?,?,?)", 
-                                  (fecha_hoy, f"{categoria}: {detalles}" if detalles else categoria, monto))
+                                  (f"{categoria}: {detalles}" if detalles else categoria, fecha_hoy, monto))
                         conn.commit()
                         st.success(f"✅ Registrado: RD$ {monto:,.2f}")
                         st.rerun()
                     else:
                         st.error("Error: El monto debe ser mayor a cero.")
 
-        # 2. TABLA DE HISTORIAL
+        # 2. TABLA DE HISTORIAL (DISEÑO PROFESIONAL)
         st.subheader("📋 Historial de Movimientos")
         df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC", conn)
         
         if not df_f.empty:
+            # Mostramos la tabla limpia para lectura fácil
             st.dataframe(df_f[['fecha', 'categoria', 'monto']], 
                          column_config={
                              "fecha": "Fecha",
@@ -231,184 +228,159 @@ elif menu == "💰 FINANZAS IA":
                          }, 
                          use_container_width=True, 
                          hide_index=True)
-
-# 3. EL BORRADOR MAESTRO (Para rectificar errores)
-        st.markdown("---")
-        with st.expander("🗑️ ZONA DE CORRECCIÓN (Eliminar Registro)"):
-            st.write("Seleccione el dato erróneo para sacarlo del sistema:")
             
-            opciones_borrar = {f"{r['fecha']} | {r['categoria']} | RD$ {r['monto']}": r['id'] 
-                               for _, r in df_f.iterrows()}
-            
-            seleccion = st.selectbox("Movimiento a eliminar:", 
-                                     options=list(opciones_borrar.keys()), 
-                                     key="del_fin_quevedo")
-            
-            if st.button("Confirmar Borrado Permanente", type="primary"):
-                c.execute("DELETE FROM finanzas WHERE id=?", (opciones_borrar[seleccion],))
-                conn.commit()
-                st.success("Registro eliminado satisfactoriamente.")
-                st.rerun()
-                
-elif menu == "💰 FINANZAS IA" and df_f.empty:
-        st.info("No hay datos financieros registrados.")
-
-# --- SECCIÓN 2: BIOMONITOR ---
-elif menu == "🩺 BIOMONITOR":
-    st.header("🩺 Monitoreo de Glucosa")
-    
-    # 1. Entrada de datos
-    val_g = st.number_input("Ingresar nivel actual (mg/dL):", min_value=0, key="input_glucosa")
-    
-    # Alerta de Pánico
-    if val_g > 160:
-        st.markdown(f'<div class="semaforo-rojo">🚨 ALERTA CRÍTICA: {val_g} mg/dL</div>', unsafe_allow_html=True)
-        st.subheader("🆘 TABLA DE AVISO RÁPIDO")
-        for i in range(len(contactos_data["Nombre"])):
-            n, t = contactos_data["Nombre"][i], contactos_data["Telefono"][i]
-            msg = f"Emergencia: Luis tiene la glucosa en {val_g}. Favor contactar."
-            url = f"https://api.whatsapp.com/send?phone={t}&text={msg.replace(' ', '%20')}"
-            c1, c2 = st.columns([3,1])
-            c1.write(f"👤 **{n}**")
-            c2.link_button(f"📲 AVISAR", url)
-        st.divider()
-
-    # 2. Botón de Guardar
-    if st.button("💾 GUARDAR TOMA ACTUAL"):
-        if val_g > 0:
-            tz = pytz.timezone('America/Santo_Domingo')
-            ahora = datetime.now(tz)
-            est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRITICO"
-            
-            conn.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
-                         (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
-            conn.commit()
-            st.success(f"✅ Registrado: {val_g} mg/dL")
-            st.rerun()
-        else:
-            st.warning("Por favor, ingrese un valor válido.")
-
-    st.markdown("---")
-    
-    # 3. Visualización en Tiempo Real
-    st.subheader("📊 Historial de Registros")
-    df_g = pd.read_sql_query("SELECT fecha as Fecha, hora as Hora, valor as Valor, estado as Estado FROM glucosa ORDER BY id DESC", conn)
-    
-    if not df_g.empty:
-        df_grafico = df_g.iloc[::-1] 
-        fig = px.line(df_grafico, x="Fecha", y="Valor", title="Evolución de su Glucosa", markers=True)
-        fig.update_traces(line_color='#4CAF50')
-        st.plotly_chart(fig, use_container_width=True)
-        
-        st.write("📋 **Últimas mediciones:**")
-        st.dataframe(df_g.head(15), use_container_width=True)
-        
-        with st.expander("🗑️ Zona de Peligro"):
-            if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
-                conn.execute("DELETE FROM glucosa")
-                conn.commit()
-                st.rerun()
-    else:
-        st.info("Aún no hay registros de glucosa.")    
-
-# --- MÓDULO 4: AGENDA MÉDICA ---
-elif menu == "💊 AGENDA MEDICA":
-    st.header("💊 Gestión Médica Profesional")
-    tab1, tab2 = st.tabs(["📋 Medicamentos Actuales", "📅 Control de Citas"])
-    
-    with tab1:
-        st.subheader("Registro de Medicinas")
-        with st.expander("➕ Añadir Nueva Medicina"):
-            with st.form("form_medicina"):
-                nombre_med = st.text_input("Nombre del Medicamento")
-                hora_med = st.text_input("Horario (ej: 8:00 AM)")
-                if st.form_submit_button("Guardar en Agenda"):
-                    if nombre_med and hora_med:
-                        c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nombre_med, hora_med))
-                        conn.commit()
-                        st.success(f"Registrada: {nombre_med}")
-                        st.rerun()
-
-        df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
-        if not df_m.empty:
+            # 3. EL BORRADOR MAESTRO (Para rectificar errores)
             st.markdown("---")
-            for _, r in df_m.iterrows():
-                st.info(f"💊 **{r['nombre']}** — ⏰ Horario: {r['horario']}")
-            
-            with st.expander("🗑️ Quitar una medicina"):
-                opciones_m = {f"{r['nombre']} ({r['horario']})": r['id'] for _, r in df_m.iterrows()}
-                seleccion_m = st.selectbox("Seleccione para eliminar:", options=list(opciones_m.keys()), key="sel_med")
-                if st.button("Confirmar Borrado", type="primary"):
-                    c.execute("DELETE FROM medicinas WHERE id=?", (opciones_m[seleccion_m],))
+            with st.expander("🗑️ ZONA DE CORRECCIÓN (Eliminar Registro)"):
+                st.write("Seleccione el dato erróneo para sacarlo del sistema:")
+                
+                opciones_borrar = {f"{r['fecha']} | {r['categoria']} | RD$ {r['monto']}": r['id'] 
+                                   for _, r in df_f.iterrows()}
+                
+                seleccion = st.selectbox("Movimiento a eliminar:", 
+                                         options=list(opciones_borrar.keys()), 
+                                         key="del_fin_quevedo")
+                
+                if st.button("Confirmar Borrado Permanente", type="primary"):
+                    c.execute("DELETE FROM finanzas WHERE id=?", (opciones_borrar[seleccion],))
                     conn.commit()
+                    st.success("Registro eliminado satisfactoriamente.")
                     st.rerun()
+        else:
+            st.info("No hay datos financieros registrados.")
 
-    with tab2:
-        st.subheader("Próximas Consultas")
-        with st.expander("➕ Programar Nueva Cita"):
-            with st.form("form_cita"):
-                doc_cita = st.text_input("Nombre del Doctor")
-                fecha_cita = st.date_input("Fecha de la Cita")
-                if st.form_submit_button("Agendar Cita"):
-                    if doc_cita:
-                        c.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (doc_cita, str(fecha_cita)))
-                        conn.commit()
-                        st.success(f"Cita agendada.")
-                        st.rerun()
+    # --- SECCIÓN 2: BIOMONITOR ---
+    elif menu == "🩺 BIOMONITOR":
+        st.header("🩺 Monitoreo de Glucosa")
         
-        df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
-        if not df_c.empty:
-            for _, r in df_c.iterrows():
-                st.warning(f"👨‍⚕️ **{r['doctor']}** — 📅 Fecha: {r['fecha']}")
+        # 1. Entrada de datos
+        val_g = st.number_input("Ingresar nivel actual (mg/dL):", min_value=0, key="input_glucosa")
+        
+        # Alerta de Pánico
+        if val_g > 160:
+            st.markdown(f'<div class="semaforo-rojo">🚨 ALERTA CRÍTICA: {val_g} mg/dL</div>', unsafe_allow_html=True)
+            st.subheader("🆘 TABLA DE AVISO RÁPIDO")
+            for i in range(len(contactos_data["Nombre"])):
+                n, t = contactos_data["Nombre"][i], contactos_data["Telefono"][i]
+                msg = f"Emergencia: Luis tiene la glucosa en {val_g}. Favor contactar."
+                url = f"https://api.whatsapp.com/send?phone={t}&text={msg.replace(' ', '%20')}"
+                c1, c2 = st.columns([3,1])
+                c1.write(f"👤 **{n}**")
+                c2.link_button(f"📲 AVISAR", url)
+            st.divider()
+
+        # 2. Botón de Guardar con Refresco Automático
+        if st.button("💾 GUARDAR TOMA ACTUAL"):
+            if val_g > 0:
+                tz = pytz.timezone('America/Santo_Domingo')
+                ahora = datetime.now(tz)
+                est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRITICO"
+                
+                conn.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
+                             (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
+                conn.commit()
+                st.success(f"✅ Registrado: {val_g} mg/dL")
+                st.rerun()
+            else:
+                st.warning("Por favor, ingrese un valor válido.")
+
+        st.markdown("---")
+        
+        # 3. Visualización en Tiempo Real (Historial)
+        st.subheader("📊 Historial de Registros")
+        df_g = pd.read_sql_query("SELECT fecha as Fecha, hora as Hora, valor as Valor, estado as Estado FROM glucosa ORDER BY id DESC", conn)
+        
+        if not df_g.empty:
+            df_grafico = df_g.iloc[::-1] 
+            fig = px.line(df_grafico, x="Fecha", y="Valor", title="Evolución de su Glucosa", markers=True)
+            fig.update_traces(line_color='#4CAF50')
+            st.plotly_chart(fig, use_container_width=True)
             
-            with st.expander("🗑️ Cancelar cita"):
-                opciones_c = {f"{r['doctor']} - {r['fecha']}": r['id'] for _, r in df_c.iterrows()}
-                seleccion_c = st.selectbox("Cita a eliminar:", options=list(opciones_c.keys()), key="sel_cita")
-                if st.button("Confirmar Borrado de Cita", type="primary"):
-                    c.execute("DELETE FROM citas WHERE id=?", (opciones_c[seleccion_c],))
+            st.write("📋 **Últimas mediciones:**")
+            st.dataframe(df_g.head(15), use_container_width=True)
+            
+            with st.expander("🗑️ Zona de Peligro"):
+                if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
+                    conn.execute("DELETE FROM glucosa")
                     conn.commit()
                     st.rerun()
+        else:
+            st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
-# --- SECCIÓN 4: ESCÁNER OCR ---
-elif menu == "📸 ESCANER":
-    st.header("📸 Escaner de Documentos")
-    foto = st.camera_input("Capturar Documento")
-    if foto:
-        fname = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-        path = os.path.join("archivador_quevedo", fname)
-        with open(path, "wb") as f: 
-            f.write(foto.getbuffer())
-        try:
-            import pytesseract
-            # Ajustar ruta según sistema
-            if os.path.exists(r'C:\Program Files\Tesseract-OCR\tesseract.exe'):
-                pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-            img = Image.open(foto)
-            texto = pytesseract.image_to_string(img, lang='spa')
-            if texto.strip(): 
-                st.text_area("📝 Texto Detectado:", texto, height=250)
-        except: 
-            st.info("Imagen guardada. Procesamiento de texto no disponible.")
+    # --- MÓDULO 4: AGENDA MÉDICA ---
+    elif menu == "💊 AGENDA MEDICA":
+        st.header("💊 Gestión Médica Profesional")
+        
+        tab1, tab2 = st.tabs(["📋 Medicamentos Actuales", "📅 Control de Citas"])
+        
+        with tab1:
+            st.subheader("Registro de Medicinas")
+            with st.expander("➕ Añadir Nueva Medicina"):
+                with st.form("form_medicina"):
+                    nombre_med = st.text_input("Nombre del Medicamento (ej: Metformina)")
+                    hora_med = st.text_input("Horario (ej: 8:00 AM / 8:00 PM)")
+                    if st.form_submit_button("Guardar en Agenda"):
+                        if nombre_med and hora_med:
+                            c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nombre_med, hora_med))
+                            conn.commit()
+                            st.success(f"Registrada: {nombre_med}")
+                            st.rerun()
+                        else:
+                            st.warning("Por favor complete ambos campos.")
 
-# --- SECCIÓN 5: ARCHIVADOR ---
-elif menu == "📂 ARCHIVADOR":
-    st.header("📂 Archivador de Documentos")
-    if os.path.exists("archivador_quevedo"):
-        for a in os.listdir("archivador_quevedo"):
-            col_a, col_b = st.columns([3,1])
-            with open(os.path.join("archivador_quevedo", a), "rb") as f: 
-                col_a.download_button(f"📥 {a}", f, file_name=a)
-            if col_b.button("❌", key=a): 
-                os.remove(os.path.join("archivador_quevedo", a))
-                st.rerun()
+            df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+            if not df_m.empty:
+                st.markdown("---")
+                for _, r in df_m.iterrows():
+                    st.info(f"💊 **{r['nombre']}** — ⏰ Horario: {r['horario']}")
+                
+                with st.expander("🗑️ Quitar una medicina"):
+                    opciones_m = {f"{r['nombre']} ({r['horario']})": r['id'] for _, r in df_m.iterrows()}
+                    seleccion_m = st.selectbox("Seleccione la que desea eliminar:", options=list(opciones_m.keys()), key="sel_med")
+                    if st.button("Confirmar Borrado de Medicina", type="primary"):
+                        c.execute("DELETE FROM medicinas WHERE id=?", (opciones_m[seleccion_m],))
+                        conn.commit()
+                        st.rerun()
+            else:
+                st.write("No hay medicinas registradas aún.")
 
-# --- SECCIÓN 6: ASISTENTE ---
-elif menu == "🤖 ASISTENTE":
-    st.header("🤖 Consultas al Sistema")
-    preg = st.text_input("¿Qué desea saber de sus datos?")
-    if preg: 
-        st.write("Analizando historial...")
+        with tab2:
+            st.subheader("Próximas Consultas")
+            with st.expander("➕ Programar Nueva Cita"):
+                with st.form("form_cita"):
+                    doc_cita = st.text_input("Nombre del Doctor / Especialidad")
+                    fecha_cita = st.date_input("Fecha de la Cita")
+                    if st.form_submit_button("Agendar Cita"):
+                        if doc_cita:
+                            c.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (doc_cita, str(fecha_cita)))
+                            conn.commit()
+                            st.success(f"Cita con {doc_cita} agendada.")
+                            st.rerun()
+            
+            df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
+            if not df_c.empty:
+                st.markdown("---")
+                for _, r in df_c.iterrows():
+                    st.warning(f"👨‍⚕️ **{r['doctor']}** — 📅 Fecha: {r['fecha']}")
+                
+                with st.expander("🗑️ Cancelar o borrar una cita"):
+                    opciones_c = {f"{r['doctor']} - {r['fecha']}": r['id'] for _, r in df_c.iterrows()}
+                    seleccion_c = st.selectbox("Seleccione la cita a eliminar:", options=list(opciones_c.keys()), key="sel_cita")
+                    if st.button("Confirmar Borrado de Cita", type="primary"):
+                        c.execute("DELETE FROM citas WHERE id=?", (opciones_c[seleccion_c],))
+                        conn.commit()
+                        st.rerun()
+            else:
+                st.write("No tiene citas pendientes.")
 
-# --- BARRA LATERAL ---
-st.sidebar.markdown("---")
-st.sidebar.write("👨‍💻 Luis Rafael Quevedo")
+    # --- SECCIÓN 4: ESCÁNER OCR ---
+    elif menu == "📸 ESCANER":
+        st.header("📸 Escaner de Documentos")
+        foto = st.camera_input("Capturar Documento")
+        if foto:
+            fname = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            path_foto = os.path.join("archivador_quevedo", fname)
+            with open(path_foto, "wb") as f: 
+                f.write(foto.getbuffer())
+            st.success(f"Documento guardado en archivador: {fname}")
+            # Aquí continuaría la lógica de Tesseract si está configurado
