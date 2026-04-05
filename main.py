@@ -16,6 +16,7 @@ st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="�
 # --- CONFIGURACIÓN DE IDENTIDAD MAESTRA ---
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
+
 # Función para limpiar acentos y evitar errores en el PDF (Seguro de caracteres)
 def limpiar_texto(texto):
     if not texto: return ""
@@ -459,15 +460,21 @@ if verificar_acceso():
                         st.success("✅ **ESTADO ÓPTIMO:** Sus niveles promedio se mantienen en rango controlado.")
                 else:
                     st.warning("No hay datos de salud para analizar.")
-
-            # --- 2. LÓGICA DE FINANZAS ROBUSTA ---
-            elif "gasto" in p or "dinero" in p or "finanza" in p:
-                df_f = pd.read_sql_query("SELECT monto, concepto FROM finanzas ORDER BY id DESC LIMIT 5", conn)
-                total = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)['total'][0] or 0
-                st.info(f"💰 **BALANCE TOTAL:** RD$ {total:,.2f}")
-                if not df_f.empty:
-                    st.write("Últimos movimientos registrados:")
-                    st.table(df_f)
+# --- 2. LÓGICA DE FINANZAS ROBUSTA ---
+    elif "gasto" in p or "dinero" in p or "finanza" in p:
+        # 1. Obtener la tabla de movimientos
+        df_f = pd.read_sql_query("SELECT monto, concepto FROM finanzas ORDER BY id DESC LIMIT 10", conn)
+        
+        # 2. Obtener el número del total (CUIDADO AQUÍ: usamos .iloc[0][0] para extraer el valor)
+        res_total = pd.read_sql_query("SELECT SUM(monto) FROM finanzas", conn)
+        total_valor = res_total.iloc[0][0] if not res_total.empty else 0
+        
+        # 3. Mostrar el balance con formato de moneda
+        st.info(f"💰 **BALANCE TOTAL:** RD$ {total_valor:,.2f}")
+        
+        if not df_f.empty:
+            st.write("Últimos movimientos registrados:")
+            st.table(df_f)
 
         # --- 3. MÓDULO DE GMAIL (SE MANTIENE VISIBLE) ---
         if st.session_state.ver_correo:
