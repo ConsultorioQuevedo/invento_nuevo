@@ -168,10 +168,10 @@ if verificar_acceso():
             st.download_button("📥 Descargar Reporte", pdf_data, f"MAESTRO_{datetime.now().strftime('%Y%m%d')}.pdf", "application/pdf")
         st.divider()
 
-    menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
+menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
 
     # --- SECCIÓN INICIO: RESUMEN EJECUTIVO ---
-    if menu == "🏠 INICIO (RESUMEN)":
+if menu == "🏠 INICIO (RESUMEN)":
         st.header("📊 Resumen Ejecutivo del Sistema")
         c1, c2, c3 = st.columns(3)
         
