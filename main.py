@@ -276,21 +276,31 @@ if verificar_acceso():
         else:
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
-    
-    # --- SECCIÓN 3: AGENDA MÉDICA ---
+    # --- SECCIÓN 3: AGENDA MÉDICA (CON BORRADO) ---
     elif menu == "💊 AGENDA MEDICA":
-        st.header("💊 Salud y Citas")
-        c1, c2 = st.columns(2)
-        with c1:
-            st.subheader("Medicinas")
-            nom = st.text_input("Nombre:"); hor = st.text_input("Horario:")
-            if st.button("Añadir"): conn.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nom.upper(), hor)); conn.commit(); st.rerun()
-            st.table(pd.read_sql_query("SELECT nombre, horario FROM medicinas", conn))
-        with c2:
-            st.subheader("Citas")
-            doc = st.text_input("Doctor:"); fec = st.date_input("Fecha")
-            if st.button("Agendar"): conn.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (doc.upper(), str(fec))); conn.commit(); st.rerun()
-            st.table(pd.read_sql_query("SELECT doctor, fecha FROM citas", conn))
+        st.header("💊 Control Médico")
+        
+        tab1, tab2 = st.tabs(["Medicinas", "Citas"])
+        
+        with tab1:
+            df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+            for _, r in df_m.iterrows():
+                c1, c2 = st.columns([4, 1])
+                c1.write(f"💊 {r['nombre']} - ⏰ {r['horario']}")
+                if c2.button("🗑️", key=f"del_med_{r['id']}"):
+                    conn.execute("DELETE FROM medicinas WHERE id=?", (r['id'],))
+                    conn.commit()
+                    st.rerun()
+
+        with tab2:
+            df_c = pd.read_sql_query("SELECT * FROM citas", conn)
+            for _, r in df_c.iterrows():
+                c1, c2 = st.columns([4, 1])
+                c1.write(f"👨‍⚕️ {r['doctor']} - 📅 {r['fecha']}")
+                if c2.button("🗑️", key=f"del_cita_{r['id']}"):
+                    conn.execute("DELETE FROM citas WHERE id=?", (r['id'],))
+                    conn.commit()
+                    st.rerun()
 
     # --- SECCIÓN 4: ESCÁNER OCR ---
     elif menu == "📸 ESCANER":
