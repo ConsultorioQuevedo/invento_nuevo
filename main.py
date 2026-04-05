@@ -372,6 +372,18 @@ if verificar_acceso():
                         st.rerun()
             else:
                 st.write("No tiene citas pendientes.")
+
+    # --- SECCIÓN 4: ESCÁNER OCR ---
+    elif menu == "📸 ESCANER":
+        st.header("📸 Escaner de Documentos")
+        foto = st.camera_input("Capturar Documento")
+        if foto:
+            fname = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            path_foto = os.path.join("archivador_quevedo", fname)
+            with open(path_foto, "wb") as f: 
+                f.write(foto.getbuffer())
+            st.success(f"Documento guardado en archivador: {fname}") 
+            
     # --- MÓDULO: ARCHIVADOR DE DOCUMENTOS (CONTROL FORMAL) ---
     elif menu == "📂 ARCHIVADOR":
         st.header("📂 Archivador de Documentos")
@@ -406,14 +418,5 @@ if verificar_acceso():
         else:
             st.warning("No se han encontrado documentos digitalizados en el sistema.")            
 
-    # --- SECCIÓN 4: ESCÁNER OCR ---
-    elif menu == "📸 ESCANER":
-        st.header("📸 Escaner de Documentos")
-        foto = st.camera_input("Capturar Documento")
-        if foto:
-            fname = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-            path_foto = os.path.join("archivador_quevedo", fname)
-            with open(path_foto, "wb") as f: 
-                f.write(foto.getbuffer())
-            st.success(f"Documento guardado en archivador: {fname}")
+   
             # Aquí continuaría la lógica de Tesseract si está configurado
