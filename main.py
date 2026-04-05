@@ -243,7 +243,7 @@ elif menu == "💰 FINANZAS IA":
                 st.success("Registro eliminado satisfactoriamente.")
                 st.rerun()
                 
-else:
+elif menu == "💰 FINANZAS IA" and df_f.empty:
         st.info("No hay datos financieros registrados.")
 
 # --- SECCIÓN 2: BIOMONITOR ---
