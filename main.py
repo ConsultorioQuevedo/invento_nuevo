@@ -184,7 +184,7 @@ if menu == "🏠 INICIO (RESUMEN)":
         with c3: st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("💊 MEDICINA ACTUAL", f"{df_med['nombre'][0] if not df_med.empty else 'Ninguna'}"); st.markdown('</div>', unsafe_allow_html=True)
 
     # --- SECCIÓN 1: FINANZAS IA ---
-    elif menu == "💰 FINANZAS IA":
+elif menu == "💰 FINANZAS IA":
         st.header("💰 Gestión de Finanzas - SISTEMA QUEVEDO")
         
         # 1. ENTRADA DE DATOS
