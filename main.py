@@ -397,34 +397,76 @@ elif menu == "💊 AGENDA MEDICA":
         else:
             st.write("No tiene citas pendientes.")
 
-    # --- SECCIÓN 4: ESCÁNER OCR ---
+  # --- SECCIÓN 4: ESCÁNER OCR ---
     elif menu == "📸 ESCANER":
-        st.header("📸 Escaner de Documentos")
+        st.header("📸 Escáner de Documentos")
         foto = st.camera_input("Capturar Documento")
+        
         if foto:
+            # Generar nombre de archivo único
             fname = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-            with open(os.path.join("archivador_quevedo", fname), "wb") as f: f.write(foto.getbuffer())
+            path_archivo = os.path.join("archivador_quevedo", fname)
+            
+            # Guardar la imagen físicamente
+            with open(path_archivo, "wb") as f:
+                f.write(foto.getbuffer())
+            st.success(f"✅ Documento guardado como: {fname}")
+            
+            # Intento de procesamiento OCR
             try:
                 import pytesseract
+                # Configuración de ruta para Windows (si aplica)
                 if os.path.exists(r'C:\Program Files\Tesseract-OCR\tesseract.exe'):
                     pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-                img = Image.open(foto); texto = pytesseract.image_to_string(img, lang='spa')
-                if texto.strip(): st.text_area("📝 Texto Detectado:", texto, height=250)
-            except: st.info("Procesando en la nube...")
+                
+                img = Image.open(foto)
+                texto = pytesseract.image_to_string(img, lang='spa')
+                
+                if texto.strip():
+                    st.subheader("📝 Texto Detectado:")
+                    st.text_area("Resultado del escaneo:", texto, height=250)
+                else:
+                    st.warning("No se detectó texto legible en la imagen.")
+            except ImportError:
+                st.info("Módulo de lectura (Tesseract) no instalado. El archivo se guardó pero no se pudo extraer el texto.")
+            except Exception as e:
+                st.info("Procesando en la nube o error de configuración local.")
 
     # --- SECCIÓN 5: ARCHIVADOR ---
     elif menu == "📂 ARCHIVADOR":
         st.header("📂 Archivador de Documentos")
-        for a in os.listdir("archivador_quevedo"):
-            col_a, col_b = st.columns([3,1])
-            with open(os.path.join("archivador_quevedo", a), "rb") as f: col_a.download_button(f"📥 {a}", f, file_name=a)
-            if col_b.button("❌", key=a): os.remove(os.path.join("archivador_quevedo", a)); st.rerun()
+        archivos = os.listdir("archivador_quevedo")
+        
+        if archivos:
+            for a in archivos:
+                path_completo = os.path.join("archivador_quevedo", a)
+                col_a, col_b = st.columns([3, 1])
+                
+                with open(path_completo, "rb") as f:
+                    data_archivo = f.read()
+                    col_a.download_button(
+                        label=f"📥 {a}",
+                        data=data_archivo,
+                        file_name=a,
+                        key=f"dl_{a}"
+                    )
+                
+                if col_b.button("❌", key=f"del_{a}"):
+                    os.remove(path_completo)
+                    st.rerun()
+        else:
+            st.info("El archivador está vacío.")
 
     # --- SECCIÓN 6: ASISTENTE ---
     elif menu == "🤖 ASISTENTE":
         st.header("🤖 Consultas al Sistema")
         preg = st.text_input("¿Qué desea saber de sus datos?")
-        if preg: st.write("Analizando historial...")
+        if preg:
+            st.write("🔍 Analizando historial...")
+            # Aquí podrías agregar lógica para buscar en el DataFrame de finanzas o glucosa
+            st.info("Esta función está siendo optimizada para analizar sus tendencias de salud y gastos.")
 
+    # --- PIE DE PÁGINA ---
     st.sidebar.markdown("---")
     st.sidebar.write("👨‍💻 Luis Rafael Quevedo")
+    st.sidebar.caption("SISTEMA QUEVEDO PRO © 2026")
