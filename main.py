@@ -384,8 +384,8 @@ elif menu == "💊 AGENDA MEDICA":
                     st.rerun()
      
 
-    # --- SECCIÓN 4: ESCÁNER OCR ---
-    elif menu == "📸 ESCANER":
+     # --- SECCIÓN 4: ESCÁNER OCR ---
+     elif menu == "📸 ESCANER":
         st.header("📸 Escaner de Documentos")
         foto = st.camera_input("Capturar Documento")
         if foto:
