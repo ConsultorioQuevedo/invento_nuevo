@@ -58,17 +58,21 @@ if verificar_acceso():
         return conn
 
     conn = iniciar_db()
-
-    # --- FUNCIÓN: GENERADOR REPORTE MAESTRO PDF (CON SEGURO LATIN-1) ---
+# --- FUNCIÓN: GENERADOR REPORTE MAESTRO PDF (CORREGIDA) ---
     def generar_reporte_maestro_pdf():
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", 'B', 18)
         pdf.set_text_color(31, 73, 125)
-        pdf.cell(0, 15, limpiar_texto("REPORTE MAESTRO - SISTEMA QUEVEDO"), ln=True, align='C')
+        
+        # Limpiamos el título principal
+        titulo_limpio = limpiar_texto("REPORTE MAESTRO - SISTEMA QUEVEDO")
+        pdf.cell(0, 15, titulo_limpio, ln=True, align='C')
+        
         pdf.set_font("Arial", 'I', 10)
         pdf.set_text_color(0, 0, 0)
-        pdf.cell(0, 10, f"Fecha de emision: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align='R')
+        fecha_emision = f"Fecha de emision: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        pdf.cell(0, 10, fecha_emision, ln=True, align='R')
         pdf.ln(5)
 
         def agregar_seccion(titulo, query, columnas_alias):
@@ -83,31 +87,35 @@ if verificar_acceso():
                     pdf.cell(0, 8, "No hay registros disponibles.", ln=True)
                 else:
                     pdf.set_font("Arial", 'B', 10)
+                    # Dibujar cabeceras limpias
                     for col in columnas_alias:
                         pdf.cell(47, 8, limpiar_texto(col), 1)
                     pdf.ln()
+                    # Dibujar datos limpiando CADA CELDA
                     pdf.set_font("Arial", size=9)
                     for _, row in df.iterrows():
                         for val in row:
-                            pdf.cell(47, 7, limpiar_texto(str(val)), 1)
+                            # Aquí es donde estaba el problema: limpiamos cada valor individualmente
+                            dato_limpio = limpiar_texto(str(val))
+                            pdf.cell(47, 7, dato_limpio, 1)
                         pdf.ln()
-            except:
-                pdf.cell(0, 8, "Error al cargar esta seccion.", ln=True)
+            except Exception as e:
+                pdf.cell(0, 8, f"Error en esta seccion", ln=True)
             pdf.ln(8)
 
-        # Secciones del PDF
+        # 1. Finanzas
         df_f = pd.read_sql_query("SELECT SUM(monto) as bal FROM finanzas", conn)
         balance = df_f['bal'].iloc[0] if df_f['bal'].iloc[0] else 0.0
         pdf.set_font("Arial", 'B', 12)
-        pdf.cell(0, 10, f"BALANCE TOTAL ACUMULADO: RD$ {balance:,.2f}", ln=True)
+        pdf.cell(0, 10, f"BALANCE TOTAL: RD$ {balance:,.2f}", ln=True)
         
-        agregar_seccion("FINANZAS: ULTIMOS MOVIMIENTOS", "SELECT fecha, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 10", ["Fecha", "Concepto", "Monto"])
-        agregar_seccion("GLUCOSA: HISTORIAL COMPLETO", "SELECT fecha, hora, valor, estado FROM glucosa ORDER BY id DESC", ["Fecha", "Hora", "Valor", "Estado"])
-        agregar_seccion("AGENDA: MEDICAMENTOS ACTIVOS", "SELECT nombre, horario FROM medicinas", ["Medicina", "Horario"])
-        agregar_seccion("CITAS: CONSULTAS MEDICAS", "SELECT doctor, fecha FROM citas", ["Doctor", "Fecha"])
+        agregar_seccion("FINANZAS: MOVIMIENTOS", "SELECT fecha, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 10", ["Fecha", "Concepto", "Monto"])
+        agregar_seccion("GLUCOSA: HISTORIAL", "SELECT fecha, hora, valor, estado FROM glucosa ORDER BY id DESC", ["Fecha", "Hora", "Valor", "Estado"])
+        agregar_seccion("AGENDA: MEDICAMENTOS", "SELECT nombre, horario FROM medicinas", ["Medicina", "Horario"])
+        agregar_seccion("CITAS: CONSULTAS", "SELECT doctor, fecha FROM citas", ["Doctor", "Fecha"])
 
+        # Retorno de datos binarios
         return pdf.output(dest='S').encode('latin-1', 'replace')
-
     # --- FUNCIÓN GENERAR PDF SALUD ---
     def generar_pdf_salud(df_g, df_m):
         pdf = FPDF()
