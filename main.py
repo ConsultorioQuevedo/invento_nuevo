@@ -415,7 +415,7 @@ elif menu == "💊 AGENDA MEDICA":
         # =========================================================
 elif menu == "📸 ESCANER":
             st.header("📸 Escáner de Documentos")
-         st.info("Módulo en preparación para integración con OpenCV.")
+            st.info("Módulo en preparación para integración con OpenCV.")
 
         elif menu == "📂 ARCHIVADOR":
             st.header("📂 Archivador Digital")
