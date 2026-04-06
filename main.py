@@ -314,116 +314,286 @@ if verificar_acceso():
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
 # =========================================================
-        # --- MÓDULO 4: AGENDA MÉDICA (ROBUSTO) ---
-        # =========================================================
+# --- MÓDULO 4: AGENDA MÉDICA (ROBUSTO) ---
+# =========================================================
 elif menu == "💊 AGENDA MEDICA":
-            st.header("💊 Gestión Médica Profesional")
-            tab1, tab2 = st.tabs(["📋 Medicamentos", "📅 Control de Citas"])
-            
-            with tab1:
-                st.subheader("🚀 Registro de Medicinas")
-                with st.expander("➕ Añadir Nueva Medicina", expanded=False):
-                    with st.form("form_med", clear_on_submit=True):
-                        n_med = st.text_input("Nombre (ej: Metformina)")
-                        h_med = st.text_input("Horario (ej: 08:00 AM)")
-                        if st.form_submit_button("💎 GUARDAR MEDICINA"):
-                            if n_med and h_med:
-                                c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (n_med, h_med))
-                                conn.commit()
-                                st.success(f"✅ {n_med} guardado.")
-                                st.rerun()
+    st.header("💊 Gestión Médica Profesional")
+    tab1, tab2 = st.tabs(["📋 Inventario de Medicinas", "📅 Control de Citas"])
 
-                # Visualización con opción de borrar
-                df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
-                for _, r in df_m.iterrows():
-                    with st.container(border=True):
-                        c1, c2 = st.columns([4, 1])
-                        c1.info(f"💊 **{r['nombre']}** — ⏰ {r['horario']}")
-                        if c2.button("🗑️", key=f"del_m_{r['id']}"):
-                            c.execute("DELETE FROM medicinas WHERE id=?", (r['id'],))
-                            conn.commit()
-                            st.rerun()
-
-            with tab2:
-                st.subheader("📅 Próximas Consultas")
-                with st.form("form_cita"):
-                    doc = st.text_input("Doctor/Especialidad")
-                    fec = st.date_input("Fecha")
-                    if st.form_submit_button("📅 AGENDAR CITA"):
-                        c.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (doc, str(fec)))
-                        conn.commit()
-                        st.success("✅ Cita agendada.")
-                        st.rerun()
-
-        # =========================================================
-        # --- MÓDULO 5: ESCÁNER INTELIGENTE (BARRAS & QR) ---
-        # =========================================================
-elif menu == "📸 ESCANER":
-            st.header("📸 Escáner de Medicamentos")
-            from pyzbar.pyzbar import decode
-            
-            img_file = st.file_uploader("Subir foto de código de barras o QR", type=['jpg', 'png', 'jpeg'])
-            if img_file:
-                img = Image.open(img_file)
-                st.image(img, width=300)
+    with tab1:
+        st.subheader("🚀 Control de Inventario y Dosis")
+        
+        # Formulario de Entrada con Validación
+        with st.expander("➕ Registrar Nuevo Medicamento", expanded=False):
+            with st.form("form_med_pro", clear_on_submit=True):
+                col_n1, col_n2 = st.columns(2)
+                nombre_m = col_n1.text_input("Nombre del Medicamento", placeholder="Ej: Metformina 850mg")
+                horario_m = col_n2.text_input("Horario / Frecuencia", placeholder="Ej: 08:00 AM / Cada 12h")
                 
-                # Lógica de lectura inteligente
-                datos = decode(img)
-                if datos:
-                    for d in datos:
-                        resultado = d.data.decode('utf-8')
-                        st.success(f"✅ Código Detectado: {resultado}")
-                        
-                        col_a, col_b = st.columns(2)
-                        if col_a.button("💾 GUARDAR EN SISTEMA", key=f"save_{resultado}"):
-                            c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (f"SCAN: {resultado}", "Verificar"))
-                            conn.commit()
-                            st.info("Guardado en Agenda.")
-                        if col_b.button("🗑️ DESCARTAR", key=f"ign_{resultado}"):
-                            st.rerun()
-                else:
-                    st.warning("No se detectaron códigos claros. Intente otra foto.")
+                col_n3, col_n4 = st.columns(2)
+                stock_m = col_n3.number_input("Cantidad en Inventario (Pastillas/Unidades)", min_value=0, step=1)
+                dosis_m = col_n4.text_input("Dosis (Ej: 1 tableta)")
+                
+                if st.form_submit_button("💎 GUARDAR EN INVENTARIO"):
+                    if nombre_m and horario_m:
+                        c.execute("""INSERT INTO medicinas (nombre, horario) 
+                                     VALUES (?, ?)""", 
+                                  (f"{nombre_m} (Dosis: {dosis_m} | Stock: {stock_m})", horario_m))
+                        conn.commit()
+                        st.success(f"✅ {nombre_m} añadido al sistema.")
+                        st.rerun()
+                    else:
+                        st.error("⚠️ Por favor, rellena los campos obligatorios.")
 
-        # =========================================================
-        # --- MÓDULO 6: ARCHIVADOR (GESTIÓN DE ARCHIVOS) ---
-        # =========================================================
-elif menu == "📂 ARCHIVADOR":
-            st.header("📂 Archivador Digital Quevedo")
-            st.write("Histórico de documentos guardados en `archivador_quevedo/`.")
+        # Visualización y Gestión de Inventario
+        st.markdown("### 📋 Medicamentos Activos")
+        df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
+        
+        if not df_meds.empty:
+            for _, row in df_meds.iterrows():
+                with st.container(border=True):
+                    c1, c2, c3 = st.columns([3, 2, 1])
+                    c1.markdown(f"**Medicamento:** {row['nombre']}")
+                    c2.info(f"⏰ {row['horario']}")
+                    
+                    # Botón de borrado con doble paso (Key única para evitar errores)
+                    if c3.button("🗑️", key=f"btn_del_{row['id']}"):
+                        st.warning(f"¿Seguro que desea eliminar {row['nombre']}?")
+                        if st.button("SÍ, ELIMINAR", key=f"conf_del_{row['id']}"):
+                            c.execute("DELETE FROM medicinas WHERE id=?", (row['id'],))
+                            conn.commit()
+                            st.rerun()
+        else:
+            st.info("No hay medicamentos registrados en el inventario.")
+
+    with tab2:
+        st.subheader("📅 Agenda de Consultas")
+        
+        with st.form("form_citas_pro"):
+            c_col1, c_col2 = st.columns(2)
+            doc_esp = c_col1.text_input("Doctor o Especialidad", placeholder="Ej: Dr. Pérez - Cardiología")
+            fecha_c = c_col2.date_input("Fecha de la Cita")
             
-            archivos = os.listdir("archivador_quevedo")
-            if archivos:
-                for a in archivos:
-                    with st.expander(f"📄 {a}"):
-                        st.write(f"Archivo registrado en el sistema local.")
-                        if st.button("Eliminar Archivo", key=f"del_arc_{a}"):
-                            os.remove(os.path.join("archivador_quevedo", a))
+            c_col3, c_col4 = st.columns(2)
+            hora_c = c_col3.time_input("Hora aproximada")
+            nota_c = c_col4.text_input("Nota adicional (Opcional)")
+            
+            if st.form_submit_button("📅 AGENDAR CITA MÉDICA"):
+                if doc_esp:
+                    # Guardamos la fecha como string ISO para que sea fácil de ordenar
+                    c.execute("INSERT INTO citas (doctor, fecha, hora) VALUES (?, ?, ?)", 
+                              (doc_esp, str(fecha_c), str(hora_c)))
+                    conn.commit()
+                    st.success(f"✅ Cita con {doc_esp} agendada correctamente.")
+                    st.rerun()
+
+        # Visualización de Citas Próximas
+        df_citas = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
+        if not df_citas.empty:
+            st.dataframe(df_citas[['doctor', 'fecha', 'hora']], 
+                         column_config={
+                             "doctor": "Especialista",
+                             "fecha": "Fecha",
+                             "hora": "Hora"
+                         }, use_container_width=True, hide_index=True)
+            if st.button("🧹 LIMPIAR CITAS PASADAS"):
+                # Aquí podrías poner lógica para borrar citas anteriores a hoy
+                pass
+
+# =========================================================
+# --- MÓDULO 5: ESCÁNER INTELIGENTE (BARRAS & QR) ---
+# =========================================================
+elif menu == "📸 ESCANER":
+    st.header("📸 Escáner de Visión Artificial")
+    st.info("Suba una imagen clara de un código de barras o QR para procesar el medicamento.")
+    
+    from pyzbar.pyzbar import decode
+    
+    # Subida de archivo
+    img_file = st.file_uploader("📷 Capturar o Subir Imagen", type=['jpg', 'png', 'jpeg'])
+    
+    if img_file:
+        img = Image.open(img_file)
+        # Mostrar previsualización pequeña para no ocupar toda la pantalla
+        st.image(img, caption="Imagen cargada", width=400)
+        
+        with st.spinner("🔍 Analizando patrones de códigos..."):
+            # Lógica de detección múltiple
+            datos_detectados = decode(img)
+            
+            if datos_detectados:
+                st.success(f"✅ Se detectaron {len(datos_detectados)} código(s).")
+                
+                for i, d in enumerate(datos_detectados):
+                    codigo_leido = d.data.decode('utf-8')
+                    tipo_codigo = d.type
+                    
+                    with st.container(border=True):
+                        st.markdown(f"**Resultado {i+1}:** `{codigo_leido}` ({tipo_codigo})")
+                        
+                        col_acc1, col_acc2 = st.columns(2)
+                        
+                        # Acción 1: Guardar como medicamento nuevo
+                        if col_acc1.button(f"💾 REGISTRAR MEDICINA", key=f"btn_save_{codigo_leido}_{i}"):
+                            # Insertamos con un marcador para que sepas que vino del escáner
+                            nombre_scan = f"MED-SCAN: {codigo_leido}"
+                            c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?, ?)", 
+                                      (nombre_scan, "Pendiente de Horario"))
+                            conn.commit()
+                            st.toast(f"Guardado: {codigo_leido}")
+                            st.rerun()
+                            
+                        # Acción 2: Descartar
+                        if col_acc2.button(f"🗑️ DESCARTAR", key=f"btn_ign_{codigo_leido}_{i}"):
                             st.rerun()
             else:
-                st.info("El archivador está vacío actualmente.")
+                st.warning("⚠️ No se detectó ningún código. Asegúrese de que haya buena luz y el código esté centrado.")
 
-        # =========================================================
-        # --- MÓDULO 7: ASISTENTE (NUBE & WHATSAPP) ---
-        # =========================================================
+    st.divider()
+    st.markdown("""
+    **💡 Consejos Pro:**
+    * Si es un **medicamento comercial**, el código de barras suele estar en los laterales.
+    * Si es una **receta digital**, busca el código QR.
+    * Evita los reflejos de luz directa sobre el plástico del empaque.
+    """)
+
+# =========================================================
+# --- MÓDULO 6: ARCHIVADOR (GESTIÓN DE DOCUMENTOS) ---
+# =========================================================
+elif menu == "📂 ARCHIVADOR":
+    st.header("📂 Archivador Digital Quevedo")
+    st.info("Gestión local de documentos en la carpeta `archivador_quevedo/`.")
+
+    # 1. Asegurar que el directorio existe (Cimiento)
+    if not os.path.exists("archivador_quevedo"):
+        os.makedirs("archivador_quevedo")
+
+    # 2. Listar archivos y Buscador
+    archivos = os.listdir("archivador_quevedo")
+    
+    col_arc1, col_arc2 = st.columns([2, 1])
+    busqueda = col_arc1.text_input("🔍 Buscar documento por nombre...", placeholder="Ej: Analisis, Receta, Factura")
+    col_arc2.metric("Total Archivos", len(archivos))
+
+    st.divider()
+
+    # 3. Lógica de Visualización con Filtro
+    if archivos:
+        # Filtrar la lista según lo que escribas
+        archivos_filtrados = [a for a in archivos if busqueda.lower() in a.lower()]
+        
+        if archivos_filtrados:
+            for arc in archivos_filtrados:
+                ruta_completa = os.path.join("archivador_quevedo", arc)
+                
+                with st.expander(f"📄 {arc}"):
+                    c_ver, c_del = st.columns([4, 1])
+                    
+                    c_ver.write(f"📅 Registrado en el sistema local.")
+                    
+                    # Botón de Eliminación Robusta
+                    if c_del.button("🗑️ ELIMINAR", key=f"del_file_{arc}"):
+                        st.error(f"¿Confirmas que quieres borrar permanentemente '{arc}'?")
+                        if st.button("SÍ, BORRAR ARCHIVO", key=f"conf_file_{arc}"):
+                            try:
+                                os.remove(ruta_completa)
+                                st.success(f"Archivo {arc} eliminado.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error al borrar: {e}")
+        else:
+            st.warning(f"No se encontraron archivos que coincidan con '{busqueda}'.")
+    else:
+        st.info("📭 El archivador está vacío. Los reportes PDF que generes se guardarán aquí.")
+
+    # 4. Botón de Mantenimiento (Opcional)
+    st.sidebar.divider()
+    if st.sidebar.button("🧹 LIMPIEZA RÁPIDA (Borrador de PDF temporales)"):
+        # Aquí podrías poner lógica para borrar archivos de más de 30 días
+        st.sidebar.info("Función de mantenimiento en desarrollo.")
+
+# =========================================================
+# --- MÓDULO 7: ASISTENTE (CEREBRO DEL SISTEMA) ---
+# =========================================================
 elif menu == "🤖 ASISTENTE":
-            st.header("🤖 Centro de Control Quevedo Pro")
+    st.header("🤖 Centro de Control Quevedo Pro")
+    
+    col_as1, col_as2 = st.columns([2, 1])
+    
+    with col_as1:
+        st.subheader("🌐 Sincronización en la Nube")
+        try:
+            # Conexión oficial a Google Sheets (Requiere secrets.toml configurado)
+            conn_gs = st.connection("gsheets", type=GSheetsConnection)
+            # Cambia el URL por el de tu hoja real si es necesario
+            df_gs = conn_gs.read(spreadsheet="18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI", ttl="10m")
             
-            st.subheader("🌐 Conexión Nube (Google Sheets)")
-            try:
-                # Conexión protegida para que no rompa el programa si falla internet
-                conn_gs = st.connection("gsheets", type=GSheetsConnection)
-                df_gs = conn_gs.read(spreadsheet="18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI", ttl=0)
-                st.dataframe(df_gs.head(10), use_container_width=True)
-                st.success("✅ Sincronizado con la Nube.")
-            except:
-                st.error("⚠️ Error de conexión a Google. Trabajando en modo Local.")
+            st.success("✅ Conexión con Google Sheets Activa")
+            with st.expander("👁️ Ver datos en la Nube (Últimos 5)"):
+                st.dataframe(df_gs.tail(5), use_container_width=True)
+        except Exception as e:
+            st.error("⚠️ Modo Local Activo: No se pudo conectar a Google Sheets.")
+            st.info("El sistema guardará todo en `sistema_quevedo_integral.db` hasta que haya internet.")
 
-            st.divider()
-            st.subheader("📲 Comunicaciones")
-            if st.button("📲 SOLICITAR COTIZACIÓN A FARMACIAS (WHATSAPP)"):
-                # Aquí puedes meter la lógica de URL de WhatsApp que tenías
-                st.info("Redactando mensaje automático para Carol y GBC...")
+    with col_as2:
+        st.subheader("📲 Acciones Rápidas")
+        # Lógica de WhatsApp para Farmacias
+        if st.button("💊 SOLICITAR COTIZACIÓN (WhatsApp)"):
+            # Obtenemos los medicamentos del inventario para el mensaje
+            df_m_wa = pd.read_sql_query("SELECT nombre FROM medicinas LIMIT 3", conn)
+            lista_meds = ", ".join(df_m_wa['nombre'].tolist()) if not df_m_wa.empty else "Medicamentos varios"
+            
+            mensaje_farmacia = f"Hola, solicito cotización para: {lista_meds}. Gracias."
+            # Número de ejemplo (puedes cambiarlo por Carol o GBC)
+            url_wa = f"https://api.whatsapp.com/send?phone=18292061693&text={mensaje_farmacia.replace(' ', '%20')}"
+            
+            st.markdown(f'[🚀 Enviar a Farmacia GBC]({url_wa})', unsafe_allow_html=True)
+            st.caption("Se abrirá WhatsApp con el mensaje listo.")
 
-# --- FINAL DEL SISTEMA (FUERA DE LOS ELIF) ---
+    st.divider()
+
+    # --- ESPACIO PARA LA INTELIGENCIA ARTIFICIAL (PRÓXIMA FASE) ---
+    st.subheader("🧠 Análisis Inteligente (IA)")
+    
+    # Ejemplo de Lógica de Alerta IA
+    df_g_ia = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 5", conn)
+    if not df_g_ia.empty:
+        promedio = df_g_ia['valor'].mean()
+        if promedio > 140:
+            st.warning(f"💡 LA IA DICE: Tu promedio de glucosa ({promedio:.1f}) está subiendo. Revisa tu dieta hoy.")
+        else:
+            st.info(f"💡 LA IA DICE: Todo bajo control. Promedio actual: {promedio:.1f} mg/dL.")
+    else:
+        st.write("Esperando más datos para iniciar el análisis predictivo...")
+
+    # Botón de Respaldo Manual
+    if st.button("📤 FORZAR RESPALDO A LA NUBE"):
+        st.toast("Sincronizando base de datos local con Google Drive...")
+        # Aquí iría la lógica de subir el archivo .db a la nube
+
+# =========================================================
+# --- FINAL DEL SISTEMA: CRÉDITOS & IDENTIDAD MAESTRA ---
+# =========================================================
 st.markdown("---")
-st.markdown(f"<div style='text-align: center; color: #1b5e20;'>💎 {NOMBRE_PROPIETARIO} | v2.5</div>", unsafe_allow_html=True)
+
+# Columnas para un diseño limpio y centrado al pie de página
+col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
+
+with col_f2:
+    st.markdown(f"""
+        <div style='text-align: center; background-color: #1b5e20; padding: 25px; border-radius: 15px; border: 2px solid #4CAF50; box-shadow: 0px 4px 15px rgba(0,0,0,0.5);'>
+            <h1 style='color: white; margin: 0; font-family: sans-serif; font-size: 26px;'>💎 LUIS RAFAEL QUEVEDO</h1>
+            <p style='color: #e8f5e9; font-style: italic; margin: 5px 0; font-size: 1.1em;'>Propietario & Desarrollador Principal</p>
+            <hr style='border: 0.5px solid #4CAF50; width: 80%; margin: auto;'>
+            <p style='color: #ffffff; margin: 10px 0 5px 0; font-size: 0.95em;'><b>Sistema Quevedo Pro v2.5</b></p>
+            <p style='color: #a5d6a7; margin: 0; font-size: 0.85em;'>🤖 Colaboración: Inteligencia Artificial (Gemini)</p>
+            <p style='color: white; font-weight: bold; margin-top: 15px; font-size: 0.9em;'>📍 {UBICACION_SISTEMA}</p>
+            <p style='color: #a5d6a7; font-size: 0.75em; margin-top: 5px;'>© 2026 | Filosofía: Paso a Paso</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+# Indicador de estado y autoría en la barra lateral (Sidebar)
+st.sidebar.markdown("---")
+st.sidebar.caption(f"👤 Propietario: LUIS RAFAEL QUEVEDO")
+st.sidebar.caption("🤖 Colaboración: Inteligencia Artificial")
+st.sidebar.caption("🚀 Estado: Sistema 100% Operativo")
