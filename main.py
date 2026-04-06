@@ -376,100 +376,124 @@ if verificar_acceso():
             else:
                 st.write("No tiene citas pendientes.")
 
-# --- SECCIÓN: ESCÁNER DE PRECISIÓN (BARRAS Y QR) ---
-    elif menu == "📸 ESCANER":
-        st.header("📸 Escáner de Insumos y Documentos")
-        st.info("Coloque el código de barras del medicamento frente a la cámara.")
-
-        # 1. Activación de la cámara
-        foto_captura = st.camera_input("Capturar Código")
-
-elif menu == "🤖 ASISTENTE":
-        st.header("🤖 Asistente Inteligente del Archivador")
-        st.markdown("---")
-
-        # 1. EL CEREBRO: Entrada de datos por Chat
-        st.subheader("✍️ Entrada de Datos Inteligente")
-        input_texto = st.chat_input("Ej: 'Gasto 1500 en repuestos de carro' o 'Pago 2000 de luz'")
-
-        if input_texto:
-            import re
-            msg = input_texto.lower()
-            
-            # Buscamos números (el monto)
-            montos = re.findall(r'\d+', msg)
-            monto_detectado = float(montos[0]) if montos else 0.0
-            
-            # Buscamos la categoría (inteligencia simple)
-            cat_final = "Otros"
-            if any(p in msg for p in ["luz", "agua", "internet", "casa"]): cat_final = "Servicios"
-            elif any(p in msg for p in ["farmacia", "medicina", "doctor"]): cat_final = "Salud"
-            elif any(p in msg for p in ["comida", "super", "cena"]): cat_final = "Alimentos"
-            elif any(p in msg for p in ["carro", "gasolina", "pieza"]): cat_final = "Transporte"
-
-            # GUARDAR EN SESSION STATE PARA REVISIÓN
-            st.session_state['temp_monto'] = monto_detectado
-            st.session_state['temp_cat'] = cat_final
-            st.session_state['temp_desc'] = input_texto
-            st.session_state['esperando_confirmacion'] = True
-
-        # 2. EL FILTRO: Zona de revisión antes de archivar
-        if st.session_state.get('esperando_confirmacion'):
-            st.warning("⚠️ **REVISIÓN PREVIA:** El Asistente interpretó lo siguiente:")
-            
-            col_rev1, col_rev2 = st.columns(2)
-            with col_rev1:
-                nuevo_monto = st.number_input("Monto a Archivar:", value=st.session_state['temp_monto'])
-                nueva_cat = st.selectbox("Categoría detectada:", ["Alimentos", "Salud", "Servicios", "Transporte", "Hogar", "Otros"], 
-                                        index=["Alimentos", "Salud", "Servicios", "Transporte", "Hogar", "Otros"].index(st.session_state['temp_cat']))
-            with col_rev2:
-                nueva_desc = st.text_area("Descripción del registro:", value=st.session_state['temp_desc'])
-
-            c1, c2 = st.columns(2)
-            if c1.button("✅ TODO CORRECTO, ARCHIVAR"):
-                try:
-                    # CONEXIÓN A GOOGLE SHEETS
-                    ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
-                    url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
-                    conn_gs = st.connection("gsheets", type=GSheetsConnection)
-                    
-                    # Leemos datos actuales
-                    df_actual = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1")
-                    
-                    # Creamos la nueva fila
-                    nueva_fila = pd.DataFrame([{
-                        "Fecha": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                        "Categoría": nueva_cat,
-                        "Monto": nuevo_monto,
-                        "Detalle": nueva_desc
-                    }])
-                    
-                    # Unimos y guardamos
-                    df_final = pd.concat([df_actual, nueva_fila], ignore_index=True)
-                    conn_gs.update(spreadsheet=url_hoja, data=df_final, worksheet="Hoja 1")
-                    
-                    st.success("💎 ¡Archivado con éxito en la Nube!")
-                    st.balloons()
-                    st.session_state['esperando_confirmacion'] = False
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error al archivar: {e}")
-
-            if c2.button("❌ CANCELAR"):
-                st.session_state['esperando_confirmacion'] = False
-                st.rerun()
-
-        st.markdown("---")
+# ==========================================
+    # MÓDULO UNIFICADO: INTELIGENCIA QUEVEDO PRO
+    # ==========================================
+    elif menu in ["📸 ESCANER", "🤖 ASISTENTE", "📂 ARCHIVADOR"]:
+        st.header("💎 Centro de Inteligencia y Control")
         
-        # 3. EL ARCHIVADOR: Ver lo que ya está guardado
-        st.subheader("📂 Consulta del Archivador Histórico")
-        try:
-            ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
-            url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
-            conn_gs = st.connection("gsheets", type=GSheetsConnection)
-            df_view = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
+        # Pestañas para organizar la robustez
+        tab_scan, tab_asis = st.tabs(["📸 ESCÁNER DE PRECISIÓN", "🤖 ASISTENTE & ARCHIVADOR"])
+
+        # --- 1. SECCIÓN: ESCÁNER ROBUSTO ---
+        with tab_scan:
+            st.subheader("📸 Captura de Insumos")
+            foto = st.camera_input("Enfoque el código de barras o QR", key="cam_maestra")
             
-            if df_view is not None:
-                st.dataframe(df_view.sort_index(ascending=False), use_container_width=True)
-        except:
-            st.info("Esperando conexión con los datos de Google...")
+            if foto:
+                import cv2
+                from pyzbar.pyzbar import decode
+                
+                img = Image.open(foto)
+                img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+                detecciones = decode(img_cv)
+                
+                if detecciones:
+                    for d in detecciones:
+                        tipo = d.type
+                        dato = d.data.decode('utf-8')
+                        st.success(f"✅ {tipo} Detectado: `{dato}`")
+                        if "http" in dato:
+                            st.link_button("🌐 Abrir Enlace", dato)
+                        
+                        # Guardar automáticamente en el historial local
+                        nombre_img = f"SCAN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                        img.save(os.path.join("archivador_quevedo", nombre_img))
+                        st.caption(f"💾 Imagen protegida en: {nombre_img}")
+                else:
+                    st.warning("⚠️ No se detectó código. Intente con más luz.")
+
+        # --- 2. SECCIÓN: ASISTENTE E INTELIGENCIA DE ARCHIVO ---
+        with tab_asis:
+            st.subheader("🤖 Asistente Virtual Quevedo")
+            
+            # Entrada de texto natural
+            chat_input = st.chat_input("Dime: 'Gasto 1200 en farmacia' o 'Archiva que pagué 3000 de luz'")
+            
+            if chat_input:
+                import re
+                msg = chat_input.lower()
+                
+                # Inteligencia de Extracción
+                montos = re.findall(r'\d+', msg)
+                monto_val = float(montos[0]) if montos else 0.0
+                
+                # Clasificación Inteligente
+                cat_detectada = "Otros"
+                if any(p in msg for p in ["farmacia", "medicina", "pastillas"]): cat_detectada = "Salud"
+                elif any(p in msg for p in ["luz", "agua", "internet"]): cat_detectada = "Servicios"
+                elif any(p in msg for p in ["comida", "super", "almuerzo"]): cat_detectada = "Alimentos"
+                
+                # Pre-llenado para revisión humana
+                st.session_state['revision_activa'] = True
+                st.session_state['datos_temp'] = {
+                    "monto": monto_val,
+                    "categoria": cat_detectada,
+                    "detalle": chat_input
+                }
+
+            # --- 3. EL ARCHIVADOR: INTERFAZ DE CONFIRMACIÓN ---
+            if st.session_state.get('revision_activa'):
+                st.markdown("### 📋 Revisión del Archivador")
+                with st.container(border=True):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        m_final = st.number_input("Monto:", value=st.session_state['datos_temp']['monto'])
+                        cat_final = st.selectbox("Categoría:", ["Salud", "Alimentos", "Servicios", "Otros"], 
+                                               index=["Salud", "Alimentos", "Servicios", "Otros"].index(st.session_state['datos_temp']['categoria']))
+                    with c2:
+                        det_final = st.text_area("Detalle del Registro:", value=st.session_state['datos_temp']['detalle'])
+
+                    col_b1, col_b2 = st.columns(2)
+                    if col_b1.button("💎 CONFIRMAR Y ARCHIVAR EN NUBE"):
+                        try:
+                            # Conexión limpia a Google Sheets
+                            ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
+                            url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
+                            conn_gs = st.connection("gsheets", type=GSheetsConnection)
+                            
+                            df_nube = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1")
+                            
+                            nueva_data = pd.DataFrame([{
+                                "Fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "Categoría": cat_final,
+                                "Monto": m_final,
+                                "Detalle": det_final
+                            }])
+                            
+                            df_actualizado = pd.concat([df_nube, nueva_data], ignore_index=True)
+                            conn_gs.update(spreadsheet=url_hoja, data=df_actualizado, worksheet="Hoja 1")
+                            
+                            st.success("✅ ¡Dato blindado en Google Sheets!")
+                            st.balloons()
+                            st.session_state['revision_activa'] = False
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Error de conexión: {e}")
+
+                    if col_b2.button("🗑️ DESCARTAR"):
+                        st.session_state['revision_activa'] = False
+                        st.rerun()
+
+            # --- VISUALIZACIÓN DEL ARCHIVADOR ---
+            st.divider()
+            st.subheader("📂 Consulta de Registros en la Nube")
+            try:
+                ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
+                url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
+                conn_gs = st.connection("gsheets", type=GSheetsConnection)
+                df_view = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
+                if df_view is not None:
+                    st.dataframe(df_view.sort_index(ascending=False), use_container_width=True)
+            except:
+                st.info("Conectando con el Archivador Maestro...")
