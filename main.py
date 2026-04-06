@@ -325,7 +325,7 @@ elif menu == "📸 ESCANER":
                 st.success("✅ Imagen cargada. Procesando datos...")
 
         # --- SECCIÓN: ARCHIVADOR ---
- elif menu == "📂 ARCHIVADOR":
+elif menu == "📂 ARCHIVADOR":
             st.header("📂 Archivador de Documentos")
             st.markdown("---")
             st.write(f"Carpeta de destino: `archivador_quevedo/`")
