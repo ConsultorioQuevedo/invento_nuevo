@@ -459,7 +459,7 @@ elif menu == "🤖 ASISTENTE":
     st.subheader("📁 Tu Archivador Personal")
     try:
         # Conexión con la 'jodida' llave de Google
-        conn = st.connection("gsheets", type="gsheets")
+        conn = st.connection("gsheets", type=GSheetsConnection)
         df = conn.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
         
         if df is not None:
