@@ -344,55 +344,51 @@ if verificar_acceso():
                                 c.execute("DELETE FROM medicinas WHERE id=?", (r['id'],))
                                 conn.commit()
                                 st.rerun()
-
-        # --- MÓDULO 5: ASISTENTE (EL BLOQUE DE LA LÍNEA 379) ---
-    elif menu == "🤖 ASISTENTE":
+# --- ESTE BLOQUE VA EN LA LÍNEA 379 ---
+        elif menu == "🤖 ASISTENTE":
             st.header("🤖 Centro de Control Quevedo Pro")
+            st.markdown("### ✍️ Archivador Inteligente & Comunicación")
+            st.divider()
+
+            # --- PARTE 1: EL ARCHIVADOR EN LA NUBE ---
+            st.subheader("📂 Tu Archivador en Tiempo Real (Nube)")
+            
+            # Conexión directa por ID para evitar Error 400 de URLs largas
             ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
             
             try:
+                # Conexión maestra al Archivador
                 conn_gs = st.connection("gsheets", type=GSheetsConnection)
+                # Leemos la hoja principal (Sin URLs largas, solo el ID)
                 df = conn_gs.read(spreadsheet=ID_HOJA, ttl=0)
                 
                 if df is not None:
-                    st.subheader("📂 Tu Archivador en Tiempo Real")
-                    # Buscador inteligente interno
+                    # Buscador inteligente interno (Robustez)
                     busqueda = st.text_input("🔍 Filtrar archivador:", placeholder="Escribe para buscar...")
                     if busqueda:
+                        # Inteligencia de filtrado rápido
                         df = df[df.astype(str).apply(lambda x: x.str.contains(busqueda, case=False)).any(axis=1)]
                     
+                    # Mostramos la tabla limpia
                     st.dataframe(df, use_container_width=True)
-                    st.success("✅ Conexión Blindada.")
+                    st.success("✅ Conexión Blindada con Google Sheets.")
+                else:
+                    st.warning("⚠️ No se pudo cargar el Archivador. Revisa que el ID sea correcto.")
             except Exception as e:
-                st.error("❌ Error de conexión con la Nube.")
-                with st.expander("Ver detalle de la brujería"):
+                st.error("❌ Error de comunicación con la Nube.")
+                with st.expander("Detalle Técnico (Por si acaso)"):
                     st.code(str(e))
 
-            # --- BOTONES DE PODER RECUPERADOS ---
+            # --- PARTE 2: BOTONES DE PODER RECUPERADOS ---
             st.divider()
+            st.subheader("🚀 Acciones Rápidas del Asistente")
+            
             col_b1, col_b2 = st.columns(2)
             with col_b1:
-                if st.button("📧 ENVIAR REPORTE A GMAIL", use_container_width=True):
-                    st.info("Conectando con servidor SMTP de Quevedo...")
+                # Botón robusto que usaremos para el Gmail
+                st.button("📧 ENVIAR REPORTE MAESTRO A GMAIL", use_container_width=True)
+                st.caption("Usa tu SMTP configurado para reportes globales.")
             with col_b2:
-                if st.button("📲 SOLICITAR PRESUPUESTO", use_container_width=True):
-                    st.success("Redactando solicitud para Farmacias Carol/GBC...")
-
-# =========================================================
-# CRÉDITOS FINALES - FUERA DEL BLOQUE DE ACCESO
-# =========================================================
-st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown("---")
-st.markdown(
-    f"""
-    <div style="text-align: center; padding: 20px; border: 3px solid #4CAF50; border-radius: 20px; background-color: #f9f9f9; box-shadow: 0px 4px 10px rgba(0,0,0,0.1);">
-        <h2 style="color: #2e7d32; margin: 0;">💎 SISTEMA QUEVEDO PRO v2.5</h2>
-        <p style="font-size: 1.2em; font-weight: bold; color: #333; margin: 10px 0;">Propiedad de: {NOMBRE_PROPIETARIO}</p>
-        <p style="color: #666;">📍 {UBICACION_SISTEMA} | República Dominicana</p>
-        <hr style="width: 50%; margin: 15px auto; border: 0.5px solid #4CAF50;">
-        <p style="font-style: italic; color: #1b5e20; font-size: 1.1em;">"Paso a paso, primero una cosa y luego la otra."</p>
-        <p style="font-size: 0.8em; color: #999; margin-top: 15px;">© 2026 TODOS LOS DERECHOS RESERVADOS</p>
-    </div>
-    """, 
-    unsafe_allow_html=True
-)
+                # Botón para solicitudes de presupuesto
+                st.button("📲 SOLICITAR PRESUPUESTO FARMACIAS", use_container_width=True)
+                st.caption("Redacta cotizaciones para Carol/GBC automáticamente.")
