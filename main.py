@@ -175,7 +175,6 @@ if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
                     conn.commit()
                     st.rerun()
 
-
  menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
 
   # =========================================================
