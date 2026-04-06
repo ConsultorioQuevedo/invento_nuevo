@@ -386,28 +386,37 @@ if verificar_acceso():
 
 elif menu == "🤖 ASISTENTE":
         st.header("🤖 Asistente Inteligente Quevedo")
-        # ID de tu hoja de Google Sheets
+        
+        # 1. Definimos la conexión (Asegúrate de tener GSheetsConnection importado arriba)
         ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
         url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
         
         try:
-            # Conexión limpia
+            # Conexión maestra al Archivador
             conn_gs = st.connection("gsheets", type=GSheetsConnection)
             df = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
+            
             if df is not None:
                 st.subheader("📁 Tu Archivador Personal")
                 st.dataframe(df, use_container_width=True)
                 st.success("✅ Conexión con Google Sheets exitosa.")
         except Exception as e:
-            st.error("❌ Error de conexión con el Archivador.")
+            st.error("❌ El archivador está oculto por un error de conexión.")
             with st.expander("Ver detalle técnico"):
                 st.code(str(e))
 
-        # --- EL CHAT DEL ASISTENTE ---
+        # 2. El Cerebro del Asistente (Chat)
         st.markdown("---")
-        entrada_usuario = st.chat_input("Escribe aquí (ej: Gasto 500 en farmacia)")
+        entrada_usuario = st.chat_input("Dime: 'Gasto 500 en farmacia' o 'Ver resumen'")
+        
         if entrada_usuario:
-            st.info(f"🤖 Has dicho: '{entrada_usuario}'. Procesando...")
+            import re  # Para que el chat entienda números
+            msg = entrada_usuario.lower()
+            st.info(f"🤖 Has dicho: '{entrada_usuario}'")
+            
+            if any(p in msg for p in ["gasto", "pague", "costo"]):
+                montos = re.findall(r'\d+', msg)
+                if montos:
+                    st.success(f"🤖 Entendido, registraré un gasto de RD$ {montos[0]}.")
+                    st.balloons()
 
-
-  
