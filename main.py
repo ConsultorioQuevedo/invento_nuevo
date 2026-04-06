@@ -180,7 +180,7 @@ if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
         # =========================================================
         # --- MÓDULO 4: AGENDA MÉDICA (RECONECTADO) ---
         # =========================================================
-        elif menu == "💊 AGENDA MEDICA":
+elif menu == "💊 AGENDA MEDICA":
             st.header("💊 Gestión Médica Profesional")
             tab1, tab2 = st.tabs(["📋 Inventario de Medicinas", "📅 Control de Citas"])
 
@@ -225,7 +225,7 @@ if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
         # =========================================================
         # --- MÓDULO 5: ESCÁNER INTELIGENTE ---
         # =========================================================
-        elif menu == "📸 ESCANER":
+elif menu == "📸 ESCANER":
             st.header("📸 Escáner de Visión Artificial")
             from pyzbar.pyzbar import decode
             img_file = st.file_uploader("📷 Subir Imagen", type=['jpg', 'png', 'jpeg'])
@@ -247,7 +247,7 @@ if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
         # =========================================================
         # --- MÓDULO 6: ARCHIVADOR ---
         # =========================================================
-        elif menu == "📂 ARCHIVADOR":
+elif menu == "📂 ARCHIVADOR":
             st.header("📂 Archivador Digital Quevedo")
             archivos = os.listdir("archivador_quevedo")
             if archivos:
@@ -262,7 +262,7 @@ if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
         # =========================================================
         # --- MÓDULO 7: ASISTENTE (IA) ---
         # =========================================================
-        elif menu == "🤖 ASISTENTE":
+elif menu == "🤖 ASISTENTE":
             st.header("🤖 Centro de Control Quevedo Pro")
             col_as1, col_as2 = st.columns(2)
             with col_as1:
