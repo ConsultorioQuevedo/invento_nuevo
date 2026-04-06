@@ -376,7 +376,7 @@ if verificar_acceso():
             else:
                 st.write("No tiene citas pendientes.")
 
-  elif menu == "🤖 ASISTENTE":
+   elif menu == "🤖 ASISTENTE":
         st.header("🤖 Centro de Control Quevedo Pro")
         
         # --- NUEVA ESTRATEGIA DE CONEXIÓN ---
