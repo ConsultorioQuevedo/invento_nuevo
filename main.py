@@ -181,7 +181,7 @@ if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
     # --- BLOQUE DE NAVEGACIÓN: EL MOTOR DEL SISTEMA ---
     # =========================================================
     
-    if menu == "🏠 INICIO (RESUMEN)":
+if menu == "🏠 INICIO (RESUMEN)":
         st.header("📊 Resumen Ejecutivo del Sistema")
         c1, c2, c3 = st.columns(3)
         
