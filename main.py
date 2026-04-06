@@ -314,7 +314,7 @@ if verificar_acceso():
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
    # --- SECCIÓN: ESCANER (Línea 317 - REPARADA) ---
-        elif menu == "📸 ESCANER":
+elif menu == "📸 ESCANER":
             st.header("📸 Escáner de Documentos Quevedo Pro")
             st.markdown("---")
             st.info("Paso a paso: Este módulo procesará tus recetas y códigos QR.")
@@ -325,7 +325,7 @@ if verificar_acceso():
                 st.success("✅ Imagen cargada. Procesando datos...")
 
         # --- SECCIÓN: ARCHIVADOR ---
-        elif menu == "📂 ARCHIVADOR":
+ elif menu == "📂 ARCHIVADOR":
             st.header("📂 Archivador de Documentos")
             st.markdown("---")
             st.write(f"Carpeta de destino: `archivador_quevedo/`")
@@ -339,7 +339,7 @@ if verificar_acceso():
                 st.info("El archivador local está vacío.")
 
         # --- SECCIÓN: ASISTENTE (CONEXIÓN SEGURA) ---
-        elif menu == "🤖 ASISTENTE":
+ elif menu == "🤖 ASISTENTE":
             st.header("🤖 Asistente Inteligente")
             st.markdown("---")
             st.warning("⚠️ Conexión con Google Sheets en mantenimiento. Usando base de datos local.")
