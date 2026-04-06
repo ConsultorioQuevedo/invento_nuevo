@@ -490,7 +490,7 @@ if verificar_acceso():
             st.subheader("📂 Consulta de Registros en la Nube")
             try:
                 ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
-                url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
+                df = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja%201", ttl=0)
                 conn_gs = st.connection("gsheets", type=GSheetsConnection)
                 df_view = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
                 if df_view is not None:
