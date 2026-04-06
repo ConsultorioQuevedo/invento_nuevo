@@ -320,7 +320,7 @@ elif menu == "📸 ESCANER":
             # Aquí va tu lógica de OpenCV/Pillow que desees integrar
 
         # --- SECCIÓN 4: ARCHIVADOR ---
-        elif menu == "📂 ARCHIVADOR":
+elif menu == "📂 ARCHIVADOR":
             st.header("📂 Archivador de Documentos Local")
             st.write("Gestión de archivos guardados en 'archivador_quevedo'.")
 
