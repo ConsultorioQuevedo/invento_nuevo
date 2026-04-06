@@ -310,7 +310,7 @@ if verificar_acceso():
 
 
 
-       else:
+    else:
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
         # --- SECCIÓN 3: ESCANER ---
