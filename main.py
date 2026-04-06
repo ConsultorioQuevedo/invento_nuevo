@@ -309,12 +309,5 @@ elif menu == "🤖 ASISTENTE":
             url_wa = "https://api.whatsapp.com/send?phone=18292061693&text=Hola,%20cotizame%20mis%20medicamentos."
             st.markdown(f'[🚀 Enviar Mensaje]({url_wa})', unsafe_allow_html=True)
 
-    # =========================================================
-    # --- FINAL DEL SISTEMA: CRÉDITOS MAESTROS (FUERA) ---
-    # =========================================================
+    
 
-
-    st.sidebar.markdown("---")
-    st.sidebar.caption(f"👤 Propietario: LUIS RAFAEL QUEVEDO")
-    st.sidebar.caption("🚀 Estado: Sistema 100% Operativo")    
-       
