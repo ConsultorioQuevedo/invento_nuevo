@@ -375,41 +375,57 @@ if verificar_acceso():
                         st.rerun()
             else:
                 st.write("No tiene citas pendientes.")
-
-elif menu == "🤖 ASISTENTE":
-        st.header("🤖 Centro de Control Quevedo Pro")
-        
-        # --- NUEVA ESTRATEGIA DE CONEXIÓN ---
-        # Solo necesitamos el ID, no la URL larga que se rompe
-        ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
-        
-        try:
-            # Conexión directa usando solo el ID
-            conn_gs = st.connection("gsheets", type=GSheetsConnection)
-            # Intentamos leer la hoja completa sin parámetros extraños en la URL
-            df = conn_gs.read(spreadsheet=ID_HOJA, ttl=0)
+# --- ESTE ES EL BLOQUE QUE VA EN LA LÍNEA 379 ---
+        elif menu == "🤖 ASISTENTE":
+            st.header("🤖 Centro de Control Quevedo Pro")
             
-            if df is not None:
-                st.subheader("📂 Tu Archivador en Tiempo Real")
-                st.dataframe(df, use_container_width=True)
-                st.success("✅ ¡CONEXIÓN EXITOSA!")
-        except Exception as e:
-            st.error("❌ Error de comunicación con la Nube.")
-            st.warning("Revisa que el archivo de Google Sheets sea 'Público' o que el correo del robot sea 'Editor'.")
-            with st.expander("Detalle Técnico para Quevedo"):
-                st.code(str(e))
+            # Solo el ID, sin URLs largas que den Error 400
+            ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
+            
+            try:
+                conn_gs = st.connection("gsheets", type=GSheetsConnection)
+                # Leemos la hoja principal (Asegúrate que en el Excel se llame 'Hoja 1' o 'DB_QUEVEDO')
+                df = conn_gs.read(spreadsheet=ID_HOJA, ttl=0)
+                
+                if df is not None:
+                    st.subheader("📂 Tu Archivador en Tiempo Real")
+                    st.dataframe(df, use_container_width=True)
+                    st.success("✅ Conexión Blindada con Google Sheets.")
+            except Exception as e:
+                st.error("❌ Error de comunicación con la Nube.")
+                with st.expander("Detalle Técnico"):
+                    st.code(str(e))
 
-        # --- RECUPERACIÓN DE BOTONES Y CRÉDITOS ---
-        st.divider()
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("📧 ENVIAR REPORTE A GMAIL"):
-                st.info("Función de correo en proceso...")
-        with col2:
-            # Aquí va el botón de presupuesto que querías
-            st.button("📲 SOLICITAR PRESUPUESTO")
+            # --- BOTONES RECUPERADOS ---
+            st.divider()
+            col_b1, col_b2 = st.columns(2)
+            with col_b1:
+                if st.button("📧 ENVIAR REPORTE A GMAIL"):
+                    st.info("Función de correo: Conectando con tu cuenta...")
+            with col_b2:
+                if st.button("📲 SOLICITAR PRESUPUESTO"):
+                    st.success("Generando mensaje para farmacias...")
 
-
+    # --- FUERA DEL BLOQUE DE ACCESO (AL FINAL DEL ARCHIVO) ---
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown(
+        f"""
+        <div style="text-align: center; padding: 20px; border: 2px solid #4CAF50; border-radius: 15px; background-color: #f9f9f9;">
+            <h2 style="color: #2e7d32; margin: 0;">💎 SISTEMA QUEVEDO PRO v2.5</h2>
+            <p style="font-size: 1.1em; font-weight: bold; color: #333; margin: 10px 0;">
+                Propiedad de: {NOMBRE_PROPIETARIO}
+            </p>
+            <p style="color: #666; margin: 5px 0;">📍 {UBICACION_SISTEMA} | República Dominicana</p>
+            <hr style="width: 50%; margin: 15px auto; border: 0.5px solid #ccc;">
+            <p style="font-style: italic; color: #1b5e20; font-size: 1em;">
+                "Paso a paso, primero una cosa y luego la otra."
+            </p>
+            <p style="font-size: 0.7em; color: #999; margin-top: 15px;">© 2026 Todos los derechos reservados.</p>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
 # =========================================================
 # CRÉDITOS Y FIRMA DE PROPIEDAD - SISTEMA QUEVEDO PRO
 # =========================================================
