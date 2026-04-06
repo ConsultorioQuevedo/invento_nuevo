@@ -416,8 +416,7 @@ elif menu == "💊 AGENDA MEDICA":
 elif menu == "📸 ESCANER":
             st.header("📸 Escáner de Documentos")
             st.info("Módulo en preparación para integración con OpenCV.")
-
-        elif menu == "📂 ARCHIVADOR":
+elif menu == "📂 ARCHIVADOR":
             st.header("📂 Archivador Digital")
             st.write("Gestión de archivos locales en la carpeta `archivador_quevedo`.")
 
