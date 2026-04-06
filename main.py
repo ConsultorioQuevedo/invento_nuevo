@@ -313,116 +313,117 @@ if verificar_acceso():
     else:
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
- # =========================================================
-        # --- MÓDULO 4: AGENDA MÉDICA (RECONSTRUCCIÓN ROBUSTA) ---
+# =========================================================
+        # --- MÓDULO 4: AGENDA MÉDICA (ROBUSTO) ---
         # =========================================================
 elif menu == "💊 AGENDA MEDICA":
             st.header("💊 Gestión Médica Profesional")
-            st.markdown("---")
+            tab1, tab2 = st.tabs(["📋 Medicamentos", "📅 Control de Citas"])
             
-            # Pestañas para organizar la información
-            tab_meds, tab_citas = st.tabs(["📋 Control de Medicamentos", "📅 Agenda de Consultas"])
-            
-            # --- SUB-MÓDULO: MEDICAMENTOS ---
-            with tab_meds:
-                st.subheader("🚀 Inteligencia Farmacéutica")
-                
-                # Formulario de Registro
-                with st.expander("➕ Registrar Nuevo Medicamento", expanded=False):
-                    with st.form("registro_medicina", clear_on_submit=True):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            nombre_m = st.text_input("Nombre del Medicamento", placeholder="Ej: Metformina 850mg")
-                        with col2:
-                            horario_m = st.text_input("Frecuencia/Horario", placeholder="Ej: 08:00 AM / 08:00 PM")
-                        
-                        indicaciones = st.text_area("Notas adicionales (Dosis, con comida, etc.)")
-                        
-                        if st.form_submit_button("💎 GUARDAR EN BASE DE DATOS"):
-                            if nombre_m and horario_m:
-                                try:
-                                    c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nombre_m, horario_m))
-                                    conn.commit()
-                                    st.success(f"✅ {nombre_m} registrado correctamente.")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Error al guardar: {e}")
-                            else:
-                                st.warning("Por favor rellene los campos obligatorios.")
+            with tab1:
+                st.subheader("🚀 Registro de Medicinas")
+                with st.expander("➕ Añadir Nueva Medicina", expanded=False):
+                    with st.form("form_med", clear_on_submit=True):
+                        n_med = st.text_input("Nombre (ej: Metformina)")
+                        h_med = st.text_input("Horario (ej: 08:00 AM)")
+                        if st.form_submit_button("💎 GUARDAR MEDICINA"):
+                            if n_med and h_med:
+                                c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (n_med, h_med))
+                                conn.commit()
+                                st.success(f"✅ {n_med} guardado.")
+                                st.rerun()
 
-                # Visualización y Gestión de Medicinas Existentes
-                st.markdown("### 💊 Tratamientos Activos")
-                try:
-                    df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
-                    if not df_meds.empty:
-                        for _, med in df_meds.iterrows():
-                            with st.container(border=True):
-                                c_info, c_acc = st.columns([4, 1])
-                                c_info.markdown(f"**Medicamento:** {med['nombre']}")
-                                c_info.markdown(f"⏰ **Horario:** {med['horario']}")
-                                if c_acc.button("🗑️ Eliminar", key=f"del_m_{med['id']}"):
-                                    c.execute("DELETE FROM medicinas WHERE id=?", (med['id'],))
-                                    conn.commit()
-                                    st.rerun()
-                    else:
-                        st.info("No hay medicamentos registrados actualmente.")
-                except Exception as e:
-                    st.error(f"Error al leer medicinas: {e}")
+                # Visualización con opción de borrar
+                df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+                for _, r in df_m.iterrows():
+                    with st.container(border=True):
+                        c1, c2 = st.columns([4, 1])
+                        c1.info(f"💊 **{r['nombre']}** — ⏰ {r['horario']}")
+                        if c2.button("🗑️", key=f"del_m_{r['id']}"):
+                            c.execute("DELETE FROM medicinas WHERE id=?", (r['id'],))
+                            conn.commit()
+                            st.rerun()
 
-            # --- SUB-MÓDULO: CITAS MÉDICAS ---
-            with tab_citas:
-                st.subheader("📅 Control de Consultas")
-                
-                with st.expander("➕ Programar Nueva Consulta"):
-                    with st.form("registro_cita", clear_on_submit=True):
-                        doc = st.text_input("Doctor o Especialidad", placeholder="Ej: Dr. Pérez - Cardiología")
-                        f_cita = st.date_input("Fecha de la Cita")
-                        h_cita = st.time_input("Hora aproximada")
-                        
-                        if st.form_submit_button("📅 AGENDAR CONSULTA"):
-                            if doc:
-                                try:
-                                    fecha_str = f_cita.strftime("%Y-%m-%d")
-                                    hora_str = h_cita.strftime("%I:%M %p")
-                                    c.execute("INSERT INTO citas (doctor, fecha, hora) VALUES (?,?,?)", (doc, fecha_str, hora_str))
-                                    conn.commit()
-                                    st.success(f"✅ Cita con {doc} agendada para el {fecha_str}")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Error al agendar: {e}")
-
-                # Listado de Citas Pendientes
-                st.markdown("### 🗓️ Próximas Visitas")
-                try:
-                    df_citas = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
-                    if not df_citas.empty:
-                        for _, cita in df_citas.iterrows():
-                            with st.container(border=True):
-                                ci_info, ci_acc = st.columns([4, 1])
-                                ci_info.warning(f"👨‍⚕️ **{cita['doctor']}**")
-                                ci_info.write(f"📅 Fecha: {cita['fecha']} | ⏰ Hora: {cita['hora']}")
-                                if ci_acc.button("🗑️ Cancelar", key=f"del_c_{cita['id']}"):
-                                    c.execute("DELETE FROM citas WHERE id=?", (cita['id'],))
-                                    conn.commit()
-                                    st.rerun()
-                    else:
-                        st.info("No hay citas programadas.")
-                except Exception as e:
-                    st.error(f"Error al leer citas: {e}")
+            with tab2:
+                st.subheader("📅 Próximas Consultas")
+                with st.form("form_cita"):
+                    doc = st.text_input("Doctor/Especialidad")
+                    fec = st.date_input("Fecha")
+                    if st.form_submit_button("📅 AGENDAR CITA"):
+                        c.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (doc, str(fec)))
+                        conn.commit()
+                        st.success("✅ Cita agendada.")
+                        st.rerun()
 
         # =========================================================
-        # --- MÓDULOS RESTANTES (ESCANER, ARCHIVADOR, ASISTENTE) ---
+        # --- MÓDULO 5: ESCÁNER INTELIGENTE (BARRAS & QR) ---
         # =========================================================
 elif menu == "📸 ESCANER":
-            st.header("📸 Escáner de Documentos")
-            st.info("Módulo en preparación para integración con OpenCV.")
-elif menu == "📂 ARCHIVADOR":
-            st.header("📂 Archivador Digital")
-            st.write("Gestión de archivos locales en la carpeta `archivador_quevedo`.")
-elif menu == "🤖 ASISTENTE":
-            st.header("🤖 Centro de Inteligencia")
-            st.write("Aquí se gestionará la comunicación vía WhatsApp y reportes avanzados.")
+            st.header("📸 Escáner de Medicamentos")
+            from pyzbar.pyzbar import decode
+            
+            img_file = st.file_uploader("Subir foto de código de barras o QR", type=['jpg', 'png', 'jpeg'])
+            if img_file:
+                img = Image.open(img_file)
+                st.image(img, width=300)
+                
+                # Lógica de lectura inteligente
+                datos = decode(img)
+                if datos:
+                    for d in datos:
+                        resultado = d.data.decode('utf-8')
+                        st.success(f"✅ Código Detectado: {resultado}")
+                        
+                        col_a, col_b = st.columns(2)
+                        if col_a.button("💾 GUARDAR EN SISTEMA", key=f"save_{resultado}"):
+                            c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (f"SCAN: {resultado}", "Verificar"))
+                            conn.commit()
+                            st.info("Guardado en Agenda.")
+                        if col_b.button("🗑️ DESCARTAR", key=f"ign_{resultado}"):
+                            st.rerun()
+                else:
+                    st.warning("No se detectaron códigos claros. Intente otra foto.")
 
-# --- SELLO FINAL (FUERA DE LA LÓGICA DE MENÚ) ---
+        # =========================================================
+        # --- MÓDULO 6: ARCHIVADOR (GESTIÓN DE ARCHIVOS) ---
+        # =========================================================
+elif menu == "📂 ARCHIVADOR":
+            st.header("📂 Archivador Digital Quevedo")
+            st.write("Histórico de documentos guardados en `archivador_quevedo/`.")
+            
+            archivos = os.listdir("archivador_quevedo")
+            if archivos:
+                for a in archivos:
+                    with st.expander(f"📄 {a}"):
+                        st.write(f"Archivo registrado en el sistema local.")
+                        if st.button("Eliminar Archivo", key=f"del_arc_{a}"):
+                            os.remove(os.path.join("archivador_quevedo", a))
+                            st.rerun()
+            else:
+                st.info("El archivador está vacío actualmente.")
+
+        # =========================================================
+        # --- MÓDULO 7: ASISTENTE (NUBE & WHATSAPP) ---
+        # =========================================================
+elif menu == "🤖 ASISTENTE":
+            st.header("🤖 Centro de Control Quevedo Pro")
+            
+            st.subheader("🌐 Conexión Nube (Google Sheets)")
+            try:
+                # Conexión protegida para que no rompa el programa si falla internet
+                conn_gs = st.connection("gsheets", type=GSheetsConnection)
+                df_gs = conn_gs.read(spreadsheet="18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI", ttl=0)
+                st.dataframe(df_gs.head(10), use_container_width=True)
+                st.success("✅ Sincronizado con la Nube.")
+            except:
+                st.error("⚠️ Error de conexión a Google. Trabajando en modo Local.")
+
+            st.divider()
+            st.subheader("📲 Comunicaciones")
+            if st.button("📲 SOLICITAR COTIZACIÓN A FARMACIAS (WHATSAPP)"):
+                # Aquí puedes meter la lógica de URL de WhatsApp que tenías
+                st.info("Redactando mensaje automático para Carol y GBC...")
+
+# --- FINAL DEL SISTEMA (FUERA DE LOS ELIF) ---
 st.markdown("---")
-st.markdown(f"<div style='text-align: center; color: #1b5e20;'>💎 {NOMBRE_PROPIETARIO} | Sistema Quevedo Pro v2.5</div>", unsafe_allow_html=True) 
+st.markdown(f"<div style='text-align: center; color: #1b5e20;'>💎 {NOMBRE_PROPIETARIO} | v2.5</div>", unsafe_allow_html=True)
