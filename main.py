@@ -376,7 +376,7 @@ if verificar_acceso():
             else:
                 st.write("No tiene citas pendientes.")
 # --- ESTE ES EL BLOQUE QUE VA EN LA LÍNEA 379 ---
-     elif menu == "🤖 ASISTENTE":
+elif menu == "🤖 ASISTENTE":
             st.header("🤖 Centro de Control Quevedo Pro")
             
             # Solo el ID, sin URLs largas que den Error 400
