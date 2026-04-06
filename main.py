@@ -311,10 +311,12 @@ if verificar_acceso():
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
             st.caption("Redacta cotizaciones para Carol/GBC automáticamente.")
-# ==========================================
-        # --- MÓDULO 4: AGENDA MÉDICA (COMPLETO) ---
-        # ==========================================
-elif menu == "💊 AGENDA MEDICA":
+
+
+# =========================================================
+        # --- MÓDULO 4: AGENDA MÉDICA (ESTRUCTURA DE HIERRO) ---
+        # =========================================================
+        elif menu == "💊 AGENDA MEDICA":
             st.header("💊 Gestión Médica Profesional")
             tab1, tab2 = st.tabs(["📋 Medicamentos Actuales", "📅 Control de Citas"])
             
@@ -324,40 +326,70 @@ elif menu == "💊 AGENDA MEDICA":
                     with st.form("form_medicina", clear_on_submit=True):
                         col_m1, col_m2 = st.columns(2)
                         with col_m1:
-                            n_med = st.text_input("Nombre del Medicamento")
+                            n_med = st.text_input("Nombre del Medicamento", placeholder="Ej: Metformina")
                         with col_m2:
                             h_med = st.text_input("Horario (ej: 08:00 AM)")
                         if st.form_submit_button("💎 GUARDAR EN AGENDA"):
                             if n_med and h_med:
-                                c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (n_med, h_med))
-                                conn.commit()
-                                st.success(f"✅ {n_med} guardado.")
-                                st.rerun()
+                                try:
+                                    c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (n_med, h_med))
+                                    conn.commit()
+                                    st.success(f"✅ {n_med} guardado con éxito.")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error en BD: {e}")
 
-                # Visualización con eliminación individual
-                df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
-                if not df_m.empty:
-                    for _, r in df_m.iterrows():
-                        with st.container(border=True):
-                            c_it, c_bt = st.columns([4, 1])
-                            c_it.info(f"💊 **{r['nombre']}** — ⏰ {r['horario']}")
-                            if c_bt.button("🗑️", key=f"del_m_{r['id']}"):
-                                c.execute("DELETE FROM medicinas WHERE id=?", (r['id'],))
-                                conn.commit()
-                                st.rerun()
+                # Visualización con borrado individual inteligente
+                try:
+                    df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+                    if not df_m.empty:
+                        st.markdown("---")
+                        for _, r in df_m.iterrows():
+                            with st.container(border=True):
+                                c_txt, c_del = st.columns([4, 1])
+                                c_txt.info(f"💊 **{r['nombre']}** — ⏰ {r['horario']}")
+                                if c_del.button("🗑️", key=f"del_med_{r['id']}"):
+                                    c.execute("DELETE FROM medicinas WHERE id=?", (r['id'],))
+                                    conn.commit()
+                                    st.rerun()
+                    else:
+                        st.info("No hay medicinas registradas en la agenda local.")
+                except:
+                    st.error("Error al leer la tabla de medicinas.")
 
             with tab2:
-                st.subheader("📅 Control de Citas")
-                # (Aquí puedes seguir la misma lógica para las citas)
-                st.info("Módulo de citas activo y listo para registro.")
+                st.subheader("📅 Control de Consultas")
+                with st.expander("➕ Programar Nueva Cita"):
+                    with st.form("form_cita", clear_on_submit=True):
+                        doc_c = st.text_input("Doctor / Especialidad")
+                        fec_c = st.date_input("Fecha")
+                        if st.form_submit_button("📅 AGENDAR CITA"):
+                            if doc_c:
+                                c.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (doc_c, str(fec_c)))
+                                conn.commit()
+                                st.success(f"✅ Cita con {doc_c} agendada.")
+                                st.rerun()
+                
+                # Listado de citas
+                df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
+                if not df_c.empty:
+                    for _, r in df_c.iterrows():
+                        with st.container(border=True):
+                            ct_txt, ct_del = st.columns([4, 1])
+                            ct_txt.warning(f"👨‍⚕️ **{r['doctor']}** — 📅 {r['fecha']}")
+                            if ct_del.button("🗑️", key=f"del_cita_{r['id']}"):
+                                c.execute("DELETE FROM citas WHERE id=?", (r['id'],))
+                                conn.commit()
+                                st.rerun()
 
-        # ==========================================
-        # --- MÓDULO 5: ASISTENTE & ARCHIVADOR   ---
-        # ==========================================
-elif menu == "🤖 ASISTENTE":
+        # =========================================================
+        # --- MÓDULO 5: ASISTENTE & ARCHIVADOR (GOOGLE SHEETS) ---
+        # =========================================================
+        elif menu == "🤖 ASISTENTE":
             st.header("🤖 Centro de Control Quevedo Pro")
             st.markdown("### ✍️ Archivador Inteligente & Comunicación")
             
+            # Conexión directa por ID (Evita Error 400 y URL can't contain control characters)
             ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
             
             try:
@@ -365,34 +397,36 @@ elif menu == "🤖 ASISTENTE":
                 df = conn_gs.read(spreadsheet=ID_HOJA, ttl=0)
                 
                 if df is not None:
-                    st.subheader("📂 Tu Archivador en Tiempo Real")
-                    busqueda = st.text_input("🔍 Filtrar archivador:", placeholder="Escribe para buscar...")
-                    if busqueda:
-                        df = df[df.astype(str).apply(lambda x: x.str.contains(busqueda, case=False)).any(axis=1)]
+                    st.subheader("📂 Tu Archivador en Tiempo Real (Nube)")
+                    # Buscador dinámico
+                    query = st.text_input("🔍 Buscar en el archivador:", placeholder="Escribe para filtrar...")
+                    if query:
+                        df = df[df.astype(str).apply(lambda x: x.str.contains(query, case=False)).any(axis=1)]
+                    
                     st.dataframe(df, use_container_width=True)
                     st.success("✅ Conexión con Google Sheets Blindada.")
             except Exception as e:
                 st.error("❌ Error de comunicación con la Nube.")
-                with st.expander("Detalle Técnico"):
+                with st.expander("Detalle Técnico (Brujería)"):
                     st.code(str(e))
 
             st.divider()
             col_b1, col_b2 = st.columns(2)
             with col_b1:
-                if st.button("📧 ENVIAR REPORTE A GMAIL", use_container_width=True):
-                    st.info("Conectando con servidor SMTP...")
+                if st.button("📧 ENVIAR REPORTE MAESTRO A GMAIL", use_container_width=True):
+                    st.info("Generando reporte SMTP... Conectando con tu correo.")
             with col_b2:
-                if st.button("📲 SOLICITAR PRESUPUESTO", use_container_width=True):
-                    st.success("Generando orden para farmacias...")
+                if st.button("📲 SOLICITAR PRESUPUESTO FARMACIAS", use_container_width=True):
+                    st.success("Redactando solicitud para Carol y GBC...")
 
 # =========================================================
-# CRÉDITOS FINALES (PEGADOS AL MARGEN IZQUIERDO)
+# CRÉDITOS Y SELLO DE PROPIEDAD (FINAL ABSOLUTO)
 # =========================================================
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("---")
 st.markdown(
     f"""
-    <div style="text-align: center; padding: 25px; border: 3px solid #4CAF50; border-radius: 20px; background-color: #f0f4f0;">
+    <div style="text-align: center; padding: 25px; border: 3px solid #4CAF50; border-radius: 20px; background-color: #f0f4f0; box-shadow: 2px 2px 10px rgba(0,0,0,0.1);">
         <h2 style="color: #1b5e20; margin: 0;">💎 SISTEMA QUEVEDO PRO v2.5</h2>
         <p style="font-size: 1.2em; font-weight: bold; color: #333; margin: 12px 0;">Propiedad de: {NOMBRE_PROPIETARIO}</p>
         <p style="color: #666;">📍 {UBICACION_SISTEMA} | República Dominicana</p>
