@@ -385,38 +385,91 @@ if verificar_acceso():
         foto_captura = st.camera_input("Capturar Código")
 
 elif menu == "🤖 ASISTENTE":
-        st.header("🤖 Asistente Inteligente Quevedo")
-        
-        # 1. Definimos la conexión (Asegúrate de tener GSheetsConnection importado arriba)
-        ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
-        url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
-        
-        try:
-            # Conexión maestra al Archivador
-            conn_gs = st.connection("gsheets", type=GSheetsConnection)
-            df = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
-            
-            if df is not None:
-                st.subheader("📁 Tu Archivador Personal")
-                st.dataframe(df, use_container_width=True)
-                st.success("✅ Conexión con Google Sheets exitosa.")
-        except Exception as e:
-            st.error("❌ El archivador está oculto por un error de conexión.")
-            with st.expander("Ver detalle técnico"):
-                st.code(str(e))
-
-        # 2. El Cerebro del Asistente (Chat)
+        st.header("🤖 Asistente Inteligente del Archivador")
         st.markdown("---")
-        entrada_usuario = st.chat_input("Dime: 'Gasto 500 en farmacia' o 'Ver resumen'")
-        
-        if entrada_usuario:
-            import re  # Para que el chat entienda números
-            msg = entrada_usuario.lower()
-            st.info(f"🤖 Has dicho: '{entrada_usuario}'")
-            
-            if any(p in msg for p in ["gasto", "pague", "costo"]):
-                montos = re.findall(r'\d+', msg)
-                if montos:
-                    st.success(f"🤖 Entendido, registraré un gasto de RD$ {montos[0]}.")
-                    st.balloons()
 
+        # 1. EL CEREBRO: Entrada de datos por Chat
+        st.subheader("✍️ Entrada de Datos Inteligente")
+        input_texto = st.chat_input("Ej: 'Gasto 1500 en repuestos de carro' o 'Pago 2000 de luz'")
+
+        if input_texto:
+            import re
+            msg = input_texto.lower()
+            
+            # Buscamos números (el monto)
+            montos = re.findall(r'\d+', msg)
+            monto_detectado = float(montos[0]) if montos else 0.0
+            
+            # Buscamos la categoría (inteligencia simple)
+            cat_final = "Otros"
+            if any(p in msg for p in ["luz", "agua", "internet", "casa"]): cat_final = "Servicios"
+            elif any(p in msg for p in ["farmacia", "medicina", "doctor"]): cat_final = "Salud"
+            elif any(p in msg for p in ["comida", "super", "cena"]): cat_final = "Alimentos"
+            elif any(p in msg for p in ["carro", "gasolina", "pieza"]): cat_final = "Transporte"
+
+            # GUARDAR EN SESSION STATE PARA REVISIÓN
+            st.session_state['temp_monto'] = monto_detectado
+            st.session_state['temp_cat'] = cat_final
+            st.session_state['temp_desc'] = input_texto
+            st.session_state['esperando_confirmacion'] = True
+
+        # 2. EL FILTRO: Zona de revisión antes de archivar
+        if st.session_state.get('esperando_confirmacion'):
+            st.warning("⚠️ **REVISIÓN PREVIA:** El Asistente interpretó lo siguiente:")
+            
+            col_rev1, col_rev2 = st.columns(2)
+            with col_rev1:
+                nuevo_monto = st.number_input("Monto a Archivar:", value=st.session_state['temp_monto'])
+                nueva_cat = st.selectbox("Categoría detectada:", ["Alimentos", "Salud", "Servicios", "Transporte", "Hogar", "Otros"], 
+                                        index=["Alimentos", "Salud", "Servicios", "Transporte", "Hogar", "Otros"].index(st.session_state['temp_cat']))
+            with col_rev2:
+                nueva_desc = st.text_area("Descripción del registro:", value=st.session_state['temp_desc'])
+
+            c1, c2 = st.columns(2)
+            if c1.button("✅ TODO CORRECTO, ARCHIVAR"):
+                try:
+                    # CONEXIÓN A GOOGLE SHEETS
+                    ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
+                    url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
+                    conn_gs = st.connection("gsheets", type=GSheetsConnection)
+                    
+                    # Leemos datos actuales
+                    df_actual = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1")
+                    
+                    # Creamos la nueva fila
+                    nueva_fila = pd.DataFrame([{
+                        "Fecha": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "Categoría": nueva_cat,
+                        "Monto": nuevo_monto,
+                        "Detalle": nueva_desc
+                    }])
+                    
+                    # Unimos y guardamos
+                    df_final = pd.concat([df_actual, nueva_fila], ignore_index=True)
+                    conn_gs.update(spreadsheet=url_hoja, data=df_final, worksheet="Hoja 1")
+                    
+                    st.success("💎 ¡Archivado con éxito en la Nube!")
+                    st.balloons()
+                    st.session_state['esperando_confirmacion'] = False
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al archivar: {e}")
+
+            if c2.button("❌ CANCELAR"):
+                st.session_state['esperando_confirmacion'] = False
+                st.rerun()
+
+        st.markdown("---")
+        
+        # 3. EL ARCHIVADOR: Ver lo que ya está guardado
+        st.subheader("📂 Consulta del Archivador Histórico")
+        try:
+            ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
+            url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
+            conn_gs = st.connection("gsheets", type=GSheetsConnection)
+            df_view = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
+            
+            if df_view is not None:
+                st.dataframe(df_view.sort_index(ascending=False), use_container_width=True)
+        except:
+            st.info("Esperando conexión con los datos de Google...")
