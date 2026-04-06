@@ -394,7 +394,7 @@ elif menu == "💊 AGENDA MEDICA":
         # =========================================================
         # --- MÓDULO 5: ASISTENTE & ARCHIVADOR (LÍNEA 379 OK) ---
         # =========================================================
- elif menu == "🤖 ASISTENTE":
+elif menu == "🤖 ASISTENTE":
             st.header("🤖 Centro de Control Quevedo Pro")
             st.markdown("### ✍️ Archivador Inteligente & Comunicación")
             
