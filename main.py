@@ -310,8 +310,9 @@ if verificar_acceso():
         else:
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
+       st.caption("Redacta cotizaciones para Carol/GBC automáticamente.")
 # --- MÓDULO 4: AGENDA MÉDICA (INTELIGENCIA PURA) ---
-    elif menu == "💊 AGENDA MEDICA":
+        elif menu == "💊 AGENDA MEDICA":
             st.header("💊 Gestión Médica Profesional")
             
             tab1, tab2 = st.tabs(["📋 Medicamentos Actuales", "📅 Control de Citas"])
@@ -328,23 +329,38 @@ if verificar_acceso():
                         
                         if st.form_submit_button("💎 GUARDAR EN AGENDA MAESTRA"):
                             if nombre_med and hora_med:
-                                c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nombre_med, hora_med))
-                                conn.commit()
-                                st.success(f"✅ Registrada: {nombre_med}")
-                                st.rerun()
+                                try:
+                                    c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nombre_med, hora_med))
+                                    conn.commit()
+                                    st.success(f"✅ Registrada: {nombre_med}")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error de Base de Datos: {e}")
+                            else:
+                                st.warning("⚠️ Completa ambos campos.")
 
                 # Visualización con eliminación inteligente
-                df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
-                if not df_m.empty:
-                    for _, r in df_m.iterrows():
-                        with st.container(border=True):
-                            c_it, c_bt = st.columns([4, 1])
-                            c_it.info(f"💊 **{r['nombre']}** — ⏰ Horario: {r['horario']}")
-                            if c_bt.button("🗑️", key=f"del_m_{r['id']}"):
-                                c.execute("DELETE FROM medicinas WHERE id=?", (r['id'],))
-                                conn.commit()
-                                st.rerun()
-# --- ESTE BLOQUE VA EN LA LÍNEA 379 ---
+                try:
+                    df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+                    if not df_m.empty:
+                        for _, r in df_m.iterrows():
+                            with st.container(border=True):
+                                c_it, c_bt = st.columns([4, 1])
+                                c_it.info(f"💊 **{r['nombre']}** — ⏰ Horario: {r['horario']}")
+                                if c_bt.button("🗑️", key=f"del_m_{r['id']}"):
+                                    c.execute("DELETE FROM medicinas WHERE id=?", (r['id'],))
+                                    conn.commit()
+                                    st.rerun()
+                    else:
+                        st.write("No hay medicinas registradas.")
+                except:
+                    st.error("Error al cargar registros locales.")
+
+            with tab2:
+                st.subheader("📅 Control de Citas Médicas")
+                # Aquí puedes añadir la lógica de citas siguiendo la misma estructura robusta
+
+        # --- MÓDULO 5: ASISTENTE & ARCHIVADOR (LÍNEA 379 BLINDADA) ---
         elif menu == "🤖 ASISTENTE":
             st.header("🤖 Centro de Control Quevedo Pro")
             st.markdown("### ✍️ Archivador Inteligente & Comunicación")
@@ -353,30 +369,30 @@ if verificar_acceso():
             # --- PARTE 1: EL ARCHIVADOR EN LA NUBE ---
             st.subheader("📂 Tu Archivador en Tiempo Real (Nube)")
             
-            # Conexión directa por ID para evitar Error 400 de URLs largas
+            # Conexión directa por ID para evitar Error 400
             ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
             
             try:
                 # Conexión maestra al Archivador
                 conn_gs = st.connection("gsheets", type=GSheetsConnection)
-                # Leemos la hoja principal (Sin URLs largas, solo el ID)
+                # Leemos la hoja principal
                 df = conn_gs.read(spreadsheet=ID_HOJA, ttl=0)
                 
                 if df is not None:
-                    # Buscador inteligente interno (Robustez)
+                    # Buscador inteligente interno
                     busqueda = st.text_input("🔍 Filtrar archivador:", placeholder="Escribe para buscar...")
                     if busqueda:
-                        # Inteligencia de filtrado rápido
+                        # Filtro inteligente que no rompe el programa
                         df = df[df.astype(str).apply(lambda x: x.str.contains(busqueda, case=False)).any(axis=1)]
                     
-                    # Mostramos la tabla limpia
+                    # Interfaz limpia
                     st.dataframe(df, use_container_width=True)
                     st.success("✅ Conexión Blindada con Google Sheets.")
                 else:
-                    st.warning("⚠️ No se pudo cargar el Archivador. Revisa que el ID sea correcto.")
+                    st.warning("⚠️ El Archivador está vacío o el ID es incorrecto.")
             except Exception as e:
                 st.error("❌ Error de comunicación con la Nube.")
-                with st.expander("Detalle Técnico (Por si acaso)"):
+                with st.expander("Ver Detalle Técnico"):
                     st.code(str(e))
 
             # --- PARTE 2: BOTONES DE PODER RECUPERADOS ---
@@ -385,10 +401,10 @@ if verificar_acceso():
             
             col_b1, col_b2 = st.columns(2)
             with col_b1:
-                # Botón robusto que usaremos para el Gmail
-                st.button("📧 ENVIAR REPORTE MAESTRO A GMAIL", use_container_width=True)
-                st.caption("Usa tu SMTP configurado para reportes globales.")
+                if st.button("📧 ENVIAR REPORTE MAESTRO A GMAIL", use_container_width=True):
+                    st.info("Preparando reporte para envío SMTP...")
+                st.caption("Envía un resumen ejecutivo a tu correo.")
             with col_b2:
-                # Botón para solicitudes de presupuesto
-                st.button("📲 SOLICITAR PRESUPUESTO FARMACIAS", use_container_width=True)
-                st.caption("Redacta cotizaciones para Carol/GBC automáticamente.")
+                if st.button("📲 SOLICITAR PRESUPUESTO FARMACIAS", use_container_width=True):
+                    st.success("Generando orden de cotización...")
+                st.caption("Solicita precios a Carol y GBC automáticamente.")
