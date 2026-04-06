@@ -307,14 +307,25 @@ if verificar_acceso():
                     conn.execute("DELETE FROM glucosa")
                     conn.commit()
                     st.rerun()
-        else:
+
+
+
+else:
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
-            st.caption("Redacta cotizaciones para Carol/GBC automáticamente.")
+        # --- SECCIÓN 3: ESCANER ---
+        elif menu == "📸 ESCANER":
+            st.header("📸 Escáner de Documentos y Códigos")
+            st.info("Módulo de procesamiento de imagen activo.")
+            # Aquí va tu lógica de OpenCV/Pillow que desees integrar
 
+        # --- SECCIÓN 4: ARCHIVADOR ---
+        elif menu == "📂 ARCHIVADOR":
+            st.header("📂 Archivador de Documentos Local")
+            st.write("Gestión de archivos guardados en 'archivador_quevedo'.")
 
-# =========================================================
-        # --- MÓDULO 4: AGENDA MÉDICA (ESTRUCTURA DE HIERRO) ---
+        # =========================================================
+        # --- MÓDULO 4: AGENDA MÉDICA (ESTRUCTURA REPARADA) ---
         # =========================================================
         elif menu == "💊 AGENDA MEDICA":
             st.header("💊 Gestión Médica Profesional")
@@ -339,7 +350,6 @@ if verificar_acceso():
                                 except Exception as e:
                                     st.error(f"Error en BD: {e}")
 
-                # Visualización con borrado individual inteligente
                 try:
                     df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
                     if not df_m.empty:
@@ -353,7 +363,7 @@ if verificar_acceso():
                                     conn.commit()
                                     st.rerun()
                     else:
-                        st.info("No hay medicinas registradas en la agenda local.")
+                        st.info("No hay medicinas registradas.")
                 except:
                     st.error("Error al leer la tabla de medicinas.")
 
@@ -370,7 +380,6 @@ if verificar_acceso():
                                 st.success(f"✅ Cita con {doc_c} agendada.")
                                 st.rerun()
                 
-                # Listado de citas
                 df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
                 if not df_c.empty:
                     for _, r in df_c.iterrows():
@@ -383,13 +392,12 @@ if verificar_acceso():
                                 st.rerun()
 
         # =========================================================
-        # --- MÓDULO 5: ASISTENTE & ARCHIVADOR (GOOGLE SHEETS) ---
+        # --- MÓDULO 5: ASISTENTE & ARCHIVADOR (LÍNEA 379 OK) ---
         # =========================================================
         elif menu == "🤖 ASISTENTE":
             st.header("🤖 Centro de Control Quevedo Pro")
             st.markdown("### ✍️ Archivador Inteligente & Comunicación")
             
-            # Conexión directa por ID (Evita Error 400 y URL can't contain control characters)
             ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
             
             try:
@@ -398,26 +406,25 @@ if verificar_acceso():
                 
                 if df is not None:
                     st.subheader("📂 Tu Archivador en Tiempo Real (Nube)")
-                    # Buscador dinámico
                     query = st.text_input("🔍 Buscar en el archivador:", placeholder="Escribe para filtrar...")
                     if query:
                         df = df[df.astype(str).apply(lambda x: x.str.contains(query, case=False)).any(axis=1)]
                     
                     st.dataframe(df, use_container_width=True)
-                    st.success("✅ Conexión con Google Sheets Blindada.")
+                    st.success("✅ Conexión Blindada con Google Sheets.")
             except Exception as e:
                 st.error("❌ Error de comunicación con la Nube.")
-                with st.expander("Detalle Técnico (Brujería)"):
+                with st.expander("Detalle Técnico"):
                     st.code(str(e))
 
             st.divider()
             col_b1, col_b2 = st.columns(2)
             with col_b1:
-                if st.button("📧 ENVIAR REPORTE MAESTRO A GMAIL", use_container_width=True):
-                    st.info("Generando reporte SMTP... Conectando con tu correo.")
+                if st.button("📧 ENVIAR REPORTE MAESTRO A GMAIL"):
+                    st.info("Preparando SMTP...")
             with col_b2:
-                if st.button("📲 SOLICITAR PRESUPUESTO FARMACIAS", use_container_width=True):
-                    st.success("Redactando solicitud para Carol y GBC...")
+                if st.button("📲 SOLICITAR PRESUPUESTO FARMACIAS"):
+                    st.success("Redactando solicitud...")
 
 # =========================================================
 # CRÉDITOS Y SELLO DE PROPIEDAD (FINAL ABSOLUTO)
