@@ -312,7 +312,7 @@ if verificar_acceso():
 
             st.caption("Redacta cotizaciones para Carol/GBC automáticamente.")
 # --- MÓDULO 4: AGENDA MÉDICA (INTELIGENCIA PURA) ---
-        elif menu == "💊 AGENDA MEDICA":
+         elif menu == "💊 AGENDA MEDICA":
             st.header("💊 Gestión Médica Profesional")
             
             tab1, tab2 = st.tabs(["📋 Medicamentos Actuales", "📅 Control de Citas"])
