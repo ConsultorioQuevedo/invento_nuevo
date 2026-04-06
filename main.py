@@ -472,20 +472,56 @@ elif menu == "📋 SALUD":
 
 elif menu == "🤖 ASISTENTE":
     st.header("🤖 Asistente de Control Quevedo")
-# --- VOLVIENDO A LO QUE FUNCIONABA (Local) ---
-if menu == "🤖 ASISTENTE":
-    st.header("🤖 Tu Archivador Local")
-    import sqlite3
-    
-    # Intentamos leer tu base de datos de siempre
-    try:
-        conn = sqlite3.connect('tu_base_de_datos.db') # El nombre que tenías antes
-        import pandas as pd
-        df = pd.read_sql_query("SELECT * FROM finanzas", conn)
-        st.dataframe(df)
-    except:
-        st.warning("No encontré datos locales. Vamos a crear una entrada nueva.")
-    
+# ==========================================
+# 🤖 SECCIÓN: ASISTENTE INTELIGENTE QUEVEDO
+# ==========================================
+elif menu == "🤖 ASISTENTE":
+    st.header("🤖 Asistente de Control Quevedo")
+    st.caption("Análisis de salud, finanzas y comunicación")
+
+    # 1. Definimos el ID de tu hoja (El que ya tienes)
+    ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
+    url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
+
+    # 2. EL CUADRO DE TEXTO (Esto arregla el error de la 'p')
+    p = st.chat_input("Escriba su consulta (Ej: 'Gasto 500 en farmacia')")
+
+    if p:
+        # Pasamos lo que escribas a minúsculas para que el robot entienda mejor
+        p_lower = p.lower()
+        
+        # OPCIÓN A: REGISTRAR UN GASTO
+        if "gasto" in p_lower or "pagué" in p_lower or "pague" in p_lower:
+            try:
+                # Conectamos con la llave de Google (Secrets)
+                conn = st.connection("gsheets", type="gsheets")
+                
+                # Intentamos leer para ver si hay conexión
+                df = conn.read(spreadsheet=url_hoja, worksheet="Hoja 1")
+                
+                st.success(f"✅ Robot conectado. Procesando tu mensaje: '{p}'")
+                st.info("Próximo paso: Programar el guardado automático en la celda vacía.")
+                
+            except Exception as e:
+                st.error("❌ Error de conexión al Archivador.")
+                st.warning("REVISA ESTO: Ve a tu Excel -> Compartir -> Y añade el correo del robot como EDITOR.")
+        
+        # OPCIÓN B: VER EL ARCHIVADOR
+        elif "ver" in p_lower or "mostrar" in p_lower or "archivador" in p_lower:
+            try:
+                conn = st.connection("gsheets", type="gsheets")
+                df = conn.read(spreadsheet=url_hoja, worksheet="Hoja 1")
+                st.subheader("📁 Contenido actual de tu Archivador")
+                st.dataframe(df)
+            except:
+                st.error("No puedo mostrar los datos. Revisa los permisos de Google.")
+
+        else:
+            st.write(f"Has dicho: '{p}'. Todavía estoy aprendiendo a responder eso.")
+
+    # Mensaje de ayuda si la pantalla está muy vacía
+    else:
+        st.write("👆 Escribe algo arriba para empezar a organizar tu vida.")
     # OPCIÓN A: REGISTRAR UN GASTO
     if "gasto" in p or "pagué" in p or "pague" in p:
         try:
