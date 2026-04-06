@@ -288,8 +288,7 @@ elif menu == "📸 ESCANER":
                         st.rerun()
             else:
                 st.warning("No se detectó código. Mejore la iluminación.")
-
-    elif menu == "📂 ARCHIVADOR":
+elif menu == "📂 ARCHIVADOR":
         st.header("📂 Archivador Digital Quevedo")
         archivos = os.listdir("archivador_quevedo") if os.path.exists("archivador_quevedo") else []
         busqueda = st.text_input("🔍 Buscar documento...")
@@ -298,8 +297,7 @@ elif menu == "📸 ESCANER":
                 if st.button("🗑️ ELIMINAR ARCHIVO", key=arc):
                     os.remove(os.path.join("archivador_quevedo", arc))
                     st.rerun()
-
-    elif menu == "🤖 ASISTENTE":
+elif menu == "🤖 ASISTENTE":
         st.header("🤖 Centro de Control Quevedo Pro")
         try:
             conn_gs = st.connection("gsheets", type=GSheetsConnection)
