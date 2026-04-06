@@ -503,15 +503,3 @@ if verificar_acceso():
 st.markdown("---")  # Una línea divisoria fina
 col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
 
-with col_f2:
-    st.markdown(
-        f"""
-        <div style="text-align: center; color: #888; font-size: 0.8em; padding: 20px;">
-            <p>💎 <b>SISTEMA QUEVEDO PRO v2.0</b></p>
-            <p>Propiedad Intelectual de: <b>{Luis Rafael Quevedo}</b></p>
-            <p>📍 {VILLA CERRO} | 2026</p>
-            <p style="font-style: italic;">"Paso a paso, primero una cosa y luego la otra."</p>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
