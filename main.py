@@ -459,43 +459,28 @@ if entrada:
 
     except Exception as e:
         st.error("Error de conexión. Revisa si compartiste la hoja con el correo del robot.")   
-# --- SECCIÓN: ASISTENTE INTELIGENTE ROBUSTO ---
-elif menu == "🤖 ASISTENTE":
-        st.header("🤖 Asistente de Control Quevedo")
-        st.caption("Análisis de salud, finanzas y comunicación formal.")
+# --- 🤖 SECCIÓN: ASISTENTE INTELIGENTE ---
+if menu == "🤖 ASISTENTE":
+    st.header("🤖 Asistente de Control Quevedo")
+    st.caption("Análisis de salud, finanzas y comunicación")
 
-        # Inicializar memoria para el correo si no existe
-        if "ver_correo" not in st.session_state:
-            st.session_state.ver_correo = False
-
-        pregunta = st.chat_input("Escriba su consulta (Ej: 'Análisis de mi salud', 'Resumen de gastos', 'Enviar reporte')")
-
+    # Aquí conectamos con tu Google Sheets directamente
+    try:
+        url_mi_hoja = "https://docs.google.com/spreadsheets/d/18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI/edit#gid=0"
+        conn = st.connection("gsheets", type="gsheets")
+        
+        # Pregunta al usuario
+        pregunta = st.chat_input("Escriba su consulta (Ej: 'Ver archivador')")
+        
         if pregunta:
-            p = pregunta.lower()
-            st.session_state.ver_correo = "correo" in p or "enviar" in p or "gmail" in p
-            
-            # --- 1. LÓGICA DE SALUD AVANZADA ---
-            if "salud" in p or "glucosa" in p or "azucar" in p:
-                df_s = pd.read_sql_query("SELECT valor FROM glucosa", conn)
-                if not df_s.empty:
-                    promedio = df_s['valor'].mean()
-                    maximo = df_s['valor'].max()
-                    minimo = df_s['valor'].min()
-                    ultima = df_s['valor'].iloc[-1]
-
-                    col1, col2, col3 = st.columns(3)
-                    col1.metric("Última", f"{ultima} mg/dL")
-                    col2.metric("Promedio", f"{promedio:.1f}")
-                    col3.metric("Máxima", f"{maximo}")
-
-                    if promedio > 150:
-                        st.error(f"⚠️ **ALERTA:** Luis, su promedio general ({promedio:.1f}) está elevado. Se recomienda revisar su dieta y consultar con su médico.")
-                    elif promedio < 100:
-                        st.warning(f"⚠️ **ATENCIÓN:** Su promedio está bajo ({promedio:.1f}). Asegúrese de estar rindiendo bien sus comidas.")
-                    else:
-                        st.success("✅ **ESTADO ÓPTIMO:** Sus niveles promedio se mantienen en rango controlado.")
-                else:
-                    st.warning("No hay datos de salud para analizar.")
+            txt = pregunta.lower()
+            if "ver" in txt or "archivador" in txt:
+                df = conn.read(spreadsheet=url_mi_hoja)
+                st.dataframe(df)
+            else:
+                st.write(f"Has dicho: {pregunta}. Pronto podré procesar esto mejor.")
+    except Exception as e:
+        st.error("Error al conectar con el Asistente. Revisa los Secrets.")
        # --- 2. LÓGICA DE FINANZAS ROBUSTA (Conexión Google Sheets) ---
 # Primero capturamos la entrada del usuario
 p = st.chat_input("Escribe: 'Gasto 500 en cena' o 'Resumen finanzas'")
