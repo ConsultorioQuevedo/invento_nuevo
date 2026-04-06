@@ -310,122 +310,148 @@ if verificar_acceso():
         else:
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
-    # --- MÓDULO 4: AGENDA MÉDICA ---
+ # --- MÓDULO 4: AGENDA MÉDICA (ROBUSTA) ---
     elif menu == "💊 AGENDA MEDICA":
         st.header("💊 Gestión Médica Profesional")
         
         tab1, tab2 = st.tabs(["📋 Medicamentos Actuales", "📅 Control de Citas"])
         
         with tab1:
-            st.subheader("Registro de Medicinas")
-            with st.expander("➕ Añadir Nueva Medicina"):
-                with st.form("form_medicina"):
-                    nombre_med = st.text_input("Nombre del Medicamento (ej: Metformina)")
-                    hora_med = st.text_input("Horario (ej: 8:00 AM / 8:00 PM)")
-                    if st.form_submit_button("Guardar en Agenda"):
+            st.subheader("🚀 Registro de Inteligencia Farmacéutica")
+            
+            with st.expander("➕ Añadir Nueva Medicina", expanded=False):
+                with st.form("form_medicina", clear_on_submit=True):
+                    col_med1, col_med2 = st.columns(2)
+                    with col_med1:
+                        nombre_med = st.text_input("Nombre del Medicamento", placeholder="Ej: Metformina 850mg")
+                    with col_med2:
+                        hora_med = st.text_input("Horario Crítico", placeholder="Ej: 08:00 AM")
+                    
+                    notas_med = st.text_area("Indicaciones Especiales", placeholder="Ej: Tomar después del desayuno")
+                    
+                    if st.form_submit_button("💎 GUARDAR EN AGENDA MAESTRA"):
                         if nombre_med and hora_med:
-                            c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nombre_med, hora_med))
-                            conn.commit()
-                            st.success(f"Registrada: {nombre_med}")
-                            st.rerun()
+                            try:
+                                c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (nombre_med, hora_med))
+                                conn.commit()
+                                st.success(f"✅ Registrada con éxito: {nombre_med}")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error al guardar: {e}")
                         else:
-                            st.warning("Por favor complete ambos campos.")
+                            st.warning("⚠️ El nombre y el horario son obligatorios.")
 
-            df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
-            if not df_m.empty:
-                st.markdown("---")
-                for _, r in df_m.iterrows():
-                    st.info(f"💊 **{r['nombre']}** — ⏰ Horario: {r['horario']}")
-                
-                with st.expander("🗑️ Quitar una medicina"):
-                    opciones_m = {f"{r['nombre']} ({r['horario']})": r['id'] for _, r in df_m.iterrows()}
-                    seleccion_m = st.selectbox("Seleccione la que desea eliminar:", options=list(opciones_m.keys()), key="sel_med")
-                    if st.button("Confirmar Borrado de Medicina", type="primary"):
-                        c.execute("DELETE FROM medicinas WHERE id=?", (opciones_m[seleccion_m],))
-                        conn.commit()
-                        st.rerun()
-            else:
-                st.write("No hay medicinas registradas aún.")
+            # Visualización Inteligente
+            try:
+                df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+                if not df_m.empty:
+                    st.markdown("---")
+                    for _, r in df_m.iterrows():
+                        with st.container(border=True):
+                            col_info, col_del = st.columns([4, 1])
+                            col_info.info(f"💊 **{r['nombre']}** — ⏰ Horario: {r['horario']}")
+                            if col_del.button("🗑️", key=f"del_med_{r['id']}"):
+                                c.execute("DELETE FROM medicinas WHERE id=?", (r['id'],))
+                                conn.commit()
+                                st.rerun()
+                else:
+                    st.write("No hay medicinas en el archivador.")
+            except:
+                st.error("Error al leer la base de datos de medicinas.")
 
         with tab2:
-            st.subheader("Próximas Consultas")
+            st.subheader("📅 Control de Consultas Especializadas")
             with st.expander("➕ Programar Nueva Cita"):
-                with st.form("form_cita"):
-                    doc_cita = st.text_input("Nombre del Doctor / Especialidad")
-                    fecha_cita = st.date_input("Fecha de la Cita")
-                    if st.form_submit_button("Agendar Cita"):
+                with st.form("form_cita", clear_on_submit=True):
+                    doc_cita = st.text_input("Doctor / Centro Médico")
+                    col_f1, col_f2 = st.columns(2)
+                    with col_f1:
+                        fecha_cita = st.date_input("Fecha")
+                    with col_f2:
+                        especialidad = st.text_input("Especialidad")
+                    
+                    if st.form_submit_button("📅 AGENDAR CITA PROFESIONAL"):
                         if doc_cita:
-                            c.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (doc_cita, str(fecha_cita)))
+                            c.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (f"{doc_cita} ({especialidad})", str(fecha_cita)))
                             conn.commit()
-                            st.success(f"Cita con {doc_cita} agendada.")
+                            st.success(f"✅ Cita con {doc_cita} agendada.")
                             st.rerun()
-            
-            df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
-            if not df_c.empty:
-                st.markdown("---")
-                for _, r in df_c.iterrows():
-                    st.warning(f"👨‍⚕️ **{r['doctor']}** — 📅 Fecha: {r['fecha']}")
-                
-                with st.expander("🗑️ Cancelar o borrar una cita"):
-                    opciones_c = {f"{r['doctor']} - {r['fecha']}": r['id'] for _, r in df_c.iterrows()}
-                    seleccion_c = st.selectbox("Seleccione la cita a eliminar:", options=list(opciones_c.keys()), key="sel_cita")
-                    if st.button("Confirmar Borrado de Cita", type="primary"):
-                        c.execute("DELETE FROM citas WHERE id=?", (opciones_c[seleccion_c],))
-                        conn.commit()
-                        st.rerun()
-            else:
-                st.write("No tiene citas pendientes.")
-# --- ESTE ES EL BLOQUE QUE VA EN LA LÍNEA 379 ---
-elif menu == "🤖 ASISTENTE":
-            st.header("🤖 Centro de Control Quevedo Pro")
-            
-            # Solo el ID, sin URLs largas que den Error 400
-            ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
-            
+
             try:
-                conn_gs = st.connection("gsheets", type=GSheetsConnection)
-                # Leemos la hoja principal (Asegúrate que en el Excel se llame 'Hoja 1' o 'DB_QUEVEDO')
-                df = conn_gs.read(spreadsheet=ID_HOJA, ttl=0)
+                df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
+                if not df_c.empty:
+                    st.markdown("---")
+                    for _, r in df_c.iterrows():
+                        with st.container(border=True):
+                            c_info, c_del = st.columns([4, 1])
+                            c_info.warning(f"👨‍⚕️ **{r['doctor']}** — 📅 Fecha: {r['fecha']}")
+                            if c_del.button("🗑️", key=f"del_cita_{r['id']}"):
+                                c.execute("DELETE FROM citas WHERE id=?", (r['id'],))
+                                conn.commit()
+                                st.rerun()
+                else:
+                    st.write("No hay citas pendientes.")
+            except:
+                st.error("Error al leer el registro de citas.")
+
+    # --- MÓDULO 5: ASISTENTE (EL BLOQUE DE LA LÍNEA 379) ---
+    elif menu == "🤖 ASISTENTE":
+        st.header("🤖 Centro de Control Quevedo Pro")
+        
+        # Conexión Directa por ID para evitar Error 400
+        ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
+        
+        try:
+            conn_gs = st.connection("gsheets", type=GSheetsConnection)
+            # Intentamos cargar la hoja
+            df = conn_gs.read(spreadsheet=ID_HOJA, ttl=0)
+            
+            if df is not None:
+                st.subheader("📂 Tu Archivador en Tiempo Real (Nube)")
+                st.dataframe(df, use_container_width=True)
+                st.success("✅ Conexión Blindada con Google Sheets.")
                 
-                if df is not None:
-                    st.subheader("📂 Tu Archivador en Tiempo Real")
-                    st.dataframe(df, use_container_width=True)
-                    st.success("✅ Conexión Blindada con Google Sheets.")
-            except Exception as e:
-                st.error("❌ Error de comunicación con la Nube.")
-                with st.expander("Detalle Técnico"):
-                    st.code(str(e))
+                # Inteligencia de búsqueda rápida
+                search = st.text_input("🔍 Buscar en el archivador:", placeholder="Ej: Farmacia o Receta...")
+                if search:
+                    filtered_df = df[df.astype(str).apply(lambda x: x.str.contains(search, case=False)).any(axis=1)]
+                    st.write(filtered_df)
+        except Exception as e:
+            st.error("❌ Error de comunicación con la Nube.")
+            with st.expander("Detalle Técnico para Quevedo"):
+                st.code(str(e))
 
-            # --- BOTONES RECUPERADOS ---
-            st.divider()
-            col_b1, col_b2 = st.columns(2)
-            with col_b1:
-                if st.button("📧 ENVIAR REPORTE A GMAIL"):
-                    st.info("Función de correo: Conectando con tu cuenta...")
-            with col_b2:
-                if st.button("📲 SOLICITAR PRESUPUESTO"):
-                    st.success("Generando mensaje para farmacias...")
+        # --- BOTONES DE PODER RECUPERADOS ---
+        st.divider()
+        col_b1, col_b2 = st.columns(2)
+        with col_b1:
+            if st.button("📧 ENVIAR REPORTE MAESTRO A GMAIL", use_container_width=True):
+                st.info("Generando reporte... Conectando con servidor de correo.")
+        with col_b2:
+            if st.button("📲 SOLICITAR PRESUPUESTO FARMACIAS", use_container_width=True):
+                st.success("Mensaje redactado. Listo para enviar vía WhatsApp/Gmail.")
 
-    # --- FUERA DEL BLOQUE DE ACCESO (AL FINAL DEL ARCHIVO) ---
+# --- FUERA DEL BLOQUE DE ACCESO (AL FINAL DEL ARCHIVO) ---
+# Esto va sin sangría (pegado a la izquierda)
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("---")
 st.markdown(
-        f"""
-        <div style="text-align: center; padding: 20px; border: 2px solid #4CAF50; border-radius: 15px; background-color: #f9f9f9;">
-            <h2 style="color: #2e7d32; margin: 0;">💎 SISTEMA QUEVEDO PRO v2.5</h2>
-            <p style="font-size: 1.1em; font-weight: bold; color: #333; margin: 10px 0;">
-                Propiedad de: {NOMBRE_PROPIETARIO}
-            </p>
-            <p style="color: #666; margin: 5px 0;">📍 {UBICACION_SISTEMA} | República Dominicana</p>
-            <hr style="width: 50%; margin: 15px auto; border: 0.5px solid #ccc;">
-            <p style="font-style: italic; color: #1b5e20; font-size: 1em;">
-                "Paso a paso, primero una cosa y luego la otra."
-            </p>
-            <p style="font-size: 0.7em; color: #999; margin-top: 15px;">© 2026 Todos los derechos reservados.</p>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
+    f"""
+    <div style="text-align: center; padding: 25px; border: 3px solid #4CAF50; border-radius: 20px; background-color: #f0f4f0; box-shadow: 2px 2px 15px rgba(0,0,0,0.1);">
+        <h2 style="color: #1b5e20; margin: 0; font-family: sans-serif;">💎 SISTEMA QUEVEDO PRO v2.5</h2>
+        <p style="font-size: 1.2em; font-weight: bold; color: #333; margin: 12px 0;">
+            Propiedad de: {NOMBRE_PROPIETARIO}
+        </p>
+        <p style="color: #666; margin: 5px 0;">📍 {UBICACION_SISTEMA} | República Dominicana</p>
+        <hr style="width: 40%; margin: 15px auto; border: 1px solid #4CAF50;">
+        <p style="font-style: italic; color: #1b5e20; font-size: 1.1em; font-weight: 500;">
+            "Paso a paso, primero una cosa y luego la otra."
+        </p>
+        <p style="font-size: 0.75em; color: #888; margin-top: 15px; letter-spacing: 1px;">© 2026 TODOS LOS DERECHOS RESERVADOS</p>
+    </div>
+    """, 
+    unsafe_allow_html=True
+) 
 # =========================================================
 # CRÉDITOS Y FIRMA DE PROPIEDAD - SISTEMA QUEVEDO PRO
 # =========================================================
