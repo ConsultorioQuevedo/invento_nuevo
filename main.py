@@ -462,7 +462,8 @@ if verificar_acceso():
                             url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
                             conn_gs = st.connection("gsheets", type=GSheetsConnection)
                             
-                            df_nube = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1")
+                         # El %20 elimina el error de "control characters"
+                            df = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja%201", ttl=0)
                             
                             nueva_data = pd.DataFrame([{
                                 "Fecha": datetime.now().strftime("%d/%m/%Y"),
