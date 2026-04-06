@@ -352,18 +352,3 @@ elif menu == "🤖 ASISTENTE":
                 if st.button("📲 COTIZAR EN FARMACIAS"):
                     st.success("Abriendo comunicación con farmacias...")
 
-# =========================================================
-# CRÉDITOS FINALES (FUERA DE LOS MÓDULOS)
-# =========================================================
-st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown("---")
-st.markdown(
-    f"""
-    <div style="text-align: center; padding: 20px; border: 2px solid #4CAF50; border-radius: 15px; background-color: #f9f9f9;">
-        <h3 style="color: #1b5e20;">💎 SISTEMA QUEVEDO PRO v2.5</h3>
-        <p><b>Propiedad de:</b> {NOMBRE_PROPIETARIO}</p>
-        <p><i>"Paso a paso, primero una cosa y luego la otra."</i></p>
-    </div>
-    """, 
-    unsafe_allow_html=True
-)     
