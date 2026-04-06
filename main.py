@@ -346,7 +346,7 @@ if verificar_acceso():
                                 st.rerun()
 
         # --- MÓDULO 5: ASISTENTE (EL BLOQUE DE LA LÍNEA 379) ---
-        elif menu == "🤖 ASISTENTE":
+    elif menu == "🤖 ASISTENTE":
             st.header("🤖 Centro de Control Quevedo Pro")
             ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
             
