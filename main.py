@@ -423,7 +423,20 @@ if verificar_acceso():
                 f.write(foto_captura.getbuffer())
             
             st.caption(f"📁 Copia de seguridad guardada como: {nombre_archivo}")   
-
+elif menu == "🤖 ASISTENTE":
+        st.header("🤖 Asistente Inteligente Quevedo")
+        try:
+            # Conexión correcta sin comillas en el tipo
+            conn_gs = st.connection("gsheets", type=GSheetsConnection)
+            df = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
+            if df is not None:
+                st.subheader("📁 Tu Archivador Personal")
+                st.dataframe(df, use_container_width=True)
+                st.success("✅ Conexión con Google Sheets exitosa.")
+        except Exception as e:
+            st.error("❌ Error de conexión.")
+            with st.expander("Ver detalle"):
+                st.code(str(e))
 # ==========================================
 # 1. MENÚ LATERAL (DEBE IR AL INICIO)
 # ==========================================
