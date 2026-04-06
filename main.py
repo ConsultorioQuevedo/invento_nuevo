@@ -384,49 +384,14 @@ if verificar_acceso():
         # 1. Activación de la cámara
         foto_captura = st.camera_input("Capturar Código")
 
-        if foto_captura:
-            import cv2
-            import numpy as np
-            from pyzbar.pyzbar import decode
-            from PIL import Image
-
-            # 2. Procesar la imagen para que el sistema la "entienda"
-            imagen_pil = Image.open(foto_captura)
-            imagen_cv = cv2.cvtColor(np.array(imagen_pil), cv2.COLOR_RGB2BGR)
-
-            # 3. Buscar códigos de barras o QR
-            codigos_encontrados = decode(imagen_cv)
-
-            if codigos_encontrados:
-                for codigo in codigos_encontrados:
-                    tipo_codigo = codigo.type # Si es EAN13 (Barras) o QR
-                    datos_codigo = codigo.data.decode('utf-8') # El número o link
-                    
-                    st.success(f"✅ DETECTADO: {tipo_codigo}")
-                    
-                    # Mostrar el resultado de forma destacada
-                    st.markdown(f"### 📦 Código: `{datos_codigo}`")
-                    
-                    # Si es un QR con link, ponemos un botón de acceso
-                    if "http" in datos_codigo:
-                        st.link_button("🌐 Ver información en línea", datos_codigo)
-                    
-                    st.balloons() # Pequeña celebración de éxito
-            else:
-                st.warning("⚠️ No se detectó un código claro. Intente con más luz o acerque más el producto.")
-
-            # 4. Guardar siempre la imagen en el Archivador por seguridad
-            nombre_archivo = f"SCAN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-            ruta_guardado = os.path.join("archivador_quevedo", nombre_archivo)
-            
-            with open(ruta_guardado, "wb") as f:
-                f.write(foto_captura.getbuffer())
-            
-            st.caption(f"📁 Copia de seguridad guardada como: {nombre_archivo}")   
 elif menu == "🤖 ASISTENTE":
         st.header("🤖 Asistente Inteligente Quevedo")
+        # ID de tu hoja de Google Sheets
+        ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
+        url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
+        
         try:
-            # Conexión correcta sin comillas en el tipo
+            # Conexión limpia
             conn_gs = st.connection("gsheets", type=GSheetsConnection)
             df = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
             if df is not None:
@@ -434,78 +399,15 @@ elif menu == "🤖 ASISTENTE":
                 st.dataframe(df, use_container_width=True)
                 st.success("✅ Conexión con Google Sheets exitosa.")
         except Exception as e:
-            st.error("❌ Error de conexión.")
-            with st.expander("Ver detalle"):
+            st.error("❌ Error de conexión con el Archivador.")
+            with st.expander("Ver detalle técnico"):
                 st.code(str(e))
-# ==========================================
-# 1. MENÚ LATERAL (DEBE IR AL INICIO)
-# ==========================================
 
-# Si no tienes estas variables definidas arriba, las inicializamos
-if 'menu' not in st.session_state:
-    st.session_state.menu = "🏠 INICIO"
+        # --- EL CHAT DEL ASISTENTE ---
+        st.markdown("---")
+        entrada_usuario = st.chat_input("Escribe aquí (ej: Gasto 500 en farmacia)")
+        if entrada_usuario:
+            st.info(f"🤖 Has dicho: '{entrada_usuario}'. Procesando...")
 
-menu = st.sidebar.selectbox("Selecciona:", ["🏠 INICIO", "📋 SALUD", "🤖 ASISTENTE"])
 
-# ID de tu hoja de Google Sheets (Verificado)
-ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
-url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
-
-# ==========================================
-# 2. LÓGICA DE LAS SECCIONES
-# ==========================================
-
-if menu == "🏠 INICIO":
-    st.header("🏠 Bienvenido a Control Quevedo")
-    st.info("Usa el menú de la izquierda para navegar.")
-
-elif menu == "📋 SALUD":
-    st.header("📋 Sección de Salud")
-    st.write("Registros médicos y recetas.")
-
-elif menu == "🤖 ASISTENTE":
-    st.header("🤖 Asistente Inteligente Quevedo")
-    st.caption("Conectado con Google Sheets e Inteligencia de Datos")
-
-    # --- EL ARCHIVADOR (VISIBILIDAD TOTAL) ---
-    st.subheader("📁 Tu Archivador Personal")
-    try:
-        # Conexión con la 'jodida' llave de Google
-        conn = st.connection("gsheets", type=GSheetsConnection)
-        df = conn.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
-        
-        if df is not None:
-            st.dataframe(df, use_container_width=True)
-            st.success("✅ Conexión con Google Sheets exitosa.")
-    except Exception as e:
-        st.error("❌ El archivador está oculto por un error de conexión.")
-        st.warning("RECUERDA: El correo del robot debe ser EDITOR en tu Excel de Google.")
-        # Mostramos el error técnico solo para que sepas qué dice Google
-        with st.expander("Ver detalle técnico del error"):
-            st.code(str(e))
-
-    # --- EL CEREBRO DEL ASISTENTE (EL CHAT) ---
-    st.markdown("---")
-    entrada_usuario = st.chat_input("Dime: 'Gasto 500 en farmacia' o 'Ver resumen de gastos'")
-
-    if entrada_usuario:
-        msg = entrada_usuario.lower()
-        
-        # Inteligencia para detectar GASTOS
-        if any(palabra in msg for palabra in ["gasto", "pague", "pagué", "costo", "compré"]):
-            montos = re.findall(r'\d+', msg)
-            if montos:
-                monto = montos[0]
-                st.info(f"🤖 Procesando: Has gastado **${monto}**.")
-                # Aquí podrías poner el código para GUARDAR en la hoja
-                st.balloons()
-                st.success(f"Dato preparado para el Archivador: ${monto}")
-            else:
-                st.warning("🤖 Entiendo que es un gasto, pero ¿de cuánto dinero hablamos?")
-
-        # Inteligencia para mostrar RESUMEN
-        elif any(palabra in msg for palabra in ["resumen", "total", "archivador", "mostrar"]):
-            st.info("🤖 Analizando tus datos actuales... (Mira la tabla arriba 👆)")
-            
-        else:
-            st.write(f"🤖 Has dicho: '{entrada_usuario}'. Estoy aprendiendo a procesar esta orden.")
+  
