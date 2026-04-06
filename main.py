@@ -172,142 +172,112 @@ if verificar_acceso():
         st.divider()
 
     menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
-
-# =========================================================
-    # --- NAVEGACIÓN DE ALTO NIVEL (CORRECCIÓN DE FLUJO) ---
-    # =========================================================
-    
-    if menu == "🏠 INICIO (RESUMEN)":
-        st.header("📊 Resumen Ejecutivo del Sistema")
-        c1, c2, c3 = st.columns(3)
-        
-        df_fin = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
-        df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
-        df_med = pd.read_sql_query("SELECT nombre FROM medicinas LIMIT 1", conn)
-
-        with c1: 
-            st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-            st.metric("💰 BALANCE NETO", f"RD$ {df_fin['total'][0] or 0:,.2f}")
-            st.markdown('</div>', unsafe_allow_html=True)
-        with c2: 
-            st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-            st.metric("🩺 ÚLTIMA GLUCOSA", f"{df_glu['valor'][0] if not df_glu.empty else 'N/A'} mg/dL")
-            st.markdown('</div>', unsafe_allow_html=True)
-        with c3: 
-            st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-            st.metric("💊 MEDICINA ACTUAL", f"{df_med['nombre'][0] if not df_med.empty else 'Ninguna'}")
-            st.markdown('</div>', unsafe_allow_html=True)
-elif menu == "💰 FINANZAS IA":
-        st.header("💰 Gestión de Finanzas - SISTEMA QUEVEDO")
-        with st.expander("➕ Registrar Nuevo Movimiento", expanded=False):
-            with st.form("nuevo_gasto_quevedo", clear_on_submit=True):
-                col_a, col_b = st.columns(2)
-                categoria = col_a.selectbox("Categoría", ["Alimentos", "Salud", "Servicios", "Transporte", "Hogar", "Otros"])
-                monto = col_b.number_input("Monto en RD$", min_value=0.0, step=100.0)
-                detalles = st.text_input("Detalle (ej: Farmacia, Supermercado, Luz)")
-                if st.form_submit_button("💎 GUARDAR EN BASE DE DATOS"):
-                    if monto > 0:
-                        fecha_hoy = datetime.now().strftime("%d/%m/%Y")
-                        c.execute("INSERT INTO finanzas (fecha, categoria, monto) VALUES (?,?,?)", 
-                                  (f"{categoria}: {detalles}" if detalles else categoria, fecha_hoy, monto))
-                        conn.commit()
-                        st.success(f"✅ Registrado: RD$ {monto:,.2f}")
-                        st.rerun()
-
-        st.subheader("📋 Historial de Movimientos")
-        df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC", conn)
-        if not df_f.empty:
-            st.dataframe(df_f[['fecha', 'categoria', 'monto']], use_container_width=True, hide_index=True)
-elif menu == "🩺 BIOMONITOR":
-        st.header("🩺 Monitoreo de Glucosa")
-        val_g = st.number_input("Ingresar nivel actual (mg/dL):", min_value=0, key="input_glucosa")
-        
-        if val_g > 160:
-            st.markdown(f'<div class="semaforo-rojo">🚨 ALERTA CRÍTICA: {val_g} mg/dL</div>', unsafe_allow_html=True)
-            st.subheader("🆘 CONTACTOS DE EMERGENCIA")
-            for i in range(len(contactos_data["Nombre"])):
-                n, t = contactos_data["Nombre"][i], contactos_data["Telefono"][i]
-                msg = f"Emergencia: Luis tiene la glucosa en {val_g}. Favor contactar."
-                url = f"https://api.whatsapp.com/send?phone={t}&text={msg.replace(' ', '%20')}"
-                st.link_button(f"📲 AVISAR A {n}", url)
-
-        if st.button("💾 GUARDAR TOMA ACTUAL"):
-            if val_g > 0:
-                tz = pytz.timezone('America/Santo_Domingo')
-                ahora = datetime.now(tz)
-                est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRITICO"
-                c.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
-                             (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
-                conn.commit()
-                st.success(f"✅ Registrado: {val_g} mg/dL")
-                st.rerun()
-
-        df_g = pd.read_sql_query("SELECT fecha as Fecha, hora as Hora, valor as Valor, estado as Estado FROM glucosa ORDER BY id DESC", conn)
-        if not df_g.empty:
-            fig = px.line(df_g.iloc[::-1], x="Fecha", y="Valor", title="Evolución de su Glucosa", markers=True)
-            fig.update_traces(line_color='#4CAF50')
-            st.plotly_chart(fig, use_container_width=True)
-            st.dataframe(df_g.head(10), use_container_width=True)
-elif menu == "💊 AGENDA MEDICA":
-        st.header("💊 Gestión Médica Profesional")
-        t1, t2 = st.tabs(["📋 Inventario", "📅 Citas"])
-        with t1:
-            with st.form("f_med", clear_on_submit=True):
-                col_m1, col_m2 = st.columns(2)
-                n_m = col_m1.text_input("Nombre Medicamento")
-                h_m = col_m2.text_input("Horario")
-                if st.form_submit_button("💎 GUARDAR"):
-                    c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (n_m, h_m))
+if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
+                    conn.execute("DELETE FROM glucosa")
                     conn.commit()
                     st.rerun()
-            df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
-            st.dataframe(df_m, use_container_width=True)
-        with t2:
-            with st.form("f_cita"):
-                doc = st.text_input("Doctor/Especialidad")
-                fec = st.date_input("Fecha")
-                if st.form_submit_button("📅 AGENDAR"):
-                    c.execute("INSERT INTO citas (doctor, fecha) VALUES (?,?)", (doc, str(fec)))
-                    conn.commit()
-                    st.rerun()
-elif menu == "📸 ESCANER":
-        st.header("📸 Escáner de Visión Artificial")
-        from pyzbar.pyzbar import decode
-        img_file = st.file_uploader("Subir Imagen de Código", type=['jpg', 'png', 'jpeg'])
-        if img_file:
-            img = Image.open(img_file)
-            st.image(img, width=400)
-            datos = decode(img)
-            if datos:
-                for d in datos:
-                    res = d.data.decode('utf-8')
-                    st.success(f"✅ Código Detectado: {res}")
-                    if st.button("💾 REGISTRAR EN AGENDA"):
-                        c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (f"SCAN: {res}", "Revisar"))
-                        conn.commit()
-                        st.rerun()
+
+        # =========================================================
+        # --- MÓDULO 4: AGENDA MÉDICA (RECONECTADO) ---
+        # =========================================================
+        elif menu == "💊 AGENDA MEDICA":
+            st.header("💊 Gestión Médica Profesional")
+            tab1, tab2 = st.tabs(["📋 Inventario de Medicinas", "📅 Control de Citas"])
+
+            with tab1:
+                st.subheader("🚀 Control de Inventario y Dosis")
+                with st.expander("➕ Registrar Nuevo Medicamento", expanded=False):
+                    with st.form("form_med_pro", clear_on_submit=True):
+                        col_n1, col_n2 = st.columns(2)
+                        nombre_m = col_n1.text_input("Nombre del Medicamento")
+                        horario_m = col_n2.text_input("Horario / Frecuencia")
+                        if st.form_submit_button("💎 GUARDAR EN INVENTARIO"):
+                            if nombre_m and horario_m:
+                                c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?, ?)", (nombre_m, horario_m))
+                                conn.commit()
+                                st.success(f"✅ {nombre_m} añadido.")
+                                st.rerun()
+
+                df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
+                if not df_meds.empty:
+                    for _, row in df_meds.iterrows():
+                        with st.container(border=True):
+                            c1, c2, c3 = st.columns([3, 2, 1])
+                            c1.markdown(f"**Medicamento:** {row['nombre']}")
+                            c2.info(f"⏰ {row['horario']}")
+                            if c3.button("🗑️", key=f"del_m_{row['id']}"):
+                                c.execute("DELETE FROM medicinas WHERE id=?", (row['id'],))
+                                conn.commit()
+                                st.rerun()
+
+            with tab2:
+                st.subheader("📅 Agenda de Consultas")
+                with st.form("form_citas_pro"):
+                    doc_esp = st.text_input("Doctor o Especialidad")
+                    fecha_c = st.date_input("Fecha de la Cita")
+                    if st.form_submit_button("📅 AGENDAR CITA MÉDICA"):
+                        if doc_esp:
+                            c.execute("INSERT INTO citas (doctor, fecha) VALUES (?, ?)", (doc_esp, str(fecha_c)))
+                            conn.commit()
+                            st.success("✅ Cita agendada.")
+                            st.rerun()
+
+        # =========================================================
+        # --- MÓDULO 5: ESCÁNER INTELIGENTE ---
+        # =========================================================
+        elif menu == "📸 ESCANER":
+            st.header("📸 Escáner de Visión Artificial")
+            from pyzbar.pyzbar import decode
+            img_file = st.file_uploader("📷 Subir Imagen", type=['jpg', 'png', 'jpeg'])
+            if img_file:
+                img = Image.open(img_file)
+                st.image(img, width=400)
+                datos_detectados = decode(img)
+                if datos_detectados:
+                    for i, d in enumerate(datos_detectados):
+                        codigo_leido = d.data.decode('utf-8')
+                        st.success(f"✅ Detectado: {codigo_leido}")
+                        if st.button(f"💾 REGISTRAR: {codigo_leido[:10]}", key=f"sc_{i}"):
+                            c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?, ?)", (f"SCAN: {codigo_leido}", "Pendiente"))
+                            conn.commit()
+                            st.rerun()
+                else:
+                    st.warning("No se detectó código. Mejore la iluminación.")
+
+        # =========================================================
+        # --- MÓDULO 6: ARCHIVADOR ---
+        # =========================================================
+        elif menu == "📂 ARCHIVADOR":
+            st.header("📂 Archivador Digital Quevedo")
+            archivos = os.listdir("archivador_quevedo")
+            if archivos:
+                for arc in archivos:
+                    with st.expander(f"📄 {arc}"):
+                        if st.button("🗑️ ELIMINAR", key=f"del_file_{arc}"):
+                            os.remove(os.path.join("archivador_quevedo", arc))
+                            st.rerun()
             else:
-                st.warning("No se detectó código. Mejore la iluminación.")
-elif menu == "📂 ARCHIVADOR":
-        st.header("📂 Archivador Digital Quevedo")
-        archivos = os.listdir("archivador_quevedo") if os.path.exists("archivador_quevedo") else []
-        busqueda = st.text_input("🔍 Buscar documento...")
-        for arc in [a for a in archivos if busqueda.lower() in a.lower()]:
-            with st.expander(f"📄 {arc}"):
-                if st.button("🗑️ ELIMINAR ARCHIVO", key=arc):
-                    os.remove(os.path.join("archivador_quevedo", arc))
-                    st.rerun()
-elif menu == "🤖 ASISTENTE":
-        st.header("🤖 Centro de Control Quevedo Pro")
-        try:
-            conn_gs = st.connection("gsheets", type=GSheetsConnection)
-            st.success("✅ Conexión con Nube Activa")
-        except:
-            st.error("⚠️ Modo Local: Sincronización Pendiente")
-        
-        if st.button("📲 SOLICITAR COTIZACIÓN (WhatsApp)"):
-            url_wa = "https://api.whatsapp.com/send?phone=18292061693&text=Hola,%20cotizame%20mis%20medicamentos."
-            st.markdown(f'[🚀 Enviar Mensaje]({url_wa})', unsafe_allow_html=True)
+                st.info("El archivador está vacío.")
 
-    
+        # =========================================================
+        # --- MÓDULO 7: ASISTENTE (IA) ---
+        # =========================================================
+        elif menu == "🤖 ASISTENTE":
+            st.header("🤖 Centro de Control Quevedo Pro")
+            col_as1, col_as2 = st.columns(2)
+            with col_as1:
+                st.subheader("🌐 Nube")
+                try:
+                    conn_gs = st.connection("gsheets", type=GSheetsConnection)
+                    st.success("✅ Sincronizado")
+                except:
+                    st.error("⚠️ Modo Local")
+            with col_as2:
+                st.subheader("📲 WhatsApp")
+                if st.button("💊 COTIZAR MEDICINAS"):
+                    st.info("Generando link para Farmacia GBC...")
+
+# --- FINAL DEL SISTEMA (ESTO VA PEGADO AL BORDE IZQUIERDO) ---
+st.markdown("---")
+st.markdown(f"<div style='text-align: center;'>💎 {NOMBRE_PROPIETARIO} | v2.5</div>", unsafe_allow_html=True)
 
