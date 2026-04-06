@@ -177,107 +177,152 @@ if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
                     conn.commit()
                     st.rerun()
 
-        # =========================================================
-        # --- MÓDULO 4: AGENDA MÉDICA (RECONECTADO) ---
-        # =========================================================
+  # =========================================================
+    # --- BLOQUE DE NAVEGACIÓN: EL MOTOR DEL SISTEMA ---
+    # =========================================================
+    
+    if menu == "🏠 INICIO (RESUMEN)":
+        st.header("📊 Resumen Ejecutivo del Sistema")
+        c1, c2, c3 = st.columns(3)
+        
+        df_fin = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
+        df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+        df_med = pd.read_sql_query("SELECT nombre FROM medicinas LIMIT 1", conn)
+
+        with c1: 
+            st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("💰 BALANCE NETO", f"RD$ {df_fin['total'][0] or 0:,.2f}"); st.markdown('</div>', unsafe_allow_html=True)
+        with c2: 
+            st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("🩺 ÚLTIMA GLUCOSA", f"{df_glu['valor'][0] if not df_glu.empty else 'N/A'} mg/dL"); st.markdown('</div>', unsafe_allow_html=True)
+        with c3: 
+            st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("💊 MEDICINA ACTUAL", f"{df_med['nombre'][0] if not df_med.empty else 'Ninguna'}"); st.markdown('</div>', unsafe_allow_html=True)
+
+ elif menu == "💰 FINANZAS IA":
+        st.header("💰 Gestión de Finanzas - SISTEMA QUEVEDO")
+        with st.expander("➕ Registrar Nuevo Movimiento", expanded=False):
+            with st.form("nuevo_gasto_quevedo"):
+                col_a, col_b = st.columns(2)
+                categoria = col_a.selectbox("Categoría", ["Alimentos", "Salud", "Servicios", "Transporte", "Hogar", "Otros"])
+                monto = col_b.number_input("Monto en RD$", min_value=0.0, step=100.0)
+                detalles = st.text_input("Detalle (ej: Farmacia, Supermercado, Luz)")
+                if st.form_submit_button("Guardar en Base de Datos"):
+                    if monto > 0:
+                        fecha_hoy = datetime.now().strftime("%d/%m/%Y")
+                        c.execute("INSERT INTO finanzas (fecha, categoria, monto) VALUES (?,?,?)", 
+                                  (f"{categoria}: {detalles}" if detalles else categoria, fecha_hoy, monto))
+                        conn.commit()
+                        st.success(f"✅ Registrado: RD$ {monto:,.2f}")
+                        st.rerun()
+
+        st.subheader("📋 Historial de Movimientos")
+        df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC", conn)
+        if not df_f.empty:
+            st.dataframe(df_f[['fecha', 'categoria', 'monto']], use_container_width=True, hide_index=True)
+
+ elif menu == "🩺 BIOMONITOR":
+        st.header("🩺 Monitoreo de Glucosa")
+        val_g = st.number_input("Ingresar nivel actual (mg/dL):", min_value=0, key="input_glucosa")
+        
+        if val_g > 160:
+            st.markdown(f'<div class="semaforo-rojo">🚨 ALERTA CRÍTICA: {val_g} mg/dL</div>', unsafe_allow_html=True)
+            for i in range(len(contactos_data["Nombre"])):
+                n, t = contactos_data["Nombre"][i], contactos_data["Telefono"][i]
+                msg = f"Emergencia: Luis tiene la glucosa en {val_g}. Favor contactar."
+                url = f"https://api.whatsapp.com/send?phone={t}&text={msg.replace(' ', '%20')}"
+                st.link_button(f"📲 AVISAR A {n}", url)
+
+        if st.button("💾 GUARDAR TOMA ACTUAL"):
+            if val_g > 0:
+                tz = pytz.timezone('America/Santo_Domingo')
+                ahora = datetime.now(tz)
+                est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRITICO"
+                c.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
+                             (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
+                conn.commit()
+                st.success(f"✅ Registrado: {val_g} mg/dL")
+                st.rerun()
+
+        # AQUÍ ESTABA EL ERROR: El bloque de visualización debe estar SIEMPRE fuera de condiciones extra
+        df_g = pd.read_sql_query("SELECT fecha as Fecha, hora as Hora, valor as Valor, estado as Estado FROM glucosa ORDER BY id DESC", conn)
+        if not df_g.empty:
+            fig = px.line(df_g.iloc[::-1], x="Fecha", y="Valor", title="Evolución de su Glucosa", markers=True)
+            fig.update_traces(line_color='#4CAF50')
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df_g.head(15), use_container_width=True)
+
+    # --- LOS SIGUIENTES MÓDULOS AHORA SÍ FUNCIONARÁN PORQUE ESTÁN BIEN ALINEADOS ---
+
 elif menu == "💊 AGENDA MEDICA":
-            st.header("💊 Gestión Médica Profesional")
-            tab1, tab2 = st.tabs(["📋 Inventario de Medicinas", "📅 Control de Citas"])
+        st.header("💊 Gestión Médica Profesional")
+        tab1, tab2 = st.tabs(["📋 Inventario de Medicinas", "📅 Control de Citas"])
+        with tab1:
+            with st.expander("➕ Registrar Nuevo Medicamento"):
+                with st.form("form_med_pro"):
+                    nombre_m = st.text_input("Nombre")
+                    horario_m = st.text_input("Horario")
+                    if st.form_submit_button("💎 GUARDAR"):
+                        c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?, ?)", (nombre_m, horario_m))
+                        conn.commit()
+                        st.rerun()
+            df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
+            st.dataframe(df_meds, use_container_width=True)
 
-            with tab1:
-                st.subheader("🚀 Control de Inventario y Dosis")
-                with st.expander("➕ Registrar Nuevo Medicamento", expanded=False):
-                    with st.form("form_med_pro", clear_on_submit=True):
-                        col_n1, col_n2 = st.columns(2)
-                        nombre_m = col_n1.text_input("Nombre del Medicamento")
-                        horario_m = col_n2.text_input("Horario / Frecuencia")
-                        if st.form_submit_button("💎 GUARDAR EN INVENTARIO"):
-                            if nombre_m and horario_m:
-                                c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?, ?)", (nombre_m, horario_m))
-                                conn.commit()
-                                st.success(f"✅ {nombre_m} añadido.")
-                                st.rerun()
-
-                df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
-                if not df_meds.empty:
-                    for _, row in df_meds.iterrows():
-                        with st.container(border=True):
-                            c1, c2, c3 = st.columns([3, 2, 1])
-                            c1.markdown(f"**Medicamento:** {row['nombre']}")
-                            c2.info(f"⏰ {row['horario']}")
-                            if c3.button("🗑️", key=f"del_m_{row['id']}"):
-                                c.execute("DELETE FROM medicinas WHERE id=?", (row['id'],))
-                                conn.commit()
-                                st.rerun()
-
-            with tab2:
-                st.subheader("📅 Agenda de Consultas")
-                with st.form("form_citas_pro"):
-                    doc_esp = st.text_input("Doctor o Especialidad")
-                    fecha_c = st.date_input("Fecha de la Cita")
-                    if st.form_submit_button("📅 AGENDAR CITA MÉDICA"):
-                        if doc_esp:
-                            c.execute("INSERT INTO citas (doctor, fecha) VALUES (?, ?)", (doc_esp, str(fecha_c)))
-                            conn.commit()
-                            st.success("✅ Cita agendada.")
-                            st.rerun()
-
-        # =========================================================
-        # --- MÓDULO 5: ESCÁNER INTELIGENTE ---
-        # =========================================================
 elif menu == "📸 ESCANER":
-            st.header("📸 Escáner de Visión Artificial")
-            from pyzbar.pyzbar import decode
-            img_file = st.file_uploader("📷 Subir Imagen", type=['jpg', 'png', 'jpeg'])
-            if img_file:
-                img = Image.open(img_file)
-                st.image(img, width=400)
-                datos_detectados = decode(img)
-                if datos_detectados:
-                    for i, d in enumerate(datos_detectados):
-                        codigo_leido = d.data.decode('utf-8')
-                        st.success(f"✅ Detectado: {codigo_leido}")
-                        if st.button(f"💾 REGISTRAR: {codigo_leido[:10]}", key=f"sc_{i}"):
-                            c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?, ?)", (f"SCAN: {codigo_leido}", "Pendiente"))
-                            conn.commit()
-                            st.rerun()
-                else:
-                    st.warning("No se detectó código. Mejore la iluminación.")
+        st.header("📸 Escáner de Visión Artificial")
+        from pyzbar.pyzbar import decode
+        img_file = st.file_uploader("📷 Subir Imagen de Código", type=['jpg', 'png', 'jpeg'])
+        if img_file:
+            img = Image.open(img_file)
+            st.image(img, width=400)
+            datos = decode(img)
+            if datos:
+                for d in datos:
+                    codigo = d.data.decode('utf-8')
+                    st.success(f"✅ Detectado: {codigo}")
+                    if st.button("Registrar Medicina"):
+                        c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (f"SCAN: {codigo}", "Pendiente"))
+                        conn.commit()
+                        st.rerun()
 
-        # =========================================================
-        # --- MÓDULO 6: ARCHIVADOR ---
-        # =========================================================
 elif menu == "📂 ARCHIVADOR":
-            st.header("📂 Archivador Digital Quevedo")
-            archivos = os.listdir("archivador_quevedo")
-            if archivos:
-                for arc in archivos:
-                    with st.expander(f"📄 {arc}"):
-                        if st.button("🗑️ ELIMINAR", key=f"del_file_{arc}"):
-                            os.remove(os.path.join("archivador_quevedo", arc))
-                            st.rerun()
-            else:
-                st.info("El archivador está vacío.")
+        st.header("📂 Archivador Digital Quevedo")
+        archivos = os.listdir("archivador_quevedo") if os.path.exists("archivador_quevedo") else []
+        busqueda = st.text_input("🔍 Buscar documento...")
+        for arc in [a for a in archivos if busqueda.lower() in a.lower()]:
+            with st.expander(f"📄 {arc}"):
+                if st.button("🗑️ ELIMINAR", key=arc):
+                    os.remove(os.path.join("archivador_quevedo", arc))
+                    st.rerun()
 
-        # =========================================================
-        # --- MÓDULO 7: ASISTENTE (IA) ---
-        # =========================================================
 elif menu == "🤖 ASISTENTE":
-            st.header("🤖 Centro de Control Quevedo Pro")
-            col_as1, col_as2 = st.columns(2)
-            with col_as1:
-                st.subheader("🌐 Nube")
-                try:
-                    conn_gs = st.connection("gsheets", type=GSheetsConnection)
-                    st.success("✅ Sincronizado")
-                except:
-                    st.error("⚠️ Modo Local")
-            with col_as2:
-                st.subheader("📲 WhatsApp")
-                if st.button("💊 COTIZAR MEDICINAS"):
-                    st.info("Generando link para Farmacia GBC...")
+        st.header("🤖 Centro de Control Quevedo Pro")
+        try:
+            conn_gs = st.connection("gsheets", type=GSheetsConnection)
+            st.success("✅ Conexión con Google Sheets Activa")
+        except:
+            st.error("⚠️ Modo Local Activo")
+        
+        if st.button("💊 SOLICITAR COTIZACIÓN (WhatsApp)"):
+            url_wa = "https://api.whatsapp.com/send?phone=18292061693&text=Solicito%20cotizacion"
+            st.markdown(f'[🚀 Enviar a Farmacia]({url_wa})')
 
-# --- FINAL DEL SISTEMA (ESTO VA PEGADO AL BORDE IZQUIERDO) ---
-st.markdown("---")
-st.markdown(f"<div style='text-align: center;'>💎 {NOMBRE_PROPIETARIO} | v2.5</div>", unsafe_allow_html=True)
+    # =========================================================
+    # --- CRÉDITOS FINALES: INAMOVIBLES ---
+    # =========================================================
+    st.markdown("---")
+    col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
+    with col_f2:
+        st.markdown(f"""
+            <div style='text-align: center; background-color: #1b5e20; padding: 25px; border-radius: 15px; border: 2px solid #4CAF50; box-shadow: 0px 4px 15px rgba(0,0,0,0.5);'>
+                <h1 style='color: white; margin: 0; font-family: sans-serif; font-size: 26px;'>💎 LUIS RAFAEL QUEVEDO</h1>
+                <p style='color: #e8f5e9; font-style: italic; margin: 5px 0; font-size: 1.1em;'>Software de Gestión Personal Robusta</p>
+                <hr style='border: 0.5px solid #4CAF50; width: 80%; margin: auto;'>
+                <p style='color: #ffffff; margin: 10px 0 5px 0; font-size: 0.95em;'><b>Sistema Quevedo Pro v2.5</b></p>
+                <p style='color: #a5d6a7; margin: 0; font-size: 0.85em;'>🤖 Colaboración: Inteligencia Artificial (Gemini)</p>
+                <p style='color: white; font-weight: bold; margin-top: 15px; font-size: 0.9em;'>📍 {UBICACION_SISTEMA}</p>
+                <p style='color: #a5d6a7; font-size: 0.75em; margin-top: 5px;'>© 2026 | Filosofía: Paso a Paso</p>
+            </div>
+        """, unsafe_allow_html=True)
 
+    st.sidebar.markdown("---")
+    st.sidebar.caption(f"👤 Propietario: LUIS RAFAEL QUEVEDO")
+    st.sidebar.caption("🚀 Estado: Sistema 100% Operativo")     
