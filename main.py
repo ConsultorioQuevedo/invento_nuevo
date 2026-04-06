@@ -424,12 +424,17 @@ if verificar_acceso():
             
             st.caption(f"📁 Copia de seguridad guardada como: {nombre_archivo}")   
 
- # ==========================================
-# 1. CONFIGURACIÓN DEL MENÚ (SIEMPRE ARRIBA)
 # ==========================================
+# 1. MENÚ LATERAL (DEBE IR AL INICIO)
+# ==========================================
+
+# Si no tienes estas variables definidas arriba, las inicializamos
+if 'menu' not in st.session_state:
+    st.session_state.menu = "🏠 INICIO"
+
 menu = st.sidebar.selectbox("Selecciona:", ["🏠 INICIO", "📋 SALUD", "🤖 ASISTENTE"])
 
-# URL de tu hoja de Google (Confirmada)
+# ID de tu hoja de Google Sheets (Verificado)
 ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
 url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
 
@@ -439,67 +444,55 @@ url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
 
 if menu == "🏠 INICIO":
     st.header("🏠 Bienvenido a Control Quevedo")
-    st.write("Selecciona una opción en el menú de la izquierda para comenzar.")
+    st.info("Usa el menú de la izquierda para navegar.")
 
 elif menu == "📋 SALUD":
     st.header("📋 Sección de Salud")
-    st.write("Gestión de recetas y análisis médicos.")
-    # Aquí puedes pegar tu lógica de glucosa si la tienes en otro lado
+    st.write("Registros médicos y recetas.")
 
 elif menu == "🤖 ASISTENTE":
-    st.header("🤖 Asistente de Control Quevedo")
-    st.caption("Análisis de salud, finanzas y comunicación")
+    st.header("🤖 Asistente Inteligente Quevedo")
+    st.caption("Conectado con Google Sheets e Inteligencia de Datos")
 
-    # --- EL ARCHIVADOR SIEMPRE VISIBLE ---
+    # --- EL ARCHIVADOR (VISIBILIDAD TOTAL) ---
+    st.subheader("📁 Tu Archivador Personal")
     try:
-        # Conectamos con la llave de los Secrets
+        # Conexión con la 'jodida' llave de Google
         conn = st.connection("gsheets", type="gsheets")
-        
-        # Leemos la pestaña "Hoja 1" (Asegúrate que se llame así en Google)
         df = conn.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
         
         if df is not None:
-            st.subheader("📁 Tu Archivador en Tiempo Real")
             st.dataframe(df, use_container_width=True)
-            
+            st.success("✅ Conexión con Google Sheets exitosa.")
     except Exception as e:
-        st.error("❌ No se pudo cargar el Archivador.")
-        st.info("Revisa que los 'Secrets' en Streamlit tengan el formato correcto y que el robot sea EDITOR en el Excel.")
+        st.error("❌ El archivador está oculto por un error de conexión.")
+        st.warning("RECUERDA: El correo del robot debe ser EDITOR en tu Excel de Google.")
+        # Mostramos el error técnico solo para que sepas qué dice Google
+        with st.expander("Ver detalle técnico del error"):
+            st.code(str(e))
 
-    # --- EL CHAT PARA ÓRDENES (ABAJO DE LA TABLA) ---
-    p = st.chat_input("Ejemplo: 'Gasto 2000 en Farmacia' o 'Ver resumen'")
+    # --- EL CEREBRO DEL ASISTENTE (EL CHAT) ---
+    st.markdown("---")
+    entrada_usuario = st.chat_input("Dime: 'Gasto 500 en farmacia' o 'Ver resumen de gastos'")
 
-    if p:
-        p_lower = p.lower()
-        import re
+    if entrada_usuario:
+        msg = entrada_usuario.lower()
         
-        # OPCIÓN A: REGISTRAR UN GASTO
-        if any(word in p_lower for word in ["gasto", "pague", "pagué", "dinero", "costo"]):
-            monto = re.findall(r'\d+', p_lower)
-            if monto:
-                valor = monto[0]
-                st.success(f"✅ ¡Entendido! Has registrado un gasto de ${valor}")
+        # Inteligencia para detectar GASTOS
+        if any(palabra in msg for palabra in ["gasto", "pague", "pagué", "costo", "compré"]):
+            montos = re.findall(r'\d+', msg)
+            if montos:
+                monto = montos[0]
+                st.info(f"🤖 Procesando: Has gastado **${monto}**.")
+                # Aquí podrías poner el código para GUARDAR en la hoja
                 st.balloons()
-                # Aquí podrías usar conn.update(...) para escribir realmente en la hoja
+                st.success(f"Dato preparado para el Archivador: ${monto}")
             else:
-                st.warning("Indica un monto, ej: 'Gasto 500'")
-        
-        # OPCIÓN B: VER RESUMEN O FINANZAS
-        elif any(word in p_lower for word in ["resumen", "finanzas", "dinero"]):
-            st.subheader("📊 Resumen de tu Billetera")
-            st.info("Calculando totales desde la nube...")
-            # Aquí puedes poner cálculos matemáticos basados en el 'df'
+                st.warning("🤖 Entiendo que es un gasto, pero ¿de cuánto dinero hablamos?")
+
+        # Inteligencia para mostrar RESUMEN
+        elif any(palabra in msg for palabra in ["resumen", "total", "archivador", "mostrar"]):
+            st.info("🤖 Analizando tus datos actuales... (Mira la tabla arriba 👆)")
             
         else:
-            st.write(f"Has dicho: '{p}'. Estoy listo para anotar tus gastos o mostrarte el archivador.")
-
-    # --- MÓDULO DE GMAIL (OPCIONAL) ---
-    st.markdown("---")
-    with st.expander("✉️ Enviar Reporte Formal"):
-        doc_mail = st.text_input("Correo del Destinatario:", placeholder="doctor@clinica.com.do")
-        if doc_mail:
-            # Ejemplo de cuerpo de correo
-            cuerpo = f"Reporte generado automáticamente por el Sistema Quevedo.\nÚltimo registro detectado en el archivador."
-            import urllib.parse
-            link = f"https://mail.google.com/mail/?view=cm&fs=1&to={doc_mail}&su=Reporte%20Quevedo&body={urllib.parse.quote(cuerpo)}"
-            st.link_button("🚀 ABRIR GMAIL", link)
+            st.write(f"🤖 Has dicho: '{entrada_usuario}'. Estoy aprendiendo a procesar esta orden.")
