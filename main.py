@@ -170,12 +170,13 @@ if verificar_acceso():
             pdf_data = generar_reporte_maestro_pdf()
             st.download_button("📥 Descargar Reporte", pdf_data, f"MAESTRO_{datetime.now().strftime('%Y%m%d')}.pdf", "application/pdf")
         st.divider()
-
-    menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
 if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
                     conn.execute("DELETE FROM glucosa")
                     conn.commit()
                     st.rerun()
+
+
+ menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
 
   # =========================================================
     # --- BLOQUE DE NAVEGACIÓN: EL MOTOR DEL SISTEMA ---
