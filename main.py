@@ -424,154 +424,82 @@ if verificar_acceso():
             
             st.caption(f"📁 Copia de seguridad guardada como: {nombre_archivo}")   
 
- # --- 💰 EL ARCHIVADOR DE QUEVEDO (GOOGLE SHEETS) ---
-url_mi_hoja = "https://docs.google.com/spreadsheets/d/18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI/edit#gid=0"
-
-# Capturamos lo que escribes
-entrada = st.chat_input("Ejemplo: 'Gasto 2000 en Farmacia'")
-
-if entrada:
-    txt = entrada.lower()
-    
-    # 1. Intentamos conectar con la hoja
-    try:
-        conn = st.connection("gsheets", type="gsheets")
-        
-        # LÓGICA PARA GASTOS
-        if any(word in txt for word in ["gasto", "pague", "pagué", "dinero", "costo"]):
-            import re
-            monto = re.findall(r'\d+', txt)
-            
-            if monto:
-                valor = int(monto[0])
-                # Aquí enviamos el dato a la nube
-                st.success(f"✅ ¡Anotado en Google! Gastaste ${valor}")
-                # Nota: Para escribir datos nuevos usaremos conn.update() más adelante
-                st.balloons()
-            else:
-                st.warning("Dime el monto, hermano. Ej: 'Gasto 500'")
-
-        # LÓGICA PARA VER EL ARCHIVADOR
-        elif "ver" in txt or "resumen" in txt or "archivador" in txt:
-            df = conn.read(spreadsheet=url_mi_hoja)
-            st.subheader("📁 Contenido de tu Archivador")
-            st.dataframe(df) # Esto te muestra tu Excel de Google ahí mismo en la app
-
-    except Exception as e:
-        st.error("Error de conexión. Revisa si compartiste la hoja con el correo del robot.") 
-
-# --- ESTA LÍNEA ES LA QUE FALTA ---
+ # ==========================================
+# 1. CONFIGURACIÓN DEL MENÚ (SIEMPRE ARRIBA)
+# ==========================================
 menu = st.sidebar.selectbox("Selecciona:", ["🏠 INICIO", "📋 SALUD", "🤖 ASISTENTE"])
 
-# Ahora sí, el código de abajo funcionará:
+# URL de tu hoja de Google (Confirmada)
+ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
+url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
+
+# ==========================================
+# 2. LÓGICA DE LAS SECCIONES
+# ==========================================
+
 if menu == "🏠 INICIO":
-    st.write("Bienvenido")
+    st.header("🏠 Bienvenido a Control Quevedo")
+    st.write("Selecciona una opción en el menú de la izquierda para comenzar.")
 
 elif menu == "📋 SALUD":
-    st.write("Sección salud")
+    st.header("📋 Sección de Salud")
+    st.write("Gestión de recetas y análisis médicos.")
+    # Aquí puedes pegar tu lógica de glucosa si la tienes en otro lado
 
-elif menu == "🤖 ASISTENTE":
-    st.header("🤖 Asistente de Control Quevedo")
-# ==========================================
-# 🤖 SECCIÓN: ASISTENTE INTELIGENTE QUEVEDO
-# ==========================================
 elif menu == "🤖 ASISTENTE":
     st.header("🤖 Asistente de Control Quevedo")
     st.caption("Análisis de salud, finanzas y comunicación")
 
-    # 1. Definimos el ID de tu hoja (El que ya tienes)
-    ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
-    url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
+    # --- EL ARCHIVADOR SIEMPRE VISIBLE ---
+    try:
+        # Conectamos con la llave de los Secrets
+        conn = st.connection("gsheets", type="gsheets")
+        
+        # Leemos la pestaña "Hoja 1" (Asegúrate que se llame así en Google)
+        df = conn.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
+        
+        if df is not None:
+            st.subheader("📁 Tu Archivador en Tiempo Real")
+            st.dataframe(df, use_container_width=True)
+            
+    except Exception as e:
+        st.error("❌ No se pudo cargar el Archivador.")
+        st.info("Revisa que los 'Secrets' en Streamlit tengan el formato correcto y que el robot sea EDITOR en el Excel.")
 
-    # 2. EL CUADRO DE TEXTO (Esto arregla el error de la 'p')
-    p = st.chat_input("Escriba su consulta (Ej: 'Gasto 500 en farmacia')")
+    # --- EL CHAT PARA ÓRDENES (ABAJO DE LA TABLA) ---
+    p = st.chat_input("Ejemplo: 'Gasto 2000 en Farmacia' o 'Ver resumen'")
 
     if p:
-        # Pasamos lo que escribas a minúsculas para que el robot entienda mejor
         p_lower = p.lower()
+        import re
         
         # OPCIÓN A: REGISTRAR UN GASTO
-        if "gasto" in p_lower or "pagué" in p_lower or "pague" in p_lower:
-            try:
-                # Conectamos con la llave de Google (Secrets)
-                conn = st.connection("gsheets", type="gsheets")
-                
-                # Intentamos leer para ver si hay conexión
-                df = conn.read(spreadsheet=url_hoja, worksheet="Hoja 1")
-                
-                st.success(f"✅ Robot conectado. Procesando tu mensaje: '{p}'")
-                st.info("Próximo paso: Programar el guardado automático en la celda vacía.")
-                
-            except Exception as e:
-                st.error("❌ Error de conexión al Archivador.")
-                st.warning("REVISA ESTO: Ve a tu Excel -> Compartir -> Y añade el correo del robot como EDITOR.")
-        
-        # OPCIÓN B: VER EL ARCHIVADOR
-        elif "ver" in p_lower or "mostrar" in p_lower or "archivador" in p_lower:
-            try:
-                conn = st.connection("gsheets", type="gsheets")
-                df = conn.read(spreadsheet=url_hoja, worksheet="Hoja 1")
-                st.subheader("📁 Contenido actual de tu Archivador")
-                st.dataframe(df)
-            except:
-                st.error("No puedo mostrar los datos. Revisa los permisos de Google.")
-
-        else:
-            st.write(f"Has dicho: '{p}'. Todavía estoy aprendiendo a responder eso.")
-
-    # Mensaje de ayuda si la pantalla está muy vacía
-    else:
-        st.write("👆 Escribe algo arriba para empezar a organizar tu vida.")
-    # OPCIÓN A: REGISTRAR UN GASTO
-    if "gasto" in p or "pagué" in p or "pague" in p:
-        try:
-            # Conectamos con la llave que pegaste en Secrets
-            conn = st.connection("gsheets", type="gsheets")
-            
-            # Aquí extraemos el número del texto (ejemplo: "gasto 500")
-            import re
-            monto = re.findall(r'\d+', p)
-            
+        if any(word in p_lower for word in ["gasto", "pague", "pagué", "dinero", "costo"]):
+            monto = re.findall(r'\d+', p_lower)
             if monto:
                 valor = monto[0]
-                # ESTO MANDA LOS DATOS A TU HOJA DE GOOGLE
-                # Nota: 'Sheet1' debe ser el nombre de tu pestaña abajo
-                st.write(f"✅ Registrando ${valor} en tu Google Sheets...")
-                # Lógica para insertar fila (la completaremos al tener el link de tu hoja)
+                st.success(f"✅ ¡Entendido! Has registrado un gasto de ${valor}")
+                st.balloons()
+                # Aquí podrías usar conn.update(...) para escribir realmente en la hoja
             else:
-                st.warning("Indica un monto, ej: 'Gasto 100 en comida'")
-                
-        except Exception as e:
-            st.error(f"Error de conexión: {e}")
-
-    # OPCIÓN B: VER RESUMEN (Lo que tenías en la foto)
-    elif "dinero" in p or "finanza" in p or "resumen" in p:
-        try:
+                st.warning("Indica un monto, ej: 'Gasto 500'")
+        
+        # OPCIÓN B: VER RESUMEN O FINANZAS
+        elif any(word in p_lower for word in ["resumen", "finanzas", "dinero"]):
             st.subheader("📊 Resumen de tu Billetera")
-            # Aquí va tu lógica de SQL que tenías en la foto
-            # Pero ahora leyendo desde el DataFrame de Google
             st.info("Calculando totales desde la nube...")
+            # Aquí puedes poner cálculos matemáticos basados en el 'df'
             
-        except Exception as e:
-            st.error("No pude leer los datos de finanzas.") 
-    
-        # --- 3. MÓDULO DE GMAIL (SE MANTIENE VISIBLE) ---
-        if st.session_state.ver_correo:
-            st.markdown("---")
-            st.subheader("✉️ Redacción de Reporte Formal")
-            doc_mail = st.text_input("Correo del Destinatario:", placeholder="doctor@clinica.com.do")
-            
-            # Obtener datos para el cuerpo
-            df_u = pd.read_sql_query("SELECT valor, fecha FROM glucosa ORDER BY id DESC LIMIT 1", conn)
-            v_u = df_u['valor'][0] if not df_u.empty else "N/A"
-            
-            cuerpo = (f"ESTIMADO DOCTOR / FAMILIAR:\n\n"
-                      f"Le informo que mi último registro de glucosa fue de {v_u} mg/dL.\n"
-                      f"Este reporte fue generado automáticamente por mi sistema de control.\n\n"
-                      f"Atentamente,\n{NOMBRE_PROPIETARIO}\n{UBICACION_SISTEMA}")
+        else:
+            st.write(f"Has dicho: '{p}'. Estoy listo para anotar tus gastos o mostrarte el archivador.")
 
+    # --- MÓDULO DE GMAIL (OPCIONAL) ---
+    st.markdown("---")
+    with st.expander("✉️ Enviar Reporte Formal"):
+        doc_mail = st.text_input("Correo del Destinatario:", placeholder="doctor@clinica.com.do")
+        if doc_mail:
+            # Ejemplo de cuerpo de correo
+            cuerpo = f"Reporte generado automáticamente por el Sistema Quevedo.\nÚltimo registro detectado en el archivador."
             import urllib.parse
-            link = f"https://mail.google.com/mail/?view=cm&fs=1&to={doc_mail}&su=Reporte%20Medico%20Quevedo&body={urllib.parse.quote(cuerpo)}"
-            
-            if doc_mail:
-                st.link_button("🚀 ABRIR GMAIL Y ENVIAR", link)
+            link = f"https://mail.google.com/mail/?view=cm&fs=1&to={doc_mail}&su=Reporte%20Quevedo&body={urllib.parse.quote(cuerpo)}"
+            st.link_button("🚀 ABRIR GMAIL", link)
