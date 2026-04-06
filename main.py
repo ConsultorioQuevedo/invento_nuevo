@@ -472,34 +472,7 @@ elif menu == "📋 SALUD":
 
 elif menu == "🤖 ASISTENTE":
     st.header("🤖 Asistente de Control Quevedo")
-# --- 🤖 SECCIÓN: ASISTENTE INTELIGENTE ---
-if menu == "🤖 ASISTENTE":
-    st.header("🤖 Asistente de Control Quevedo")
-    st.caption("Análisis de salud, finanzas y comunicación")
 
-    # Aquí conectamos con tu Google Sheets directamente
-    try:
-        url_mi_hoja = "https://docs.google.com/spreadsheets/d/18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI/edit#gid=0"
-        conn = st.connection("gsheets", type="gsheets")
-        
-        # Pregunta al usuario
-        pregunta = st.chat_input("Escriba su consulta (Ej: 'Ver archivador')")
-        
-        if pregunta:
-            txt = pregunta.lower()
-            if "ver" in txt or "archivador" in txt:
-                df = conn.read(spreadsheet=url_mi_hoja)
-                st.dataframe(df)
-            else:
-                st.write(f"Has dicho: {pregunta}. Pronto podré procesar esto mejor.")
-    except Exception as e:
-        st.error("Error al conectar con el Asistente. Revisa los Secrets.")
-       # --- 2. LÓGICA DE FINANZAS ROBUSTA (Conexión Google Sheets) ---
-# Primero capturamos la entrada del usuario
-p = st.chat_input("Escribe: 'Gasto 500 en cena' o 'Resumen finanzas'")
-
-if p:
-    p = p.lower()
     
     # OPCIÓN A: REGISTRAR UN GASTO
     if "gasto" in p or "pagué" in p or "pague" in p:
