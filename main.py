@@ -458,7 +458,20 @@ if entrada:
             st.dataframe(df) # Esto te muestra tu Excel de Google ahí mismo en la app
 
     except Exception as e:
-        st.error("Error de conexión. Revisa si compartiste la hoja con el correo del robot.")   
+        st.error("Error de conexión. Revisa si compartiste la hoja con el correo del robot.") 
+
+# --- ESTA LÍNEA ES LA QUE FALTA ---
+menu = st.sidebar.selectbox("Selecciona:", ["🏠 INICIO", "📋 SALUD", "🤖 ASISTENTE"])
+
+# Ahora sí, el código de abajo funcionará:
+if menu == "🏠 INICIO":
+    st.write("Bienvenido")
+
+elif menu == "📋 SALUD":
+    st.write("Sección salud")
+
+elif menu == "🤖 ASISTENTE":
+    st.header("🤖 Asistente de Control Quevedo")
 # --- 🤖 SECCIÓN: ASISTENTE INTELIGENTE ---
 if menu == "🤖 ASISTENTE":
     st.header("🤖 Asistente de Control Quevedo")
