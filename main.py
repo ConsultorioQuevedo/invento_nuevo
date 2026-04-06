@@ -313,7 +313,7 @@ elif menu == "🤖 ASISTENTE":
     # --- FINAL DEL SISTEMA: CRÉDITOS MAESTROS (FUERA) ---
     # =========================================================
 st.markdown("---")
-        col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
+         col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
     with col_f2:
         st.markdown(f"""
             <div style='text-align: center; background-color: #1b5e20; padding: 25px; border-radius: 15px; border: 2px solid #4CAF50; box-shadow: 0px 4px 15px rgba(0,0,0,0.5);'>
