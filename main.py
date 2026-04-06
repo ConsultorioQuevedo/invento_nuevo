@@ -407,9 +407,9 @@ elif menu == "🤖 ASISTENTE":
                     st.success("Generando mensaje para farmacias...")
 
     # --- FUERA DEL BLOQUE DE ACCESO (AL FINAL DEL ARCHIVO) ---
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("---")
-    st.markdown(
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.markdown("---")
+st.markdown(
         f"""
         <div style="text-align: center; padding: 20px; border: 2px solid #4CAF50; border-radius: 15px; background-color: #f9f9f9;">
             <h2 style="color: #2e7d32; margin: 0;">💎 SISTEMA QUEVEDO PRO v2.5</h2>
