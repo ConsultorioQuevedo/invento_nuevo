@@ -376,130 +376,59 @@ if verificar_acceso():
             else:
                 st.write("No tiene citas pendientes.")
 
-# ==========================================
-    # MÓDULO UNIFICADO: INTELIGENCIA QUEVEDO PRO
-    # ==========================================
-    elif menu in ["📸 ESCANER", "🤖 ASISTENTE", "📂 ARCHIVADOR"]:
-        st.header("💎 Centro de Inteligencia y Control")
+elif menu == "🤖 ASISTENTE":
+        st.header("🤖 Centro de Control Quevedo Pro")
         
-        # Pestañas para organizar la robustez
-        tab_scan, tab_asis = st.tabs(["📸 ESCÁNER DE PRECISIÓN", "🤖 ASISTENTE & ARCHIVADOR"])
-
-        # --- 1. SECCIÓN: ESCÁNER ROBUSTO ---
-        with tab_scan:
-            st.subheader("📸 Captura de Insumos")
-            foto = st.camera_input("Enfoque el código de barras o QR", key="cam_maestra")
+        # --- NUEVA ESTRATEGIA DE CONEXIÓN ---
+        # Solo necesitamos el ID, no la URL larga que se rompe
+        ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
+        
+        try:
+            # Conexión directa usando solo el ID
+            conn_gs = st.connection("gsheets", type=GSheetsConnection)
+            # Intentamos leer la hoja completa sin parámetros extraños en la URL
+            df = conn_gs.read(spreadsheet=ID_HOJA, ttl=0)
             
-            if foto:
-                import cv2
-                from pyzbar.pyzbar import decode
-                
-                img = Image.open(foto)
-                img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-                detecciones = decode(img_cv)
-                
-                if detecciones:
-                    for d in detecciones:
-                        tipo = d.type
-                        dato = d.data.decode('utf-8')
-                        st.success(f"✅ {tipo} Detectado: `{dato}`")
-                        if "http" in dato:
-                            st.link_button("🌐 Abrir Enlace", dato)
-                        
-                        # Guardar automáticamente en el historial local
-                        nombre_img = f"SCAN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-                        img.save(os.path.join("archivador_quevedo", nombre_img))
-                        st.caption(f"💾 Imagen protegida en: {nombre_img}")
-                else:
-                    st.warning("⚠️ No se detectó código. Intente con más luz.")
+            if df is not None:
+                st.subheader("📂 Tu Archivador en Tiempo Real")
+                st.dataframe(df, use_container_width=True)
+                st.success("✅ ¡CONEXIÓN EXITOSA!")
+        except Exception as e:
+            st.error("❌ Error de comunicación con la Nube.")
+            st.warning("Revisa que el archivo de Google Sheets sea 'Público' o que el correo del robot sea 'Editor'.")
+            with st.expander("Detalle Técnico para Quevedo"):
+                st.code(str(e))
 
-        # --- 2. SECCIÓN: ASISTENTE E INTELIGENCIA DE ARCHIVO ---
-        with tab_asis:
-            st.subheader("🤖 Asistente Virtual Quevedo")
-            
-            # Entrada de texto natural
-            chat_input = st.chat_input("Dime: 'Gasto 1200 en farmacia' o 'Archiva que pagué 3000 de luz'")
-            
-            if chat_input:
-                import re
-                msg = chat_input.lower()
-                
-                # Inteligencia de Extracción
-                montos = re.findall(r'\d+', msg)
-                monto_val = float(montos[0]) if montos else 0.0
-                
-                # Clasificación Inteligente
-                cat_detectada = "Otros"
-                if any(p in msg for p in ["farmacia", "medicina", "pastillas"]): cat_detectada = "Salud"
-                elif any(p in msg for p in ["luz", "agua", "internet"]): cat_detectada = "Servicios"
-                elif any(p in msg for p in ["comida", "super", "almuerzo"]): cat_detectada = "Alimentos"
-                
-                # Pre-llenado para revisión humana
-                st.session_state['revision_activa'] = True
-                st.session_state['datos_temp'] = {
-                    "monto": monto_val,
-                    "categoria": cat_detectada,
-                    "detalle": chat_input
-                }
+        # --- RECUPERACIÓN DE BOTONES Y CRÉDITOS ---
+        st.divider()
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("📧 ENVIAR REPORTE A GMAIL"):
+                st.info("Función de correo en proceso...")
+        with col2:
+            # Aquí va el botón de presupuesto que querías
+            st.button("📲 SOLICITAR PRESUPUESTO")
 
-            # --- 3. EL ARCHIVADOR: INTERFAZ DE CONFIRMACIÓN ---
-            if st.session_state.get('revision_activa'):
-                st.markdown("### 📋 Revisión del Archivador")
-                with st.container(border=True):
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        m_final = st.number_input("Monto:", value=st.session_state['datos_temp']['monto'])
-                        cat_final = st.selectbox("Categoría:", ["Salud", "Alimentos", "Servicios", "Otros"], 
-                                               index=["Salud", "Alimentos", "Servicios", "Otros"].index(st.session_state['datos_temp']['categoria']))
-                    with c2:
-                        det_final = st.text_area("Detalle del Registro:", value=st.session_state['datos_temp']['detalle'])
 
-                    col_b1, col_b2 = st.columns(2)
-                    if col_b1.button("💎 CONFIRMAR Y ARCHIVAR EN NUBE"):
-                        try:
-                            # Conexión limpia a Google Sheets
-                            ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
-                            url_hoja = f"https://docs.google.com/spreadsheets/d/{ID_HOJA}/edit#gid=0"
-                            conn_gs = st.connection("gsheets", type=GSheetsConnection)
-                            
-                         # El %20 elimina el error de "control characters"
-                            df = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja%201", ttl=0)
-                            
-                            nueva_data = pd.DataFrame([{
-                                "Fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "Categoría": cat_final,
-                                "Monto": m_final,
-                                "Detalle": det_final
-                            }])
-                            
-                            df_actualizado = pd.concat([df_nube, nueva_data], ignore_index=True)
-                            conn_gs.update(spreadsheet=url_hoja, data=df_actualizado, worksheet="Hoja 1")
-                            
-                            st.success("✅ ¡Dato blindado en Google Sheets!")
-                            st.balloons()
-                            st.session_state['revision_activa'] = False
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"❌ Error de conexión: {e}")
-
-                    if col_b2.button("🗑️ DESCARTAR"):
-                        st.session_state['revision_activa'] = False
-                        st.rerun()
-
-            # --- VISUALIZACIÓN DEL ARCHIVADOR ---
-            st.divider()
-            st.subheader("📂 Consulta de Registros en la Nube")
-            try:
-                ID_HOJA = "18030cQtLCvWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbI"
-                df = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja%201", ttl=0)
-                conn_gs = st.connection("gsheets", type=GSheetsConnection)
-                df_view = conn_gs.read(spreadsheet=url_hoja, worksheet="Hoja 1", ttl=0)
-                if df_view is not None:
-                    st.dataframe(df_view.sort_index(ascending=False), use_container_width=True)
-            except:
-                st.info("Conectando con el Archivador Maestro...")
-
-# --- CRÉDITOS A PIE DE PÁGINA (EL SELLO DE CALIDAD) ---
-st.markdown("---")  # Una línea divisoria fina
-col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
-
+# =========================================================
+# CRÉDITOS Y FIRMA DE PROPIEDAD - SISTEMA QUEVEDO PRO
+# =========================================================
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.divider()
+st.markdown(
+    f"""
+    <div style="text-align: center; padding: 20px; border: 2px solid #4CAF50; border-radius: 15px; background-color: #f9f9f9;">
+        <h2 style="color: #2e7d32; margin: 0;">💎 SISTEMA QUEVEDO PRO v2.5</h2>
+        <p style="font-size: 1.2em; font-weight: bold; color: #333; margin: 10px 0;">
+            Propiedad de: {NOMBRE_PROPIETARIO}
+        </p>
+        <p style="color: #666; margin: 5px 0;">📍 {UBICACION_SISTEMA} | República Dominicana</p>
+        <hr style="width: 50%; margin: 15px auto; border: 0.5px solid #ccc;">
+        <p style="font-style: italic; color: #1b5e20; font-size: 1.1em;">
+            "Paso a paso, primero una cosa y luego la otra."
+        </p>
+        <p style="font-size: 0.8em; color: #999; margin-top: 15px;">© 2026 Todos los derechos reservados.</p>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
