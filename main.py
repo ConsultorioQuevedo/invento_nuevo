@@ -314,7 +314,7 @@ else:
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
         # --- SECCIÓN 3: ESCANER ---
-        elif menu == "📸 ESCANER":
+elif menu == "📸 ESCANER":
             st.header("📸 Escáner de Documentos y Códigos")
             st.info("Módulo de procesamiento de imagen activo.")
             # Aquí va tu lógica de OpenCV/Pillow que desees integrar
@@ -327,7 +327,7 @@ else:
         # =========================================================
         # --- MÓDULO 4: AGENDA MÉDICA (ESTRUCTURA REPARADA) ---
         # =========================================================
-        elif menu == "💊 AGENDA MEDICA":
+elif menu == "💊 AGENDA MEDICA":
             st.header("💊 Gestión Médica Profesional")
             tab1, tab2 = st.tabs(["📋 Medicamentos Actuales", "📅 Control de Citas"])
             
@@ -394,7 +394,7 @@ else:
         # =========================================================
         # --- MÓDULO 5: ASISTENTE & ARCHIVADOR (LÍNEA 379 OK) ---
         # =========================================================
-        elif menu == "🤖 ASISTENTE":
+ elif menu == "🤖 ASISTENTE":
             st.header("🤖 Centro de Control Quevedo Pro")
             st.markdown("### ✍️ Archivador Inteligente & Comunicación")
             
