@@ -339,7 +339,7 @@ elif menu == "📂 ARCHIVADOR":
                 st.info("El archivador local está vacío.")
 
         # --- SECCIÓN: ASISTENTE (CONEXIÓN SEGURA) ---
- elif menu == "🤖 ASISTENTE":
+elif menu == "🤖 ASISTENTE":
             st.header("🤖 Asistente Inteligente")
             st.markdown("---")
             st.warning("⚠️ Conexión con Google Sheets en mantenimiento. Usando base de datos local.")
