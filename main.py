@@ -316,7 +316,7 @@ if verificar_acceso():
  # =========================================================
         # --- MÓDULO 4: AGENDA MÉDICA (RECONSTRUCCIÓN ROBUSTA) ---
         # =========================================================
-        elif menu == "💊 AGENDA MEDICA":
+elif menu == "💊 AGENDA MEDICA":
             st.header("💊 Gestión Médica Profesional")
             st.markdown("---")
             
@@ -413,7 +413,7 @@ if verificar_acceso():
         # =========================================================
         # --- MÓDULOS RESTANTES (ESCANER, ARCHIVADOR, ASISTENTE) ---
         # =========================================================
-        elif menu == "📸 ESCANER":
+elif menu == "📸 ESCANER":
             st.header("📸 Escáner de Documentos")
          st.info("Módulo en preparación para integración con OpenCV.")
 
