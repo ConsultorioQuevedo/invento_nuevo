@@ -306,7 +306,7 @@ elif menu == "🤖 ASISTENTE":
     # =========================================================
     # --- CRÉDITOS FINALES: INAMOVIBLES ---
     # =========================================================
-    st.markdown("---")
+st.markdown("---")
     col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
     with col_f2:
         st.markdown(f"""
