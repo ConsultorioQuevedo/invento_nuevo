@@ -10,7 +10,7 @@ import numpy as np
 import unicodedata
 from PIL import Image
 import io
-import GSheetsConnection
+from streamlit_gsheets import GSheetsConnection
 # 1. CONFIGURACIÓN E INTERFAZ DE ALTO NIVEL
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
 # --- CONFIGURACIÓN DE IDENTIDAD MAESTRA ---
