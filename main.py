@@ -419,8 +419,7 @@ elif menu == "📸 ESCANER":
 elif menu == "📂 ARCHIVADOR":
             st.header("📂 Archivador Digital")
             st.write("Gestión de archivos locales en la carpeta `archivador_quevedo`.")
-
-        elif menu == "🤖 ASISTENTE":
+elif menu == "🤖 ASISTENTE":
             st.header("🤖 Centro de Inteligencia")
             st.write("Aquí se gestionará la comunicación vía WhatsApp y reportes avanzados.")
 
