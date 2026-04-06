@@ -310,9 +310,6 @@ if verificar_acceso():
 
 
 
-    else:
-            st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
-
 # =========================================================
 # --- MÓDULO 4: AGENDA MÉDICA (ROBUSTO) ---
 # =========================================================
