@@ -472,7 +472,19 @@ elif menu == "📋 SALUD":
 
 elif menu == "🤖 ASISTENTE":
     st.header("🤖 Asistente de Control Quevedo")
-
+# --- VOLVIENDO A LO QUE FUNCIONABA (Local) ---
+if menu == "🤖 ASISTENTE":
+    st.header("🤖 Tu Archivador Local")
+    import sqlite3
+    
+    # Intentamos leer tu base de datos de siempre
+    try:
+        conn = sqlite3.connect('tu_base_de_datos.db') # El nombre que tenías antes
+        import pandas as pd
+        df = pd.read_sql_query("SELECT * FROM finanzas", conn)
+        st.dataframe(df)
+    except:
+        st.warning("No encontré datos locales. Vamos a crear una entrada nueva.")
     
     # OPCIÓN A: REGISTRAR UN GASTO
     if "gasto" in p or "pagué" in p or "pague" in p:
