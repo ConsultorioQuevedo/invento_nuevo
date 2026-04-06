@@ -196,7 +196,7 @@ if menu == "🏠 INICIO (RESUMEN)":
         with c3: 
             st.markdown('<div class="resumen-card">', unsafe_allow_html=True); st.metric("💊 MEDICINA ACTUAL", f"{df_med['nombre'][0] if not df_med.empty else 'Ninguna'}"); st.markdown('</div>', unsafe_allow_html=True)
 
- elif menu == "💰 FINANZAS IA":
+elif menu == "💰 FINANZAS IA":
         st.header("💰 Gestión de Finanzas - SISTEMA QUEVEDO")
         with st.expander("➕ Registrar Nuevo Movimiento", expanded=False):
             with st.form("nuevo_gasto_quevedo"):
@@ -218,7 +218,7 @@ if menu == "🏠 INICIO (RESUMEN)":
         if not df_f.empty:
             st.dataframe(df_f[['fecha', 'categoria', 'monto']], use_container_width=True, hide_index=True)
 
- elif menu == "🩺 BIOMONITOR":
+elif menu == "🩺 BIOMONITOR":
         st.header("🩺 Monitoreo de Glucosa")
         val_g = st.number_input("Ingresar nivel actual (mg/dL):", min_value=0, key="input_glucosa")
         
@@ -250,7 +250,6 @@ if menu == "🏠 INICIO (RESUMEN)":
             st.dataframe(df_g.head(15), use_container_width=True)
 
     # --- LOS SIGUIENTES MÓDULOS AHORA SÍ FUNCIONARÁN PORQUE ESTÁN BIEN ALINEADOS ---
-
 elif menu == "💊 AGENDA MEDICA":
         st.header("💊 Gestión Médica Profesional")
         tab1, tab2 = st.tabs(["📋 Inventario de Medicinas", "📅 Control de Citas"])
@@ -265,7 +264,6 @@ elif menu == "💊 AGENDA MEDICA":
                         st.rerun()
             df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
             st.dataframe(df_meds, use_container_width=True)
-
 elif menu == "📸 ESCANER":
         st.header("📸 Escáner de Visión Artificial")
         from pyzbar.pyzbar import decode
