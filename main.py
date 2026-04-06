@@ -310,7 +310,7 @@ if verificar_acceso():
         else:
             st.info("Aún no hay registros de glucosa. Ingrese el primero arriba.")    
 
-       st.caption("Redacta cotizaciones para Carol/GBC automáticamente.")
+            st.caption("Redacta cotizaciones para Carol/GBC automáticamente.")
 # --- MÓDULO 4: AGENDA MÉDICA (INTELIGENCIA PURA) ---
         elif menu == "💊 AGENDA MEDICA":
             st.header("💊 Gestión Médica Profesional")
