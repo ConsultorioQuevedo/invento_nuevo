@@ -303,24 +303,4 @@ elif menu == "🤖 ASISTENTE":
             url_wa = "https://api.whatsapp.com/send?phone=18292061693&text=Solicito%20cotizacion"
             st.markdown(f'[🚀 Enviar a Farmacia]({url_wa})')
 
-    # =========================================================
-    # --- CRÉDITOS FINALES: INAMOVIBLES ---
-    # =========================================================
-st.markdown("---")
-              col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
-    with col_f2:
-        st.markdown(f"""
-            <div style='text-align: center; background-color: #1b5e20; padding: 25px; border-radius: 15px; border: 2px solid #4CAF50; box-shadow: 0px 4px 15px rgba(0,0,0,0.5);'>
-                <h1 style='color: white; margin: 0; font-family: sans-serif; font-size: 26px;'>💎 LUIS RAFAEL QUEVEDO</h1>
-                <p style='color: #e8f5e9; font-style: italic; margin: 5px 0; font-size: 1.1em;'>Software de Gestión Personal Robusta</p>
-                <hr style='border: 0.5px solid #4CAF50; width: 80%; margin: auto;'>
-                <p style='color: #ffffff; margin: 10px 0 5px 0; font-size: 0.95em;'><b>Sistema Quevedo Pro v2.5</b></p>
-                <p style='color: #a5d6a7; margin: 0; font-size: 0.85em;'>🤖 Colaboración: Inteligencia Artificial (Gemini)</p>
-                <p style='color: white; font-weight: bold; margin-top: 15px; font-size: 0.9em;'>📍 {UBICACION_SISTEMA}</p>
-                <p style='color: #a5d6a7; font-size: 0.75em; margin-top: 5px;'>© 2026 | Filosofía: Paso a Paso</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.sidebar.markdown("---")
-    st.sidebar.caption(f"👤 Propietario: LUIS RAFAEL QUEVEDO")
-    st.sidebar.caption("🚀 Estado: Sistema 100% Operativo")     
+    
