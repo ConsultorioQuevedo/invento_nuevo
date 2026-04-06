@@ -302,12 +302,10 @@ if verificar_acceso():
             st.write("📋 **Últimas mediciones:**")
             st.dataframe(df_g.head(15), use_container_width=True)
             
-            with st.expander("🗑️ Zona de Peligro"):
-                if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
+            if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
                     conn.execute("DELETE FROM glucosa")
                     conn.commit()
                     st.rerun()
-
 
 
 # =========================================================
