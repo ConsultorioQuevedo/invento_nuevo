@@ -25,6 +25,8 @@ def limpiar_texto(texto):
 # --- SISTEMA DE SEGURIDAD (LOGIN) ---
 def verificar_acceso():
     if "autenticado" not in st.session_state:
+
+        
 # --- BYPASS TOTAL: Entra directo sin preguntar nada ---
     if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = True 
