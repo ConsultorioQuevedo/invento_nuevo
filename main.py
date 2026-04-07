@@ -248,36 +248,71 @@ elif menu == "💰 FINANZAS IA":
         if not df_f.empty:
             st.dataframe(df_f[['fecha', 'categoria', 'monto']], use_container_width=True, hide_index=True)
 
+# --- MÓDULO 3: BIOMONITOR PRO (CON ALERTAS Y GRÁFICOS) ---
 elif menu == "🩺 BIOMONITOR":
-        st.header("🩺 Monitoreo de Glucosa")
-        val_g = st.number_input("Ingresar nivel actual (mg/dL):", min_value=0, key="input_glucosa")
+        st.header("🩺 Centro de Control Biométrico")
         
-        if val_g > 160:
-            st.markdown(f'<div class="semaforo-rojo">🚨 ALERTA CRÍTICA: {val_g} mg/dL</div>', unsafe_allow_html=True)
-            for i in range(len(contactos_data["Nombre"])):
-                n, t = contactos_data["Nombre"][i], contactos_data["Telefono"][i]
-                msg = f"Emergencia: Luis tiene la glucosa en {val_g}. Favor contactar."
-                url = f"https://api.whatsapp.com/send?phone={t}&text={msg.replace(' ', '%20')}"
-                st.link_button(f"📲 AVISAR A {n}", url)
+        col_input, col_semaforo = st.columns([1, 1])
 
-        if st.button("💾 GUARDAR TOMA ACTUAL"):
-            if val_g > 0:
-                tz = pytz.timezone('America/Santo_Domingo')
-                ahora = datetime.now(tz)
-                est = "NORMAL" if val_g <= 140 else "ALERTA" if val_g <= 160 else "CRITICO"
-                c.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
-                             (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), est))
-                conn.commit()
-                st.success(f"✅ Registrado: {val_g} mg/dL")
-                st.rerun()
+        with col_input:
+            val_g = st.number_input("Nivel de Glucosa (mg/dL)", min_value=0, key="input_g_pro")
+            btn_guardar = st.button("💾 REGISTRAR Y NOTIFICAR", key="btn_g_pro", use_container_width=True)
 
-        # AQUÍ ESTABA EL ERROR: El bloque de visualización debe estar SIEMPRE fuera de condiciones extra
-        df_g = pd.read_sql_query("SELECT fecha as Fecha, hora as Hora, valor as Valor, estado as Estado FROM glucosa ORDER BY id DESC", conn)
+        # 1. LÓGICA DEL SEMÁFORO Y ALERTAS
+        if val_g > 0:
+            if val_g < 70:
+                estado, color, msj = "HIPOGLICEMIA (BAJA)", "blue", "⚠️ ¡Azúcar muy baja! Consume algo dulce."
+            elif val_g <= 140:
+                estado, color, msj = "NORMAL", "green", "✅ Todo bajo control, Quevedo."
+            elif val_g <= 199:
+                estado, color, msj = "PRE-DIABETES (ALTA)", "orange", "🟠 Cuidado, el nivel está subiendo."
+            else:
+                estado, color, msj = "DIABETES (CRÍTICO)", "red", "🚨 ¡ALERTA CRÍTICA! Nivel muy alto."
+            
+            with col_semaforo:
+                st.markdown(f"<div style='text-align:center; background-color:{color}; padding:15px; border-radius:10px; color:white;'><h3>{estado}</h3><h1>{val_g}</h1></div>", unsafe_allow_html=True)
+                st.write(msj)
+
+        # 2. ACCIÓN DE GUARDAR Y WHATSAPP
+        if btn_guardar:
+            ahora = datetime.now(pytz.timezone('America/Santo_Domingo'))
+            c.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
+                      (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), estado))
+            conn.commit()
+
+            # --- LA GASOLINA: ALERTA WHATSAPP ---
+            if val_g > 180 or val_g < 70:
+                msg_whatsapp = f"🚨 ALERTA MÉDICA - LUIS RAFAEL QUEVEDO: Nivel de glucosa crítico: {val_g} mg/dL ({estado}) a las {ahora.strftime('%I:%M %p')}."
+                # Esto genera un link directo para que solo tengas que darle a enviar
+                link_wa = f"https://wa.me/1849XXXXXXX?text={msg_whatsapp.replace(' ', '%20')}" # Cambia las X por tu número
+                st.warning("⚠️ NIVEL CRÍTICO DETECTADO")
+                st.markdown(f"[📲 ENVIAR ALERTA A CONTACTOS]({link_wa})")
+            
+            st.success("✅ Registro completado.")
+            st.rerun()
+
+        st.divider()
+
+        # 3. EL GRÁFICO (Para ver la tendencia)
+        st.subheader("📈 Análisis de Tendencia Histórica")
+        df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 20", conn)
+        
         if not df_g.empty:
-            fig = px.line(df_g.iloc[::-1], x="Fecha", y="Valor", title="Evolución de su Glucosa", markers=True)
-            fig.update_traces(line_color='#4CAF50')
+            # Gráfico de línea profesional
+            fig = px.line(df_g, x="hora", y="valor", title="Evolución de Glucosa", 
+                         markers=True, color_discrete_sequence=[color if val_g > 0 else "green"])
             st.plotly_chart(fig, use_container_width=True)
-            st.dataframe(df_g.head(15), use_container_width=True)
+            
+            # Tabla de datos
+            with st.expander("📄 Ver historial detallado"):
+                st.dataframe(df_g, use_container_width=True)
+        
+        # 4. ZONA DE PELIGRO
+        with st.expander("🗑️ ADMINISTRAR BASE DE DATOS"):
+            if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA", key="btn_borrar_final"):
+                c.execute("DELETE FROM glucosa")
+                conn.commit()
+                st.rerun()
 
     # --- LOS SIGUIENTES MÓDULOS AHORA SÍ FUNCIONARÁN PORQUE ESTÁN BIEN ALINEADOS ---
 elif menu == "💊 AGENDA MEDICA":
