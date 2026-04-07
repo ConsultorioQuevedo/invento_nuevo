@@ -31,8 +31,8 @@ if "autenticado" not in st.session_state:
 menu = st.sidebar.radio("MODULOS", ["🏠 INICIO", "💉 BIOMONITOR", "📅 AGENDA", "📦 ARCHIVADOR"])
 
     
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
         u = st.text_input("Usuario", key="user_login")
         p = st.text_input("Contraseña", type="password", key="pass_login")
         
