@@ -194,6 +194,7 @@ elif menu == "💊 AGENDA MÉDICA":
     st.header("📅 Agenda Médica y Control de Fármacos")
     tab1, tab2 = st.tabs(["📝 CITAS MÉDICAS", "💊 MEDICAMENTOS"])
 
+
     # --- SUB-MÓDULO: CITAS MÉDICAS ---
     with tab1:
         st.subheader("🏥 Programar Nueva Cita")
@@ -207,7 +208,6 @@ elif menu == "💊 AGENDA MÉDICA":
             centro = col_c4.text_input("Centro Médico / Clínica")
             
             if st.form_submit_button("💾 AGENDAR CITA"):
-                # Formateamos la hora a AM/PM en MAYÚSCULAS para consistencia
                 hora_fmt = hora.strftime("%I:%M %p").upper()
                 c.execute("INSERT INTO citas (doctor, fecha, hora, centro) VALUES (?,?,?,?)",
                           (especialidad, str(fecha_cita), hora_fmt, centro))
@@ -217,28 +217,23 @@ elif menu == "💊 AGENDA MÉDICA":
 
         st.divider()
         st.subheader("📋 Citas Programadas")
-        # Aquí es donde se recuperan los datos de la base de datos
-        # --- ESTO REEMPLAZA TU LÍNEA 222 ---
-try:
-    df_citas = pd.read_sql_query("SELECT id, doctor, fecha, hora, centro FROM citas ORDER BY fecha ASC", conn)
-except Exception:
-    # Si la tabla no existe, la creamos aquí mismo por emergencia
-    c.execute("""CREATE TABLE IF NOT EXISTS citas 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)""")
-    conn.commit()
-    df_citas = pd.DataFrame(columns=["id", "doctor", "fecha", "hora", "centro"])
-# ----------------------------------
         
-    if not df_citas.empty:
+        try:
+            df_citas = pd.read_sql_query("SELECT id, doctor, fecha, hora, centro FROM citas ORDER BY fecha ASC", conn)
+        except Exception:
+            c.execute("""CREATE TABLE IF NOT EXISTS citas 
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)""")
+            conn.commit()
+            df_citas = pd.DataFrame(columns=["id", "doctor, fecha, hora, centro"])
+        
+        if not df_citas.empty:
             st.dataframe(df_citas, use_container_width=True, hide_index=True)
-            
-            # Botón para limpiar historial de citas si es necesario
             if st.button("🗑️ LIMPIAR TODAS LAS CITAS", key="btn_borrar_citas"):
                 c.execute("DELETE FROM citas")
                 conn.commit()
                 st.warning("Historial de citas eliminado.")
                 st.rerun()
-    else:
+        else:
             st.info("No tienes citas pendientes en este momento.")
 
     # --- SUB-MÓDULO: MEDICAMENTOS ---
@@ -248,7 +243,8 @@ except Exception:
             col_m1, col_m2 = st.columns(2)
             med_nombre = col_m1.text_input("Nombre del Medicamento")
             dosis = col_m2.number_input("Dosis (mg/ml/pastillas)", min_value=0, step=1)
-            
+
+    
             col_m3, col_m4 = st.columns(2)
             cada_cuanto = col_m3.selectbox("Frecuencia", ["Cada 4 horas", "Cada 6 horas", "Cada 8 horas", "Cada 12 horas", "Una vez al día"])
             prox_toma = col_m4.time_input("Hora de la próxima toma")
