@@ -26,23 +26,30 @@ def limpiar_texto(texto):
 def verificar_acceso():
     if "autenticado" not in st.session_state:
         st.session_state["autenticado"] = False
-
-    if not st.session_state["autenticado"]:
-        st.markdown("<h1 style='text-align: center; color: #4CAF50;'>💎 SISTEMA QUEVEDO</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center;'>🔐 Acceso Privado - Luis Rafael Quevedo</p>", unsafe_allow_html=True)
+     def verificar_acceso():
+    st.markdown("<h1 style='text-align: center;'>🔐 ACCESO AL SISTEMA</h1>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        u = st.text_input("Usuario", key="user_login")
+        p = st.text_input("Contraseña", type="password", key="pass_login")
         
-        col1, col2, col3 = st.columns([1,2,1])
-        with col2:
-            u = st.text_input("Usuario")
-            p = st.text_input("Contraseña", type="password")
-            if st.button("DESBLOQUEAR SISTEMA"):
-                if u == "Amin" and p == "1234":
-                    st.session_state["autenticado"] = True
-                    st.rerun()
-                else:
-                    st.error("❌ Credenciales incorrectas")
-        return False
-    return True
+        if st.button("🔓 DESBLOQUEAR SISTEMA", use_container_width=True):
+            if u == "Amin" and p == "1234":
+                st.session_state["autenticado"] = True
+                st.success("✅ Acceso concedido")
+                st.rerun()
+            else:
+                st.error("❌ Credenciales incorrectas")
+
+    # Si no está autenticado en la memoria, devuelve False
+    return st.session_state.get("autenticado", False)
+
+# --- EJECUCIÓN ---
+if not st.session_state.get("autenticado", False):
+    verificar_acceso()
+    st.stop() # Esto detiene el programa aquí hasta que pongas la clave
+
 
 if verificar_acceso():
     # Directorios y Base de Datos
