@@ -487,79 +487,88 @@ elif menu == "📂 ARCHIVADOR":
         count = len(os.listdir(path)) if os.path.exists(path) else 0
         cols[i].metric(folder, f"{count} Docs")
 
-# --- MÓDULO: 🤖 ASISTENTE IA PERSONAL ---
-elif menu == "🤖 ASISTENTE IA":
-        st.header("🤖 Mi Asistente Personal Inteligente")
-        
-        # 1. BARRA DE BÚSQUEDA GLOBAL (Recorre todo el programa)
-        st.subheader("🔍 Buscador Predictivo")
-        busqueda = st.text_input("¿Qué necesitas encontrar hoy?", placeholder="Ej: 'Cita con cardiólogo' o 'Dosis de Aspirina'...")
 
-        if busqueda:
-            st.write("🔎 Resultado de la búsqueda rápida:")
-            # Busca en citas
-            df_busq_citas = pd.read_sql_query(f"SELECT * FROM citas WHERE doctor LIKE '%{busqueda}%' OR centro LIKE '%{busqueda}%'", conn)
-            # Busca en medicinas
-            df_busq_meds = pd.read_sql_query(f"SELECT * FROM medicinas WHERE nombre LIKE '%{busqueda}%'", conn)
-            
-            if not df_busq_citas.empty:
-                st.dataframe(df_busq_citas)
-            if not df_busq_meds.empty:
-                st.dataframe(df_busq_meds)
-            if df_busq_citas.empty and df_busq_meds.empty:
-                st.info("No encontré nada con ese nombre, jefe.")
+# --- MÓDULO: 🤖 ASISTENTE IA PERSONAL (PROACTIVO) ---
+elif menu == "🤖 ASISTENTE IA":
+        st.header(f"👋 ¡Buen día, Luis Rafael!")
+        st.subheader("Soy tu IA Personal. Aquí está el estado de tu sistema:")
+
+        # 1. ESTADO DEL SISTEMA (Resumen de Inteligencia)
+        col_st1, col_st2, col_st3 = st.columns(3)
+        
+        try:
+            total_citas = len(pd.read_sql_query("SELECT id FROM citas", conn))
+            total_meds = len(pd.read_sql_query("SELECT id FROM medicinas", conn))
+            total_docs = len(pd.read_sql_query("SELECT id FROM archivador_index", conn))
+        except:
+            total_citas = total_meds = total_docs = 0
+
+        col_st1.metric("📅 Citas", total_citas)
+        col_st2.metric("💊 Medicinas", total_meds)
+        col_st3.metric("📂 Documentos", total_docs)
 
         st.divider()
 
-        # 2. SISTEMA DE PREDICCIÓN Y ALERTAS (El Plato Fuerte)
-        col_ia1, col_ia2 = st.columns(2)
+        # 2. PANEL DE CONTROL PROACTIVO
+        tab_ia1, tab_ia2, tab_ia3 = st.tabs(["🚀 ACCIONES RÁPIDAS", "🩺 ANÁLISIS DE SALUD", "🔍 BÚSQUEDA GLOBAL"])
 
-        with col_ia1:
-            st.subheader("📅 Alertas de Agenda")
+        with tab_ia1:
+            st.write("### 🚨 Pendientes para hoy")
+            hoy = datetime.now().strftime("%Y-%m-%d")
+            
+            # Recordatorio de Citas
             try:
-                # Buscamos citas para hoy o mañana
-                hoy = datetime.now().strftime("%Y-%m-%d")
-                df_proximas = pd.read_sql_query(f"SELECT * FROM citas WHERE fecha >= '{hoy}' ORDER BY fecha ASC LIMIT 2", conn)
-                
-                if not df_proximas.empty:
-                    for i, row in df_proximas.iterrows():
-                        st.warning(f"🔔 **RECORDATORIO:** Cita con {row['doctor']} el {row['fecha']} a las {row['hora']}.")
+                proxima = pd.read_sql_query(f"SELECT * FROM citas WHERE fecha >= '{hoy}' ORDER BY fecha ASC LIMIT 1", conn)
+                if not proxima.empty:
+                    st.warning(f"⚠️ **ATENCIÓN:** Tu próxima cita es con **{proxima['doctor'][0]}** el día **{proxima['fecha'][0]}**.")
+                    # Cálculo de días (Predicción)
+                    dias = (datetime.strptime(proxima['fecha'][0], "%Y-%m-%d") - datetime.now()).days
+                    st.info(f"💡 Faltan **{dias}** días. ¿Quieres que preparemos los documentos?")
                 else:
-                    st.success("✅ No tienes citas próximas. ¡Día libre!")
+                    st.success("✅ No tienes compromisos médicos pendientes.")
             except:
-                st.info("Aún no hay datos en la agenda.")
+                st.write("No hay datos en la agenda.")
 
-        with col_ia2:
-            st.subheader("💊 Control de Fármacos")
+        with tab_ia2:
+            st.write("### 🤖 Análisis de Tratamiento")
             try:
                 df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
                 if not df_meds.empty:
-                    st.info(f"💊 Tienes {len(df_meds)} medicamentos en curso.")
-                    # Predicción simple
-                    st.write("📌 **Próximas tomas estimadas:**")
-                    for i, row in df_meds.iterrows():
-                        st.write(f"- {row['nombre']}: {row['hora_toma']}")
+                    st.write(f"Actualmente manejas **{len(df_meds)}** fármacos.")
+                    if len(df_meds) > 4:
+                        st.error("❗ **ALERTA IA:** Carga de medicamentos alta. Verifica con tu médico posibles interacciones.")
+                    else:
+                        st.success("✔ Carga de medicamentos bajo control.")
+                    
+                    st.info("📌 **Sugerencia:** Mantén tu hidratación alta al tomar estos medicamentos.")
                 else:
-                    st.success("Limpio de medicamentos por ahora.")
+                    st.write("No tienes medicamentos registrados.")
             except:
-                st.info("Sin registro de medicinas.")
+                st.write("Módulo de medicinas no inicializado.")
+
+        with tab_ia3:
+            st.write("### 🕵️ Explorador del Sistema")
+            query = st.text_input("Dime qué buscas (Nombre de médico, medicina o documento):")
+            if query:
+                # La IA recorre las 3 tablas principales al mismo tiempo
+                res_c = pd.read_sql_query(f"SELECT * FROM citas WHERE doctor LIKE '%{query}%'", conn)
+                res_m = pd.read_sql_query(f"SELECT * FROM medicinas WHERE nombre LIKE '%{query}%'", conn)
+                res_a = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE texto_ocr LIKE '%{query}%'", conn)
+                
+                if not res_c.empty: st.write("📅 En Citas:", res_c)
+                if not res_m.empty: st.write("💊 En Medicinas:", res_m)
+                if not res_a.empty: st.write("📂 En Archivador:", res_a)
+                if res_c.empty and res_m.empty and res_a.empty:
+                    st.error("No encontré nada con ese nombre en el Archivador de Quevedo.")
 
         st.divider()
-
-        # 3. ACCESO RÁPIDO (COMUNICACIÓN ACTIVA)
-        st.subheader("📲 Comunicación Directa")
-        col_link1, col_link2, col_link3 = st.columns(3)
-        
-        with col_link1:
-            # WhatsApp dinámico: puede añadir un mensaje predeterminado
-            st.link_button("💬 WhatsApp Farmacia", "https://wa.me/tu_numero_aqui?text=Hola,%20necesito%20cotizar%20esta%20receta")
-            
-        with col_link2:
-            st.link_button("📧 Enviar a Médico", "mailto:correo@medico.com?subject=Documentación%20Luis%20Rafael")
-            
-        with col_link3:
-            if st.button("🤖 IA: Analizar Salud"):
-                st.write("Analizando patrones... (Esta función requiere conexión a GPT-4 o Gemini)")
+        # 3. CONECTIVIDAD TOTAL
+        st.write("### 📲 Enlaces de Emergencia")
+        c1, c2, c3 = st.columns(3)
+        c1.link_button("🏥 Mi Clínica", "https://referencia.do") # Como está en Referencia ahora mismo...
+        c2.link_button("📩 Email Médico", "mailto:doctor@ejemplo.com")
+        c3.link_button("📞 WhatsApp", "https://wa.me/tu_numero")         
+    
 
 
 # --- PIE DE PÁGINA PERSONALIZADO ---
