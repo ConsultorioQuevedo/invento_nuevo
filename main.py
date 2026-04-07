@@ -522,15 +522,99 @@ elif menu == "📸 ESCANER":
             st.rerun()
 
 
+# --- MÓDULO 6: EL ARCHIVADOR INTELIGENTE DE QUEVEDO (ROBUSTEZ TOTAL) ---
 elif menu == "📂 ARCHIVADOR":
-        st.header("📂 Archivador Digital Quevedo")
-        archivos = os.listdir("archivador_quevedo") if os.path.exists("archivador_quevedo") else []
-        busqueda = st.text_input("🔍 Buscar documento...")
-        for arc in [a for a in archivos if busqueda.lower() in a.lower()]:
-            with st.expander(f"📄 {arc}"):
-                if st.button("🗑️ ELIMINAR", key=arc):
-                    os.remove(os.path.join("archivador_quevedo", arc))
-                    st.rerun()
+        st.header("📂 Archivador Inteligente v3.0 (OCR + Cloud)")
+        
+        # 1. ESTRUCTURA DE CARPETAS FÍSICAS (Capa 1: Seguridad Local)
+        import os
+        import sqlite3
+        base_path = "archivador_quevedo"
+        subcarpetas = ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]
+        for folder in subcarpetas:
+            os.makedirs(os.path.join(base_path, folder), exist_ok=True)
+
+        # Base de datos interna para el buscador de texto (IA Index)
+        # Asegúrate de tener una tabla 'archivador_index' con: nombre, categoria, texto_ocr, fecha
+        
+        tab_buscar, tab_subir = st.tabs(["🔍 BUSCADOR IA", "📤 SUBIR DOCUMENTO MANUAL"])
+
+        # --- SUB-MÓDULO: BUSCADOR POR TEXTO (IA OCR) ---
+        with tab_buscar:
+            st.subheader("🕵️ ¿Qué palabra buscamos en los documentos?")
+            query = st.text_input("Ejemplo: 'Metformina', 'Carol', 'GBC', 'Seguro'", key="busqueda_ia")
+            
+            if query:
+                # Buscamos en la base de datos el texto que extrajo el OCR antes
+                res = c.execute("SELECT nombre, categoria, fecha FROM archivador_index WHERE texto_ocr LIKE ?", (f'%{query}%',)).fetchall()
+                
+                if res:
+                    st.success(f"✅ Se encontraron {len(res)} documentos con la palabra '{query}'")
+                    for r in res:
+                        col_r1, col_r2, col_r3 = st.columns([2, 1, 1])
+                        col_r1.write(f"📄 **{r[0]}**")
+                        col_r2.write(f"📁 {r[1]}")
+                        col_r3.write(f"📅 {r[2]}")
+                        # Botón para abrir (Simulado)
+                        if st.button(f"👁️ VER {r[0]}", key=f"btn_ver_{r[0]}"):
+                            st.image(os.path.join(base_path, r[1], r[0]))
+                else:
+                    st.warning("❌ No hay documentos que contengan esa palabra.")
+
+        # --- SUB-MÓDULO: SUBIDA Y PROCESAMIENTO (LA ACCIÓN) ---
+        with tab_subir:
+            st.subheader("📤 Indexar Nuevo Documento")
+            u_file = st.file_uploader("Elija la imagen (Análisis, Factura, Receta)", type=["jpg", "png", "jpeg"])
+            u_cat = st.selectbox("Categoría", subcarpetas)
+
+            if u_file:
+                img_up = Image.open(u_file)
+                st.image(img_up, width=250, caption="Previsualización")
+                
+                if st.button("🚀 PROCESAR Y GUARDAR EN LA NUBE", key="btn_save_archivador"):
+                    with st.spinner("🤖 IA Leyendo y Sincronizando..."):
+                        # A. OCR: Extraer texto para el buscador
+                        try:
+                            import pytesseract
+                            texto_extraido = pytesseract.image_to_string(img_up, lang='spa')
+                        except:
+                            texto_extraido = "Texto no procesable"
+
+                        # B. Guardar Local (Capa 1)
+                        fname = f"{u_cat}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+                        fpath = os.path.join(base_path, u_cat, fname)
+                        img_up.save(fpath)
+
+                        # C. Sincronizar Google Sheets (Capa 2: Respaldo Nube)
+                        try:
+                            df_backup = pd.DataFrame([{
+                                "FECHA": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                                "ARCHIVO": fname,
+                                "CATEGORIA": u_cat,
+                                "TEXTO_OCR": texto_extraido[:500] # Guardamos los primeros 500 caracteres para buscar
+                            }])
+                            conn_gs.append_table(data=df_backup, worksheet="ARCHIVADOR_BACKUP")
+                            cloud_status = "☁️ Sincronizado en Google"
+                        except:
+                            cloud_status = "⚠️ Error Nube (Solo Local)"
+
+                        # D. Guardar en Base de Datos Local para búsqueda rápida
+                        c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)",
+                                  (fname, u_cat, texto_extraido, datetime.now().strftime("%d/%m/%y")))
+                        conn.commit()
+
+                        st.success(f"✅ ¡Guardado! {cloud_status}")
+                        st.balloons()
+
+        # --- RESUMEN VISUAL DE CARPETAS ---
+        st.divider()
+        st.subheader("📁 Estado del Almacén")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🏥 Médica", len(os.listdir(os.path.join(base_path, "MEDICAL"))))
+        c2.metric("💰 Gastos", len(os.listdir(os.path.join(base_path, "GASTOS"))))
+        c3.metric("📄 Personales", len(os.listdir(os.path.join(base_path, "PERSONALES"))))
+        c4.metric("👨‍🍳 Recetas", len(os.listdir(os.path.join(base_path, "RECETAS_COCINA"))))
+
 
 elif menu == "🤖 ASISTENTE":
         st.header("🤖 Centro de Control Quevedo Pro")
