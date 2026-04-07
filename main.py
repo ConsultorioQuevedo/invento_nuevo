@@ -283,10 +283,10 @@ except Exception:
 
 # --- MÓDULO: 📸 ESCÁNER IA ROBUSTO (BARCODE, QR & OCR) ---
             elif menu == "📸 ESCÁNER IA":
-    st.header("📸 Estación de Escaneo Profesional")
-    st.info("Sostenga el documento de forma firme y con buena luz para un escaneo óptimo.")
+                st.header("📸 Estación de Escaneo Profesional")
+                st.info("Sostenga el documento de forma firme y con buena luz para un escaneo óptimo.")
 
-    img_file = st.camera_input("📷 CAPTURAR DOCUMENTO O CÓDIGO")
+                 img_file = st.camera_input("📷 CAPTURAR DOCUMENTO O CÓDIGO")
 
     if img_file is not None:
         try:
