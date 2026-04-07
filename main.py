@@ -27,35 +27,27 @@ def limpiar_texto(texto):
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = True
 
-# AQUÍ EMPIEZA TU MENÚ (Todo esto alineado a la izquierda)
-menu = st.sidebar.radio("MODULOS", ["🏠 INICIO", "💉 BIOMONITOR", "📅 AGENDA", "📦 ARCHIVADOR"])
+# --- SISTEMA DE SEGURIDAD (ACCESO DIRECTO PARA LUIS) ---
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = True
 
-    
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-        u = st.text_input("Usuario", key="user_login")
-        p = st.text_input("Contraseña", type="password", key="pass_login")
-        
-if st.button("🔓 DESBLOQUEAR SISTEMA", use_container_width=True):
-    # No le preguntes nada, dale para adentro de una vez
-# LÍNEA 41 (Todo pegadito a la izquierda)
-   st.session_state["autenticado"] = True
-
-# LÍNEA 43 (Directo al grano)
+# Si el sistema está autenticado, procedemos a cargar todo
 if st.session_state["autenticado"]:
-    # Aquí ya no hay 'st.stop()' ni nada que te detenga
-    # Sigue con la zapata de tu casa abajo...
-    if True:
-    # Directorios y Base de Datos
-        if not os.path.exists("archivador_quevedo"):
-           os.makedirs("archivador_quevedo")
+    # 1. Configuración de Directorios
+    if not os.path.exists("archivador_quevedo"):
+        os.makedirs("archivador_quevedo")
 
-# --- AQUÍ EMPIEZA LA ZAPATA DE TU CASA ---
-import sqlite3
+    # 2. Conexión a la Base de Datos
+    conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
+    c = conn.cursor()
 
-# 1. Conectamos la base de datos (La Cisterna)
-conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
-c = conn.cursor()
+    # 3. Creación de Tablas (La zapata de la casa)
+    c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS archivador_index (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)")
+    c.execute('CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)')
+    conn.commit()
 
 # 2. Creamos los cajones donde va la información
 c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)")
