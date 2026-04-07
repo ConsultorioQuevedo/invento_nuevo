@@ -174,7 +174,7 @@ def generar_pdf_salud(df_g, df_m):
         </style>
         """, unsafe_allow_html=True)
 
-    contactos_data = {"Nombre": ["Mi Hijo", "Mi Hija", "Franklin", "Hermanito", "Dorka", "Rosa", "Pedro"],
+ contactos_data = {"Nombre": ["Mi Hijo", "Mi Hija", "Franklin", "Hermanito", "Dorka", "Rosa", "Pedro"],
                       "Telefono": ["18292061693", "18292581449", "16463746377", "14077975432", "18298811692", "18293800425", "18097100995"]}
 
     # NAVEGACIÓN
