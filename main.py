@@ -56,29 +56,23 @@ if verificar_acceso():
     if not os.path.exists("archivador_quevedo"):
         os.makedirs("archivador_quevedo")
 
-    def iniciar_db():
-        conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
-        c = conn.cursor()
-       
-        # --- INICIALIZACIÓN DE BASE DE DATOS (LA ZAPATA) ---
-    c = conn.cursor()
+# --- AQUÍ EMPIEZA LA ZAPATA DE TU CASA ---
+import sqlite3
 
-    # Crear Tabla de Glucosa
-    c.execute('''CREATE TABLE IF NOT EXISTS glucosa 
-             (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)''')
+# 1. Conectamos la base de datos (La Cisterna)
+conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
+c = conn.cursor()
 
-    # Crear Tabla de Citas (Aquí es donde estaba el jabón)
-    c.execute('''CREATE TABLE IF NOT EXISTS citas 
-             (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)''')
+# 2. Creamos los cajones donde va la información
+c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)")
+c.execute("CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)")
+c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)")
+c.execute("CREATE TABLE IF NOT EXISTS archivador_index (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)")
 
-    # Crear Tabla de Medicinas
-    c.execute('''CREATE TABLE IF NOT EXISTS medicinas 
-             (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)''')
+# 3. Cerramos el trato para que se guarde
+conn.commit()
 
-    # Crear Tabla de Índice del Archivador (Para la IA OCR)
-    c.execute('''CREATE TABLE IF NOT EXISTS archivador_index 
-             (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)''')
-
+    
     conn.commit()
         
     c.execute('CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)')
