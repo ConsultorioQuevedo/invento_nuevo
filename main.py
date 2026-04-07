@@ -430,22 +430,97 @@ elif menu == "💊 AGENDA MEDICA":
     # c.execute('CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)')
     # c.execute('CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)')
 
+# --- MÓDULO 5: ESCÁNER DE VISIÓN ARTIFICIAL (IA & OCR) ---
 elif menu == "📸 ESCANER":
-        st.header("📸 Escáner de Visión Artificial")
-        from pyzbar.pyzbar import decode
-        img_file = st.file_uploader("📷 Subir Imagen de Código", type=['jpg', 'png', 'jpeg'])
+        st.header("📸 Escáner de Inteligencia Visual")
+        st.write("### 🤖 Captura de Datos en Tiempo Real")
+
+        # 1. EL OJO DEL SISTEMA (Cámara o Archivo)
+        img_file = st.camera_input("📷 APUNTE AL MEDICAMENTO O DOCUMENTO")
+
         if img_file:
+            # Procesar la imagen
             img = Image.open(img_file)
-            st.image(img, width=400)
-            datos = decode(img)
-            if datos:
-                for d in datos:
-                    codigo = d.data.decode('utf-8')
-                    st.success(f"✅ Detectado: {codigo}")
-                    if st.button("Registrar Medicina"):
-                        c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?,?)", (f"SCAN: {codigo}", "Pendiente"))
-                        conn.commit()
-                        st.rerun()
+            st.image(img, caption="Imagen Capturada", width=400)
+            
+            # --- MOTOR 1: LECTOR DE CÓDIGOS (Barras y QR) ---
+            from pyzbar.pyzbar import decode
+            import numpy as np
+            
+            # Convertir imagen para lectura de códigos
+            opencv_img = np.array(img)
+            codigos = decode(opencv_img)
+            
+            datos_detectados = []
+            
+            if codigos:
+                st.subheader("🔍 Códigos Detectados")
+                for obj in codigos:
+                    tipo = obj.type
+                    contenido = obj.data.decode('utf-8')
+                    datos_detectados.append(f"[{tipo}]: {contenido}")
+                    st.success(f"✅ {tipo} LEÍDO: {contenido}")
+            else:
+                st.info("No se detectaron códigos de barras o QR.")
+
+            # --- MOTOR 2: LECTOR DE TEXTO (OCR / IA) ---
+            # Aquí la IA analiza lo que dicen las letras de la caja o receta
+            st.subheader("📝 Análisis de Texto por IA")
+            try:
+                import pytesseract # Asegúrate de tenerlo en tu requirements.txt
+                texto_extraido = pytesseract.image_to_string(img, lang='spa')
+                
+                if texto_extraido.strip():
+                    with st.expander("📄 TEXTO EXTRAÍDO DEL DOCUMENTO"):
+                        st.write(texto_extraido)
+                    
+                    # IA de Clasificación Automática
+                    if "mg" in texto_extraido.lower() or "pastilla" in texto_extraido.lower():
+                        categoria_ia = "💊 MEDICAMENTO DETECTADO"
+                    elif "orden" in texto_extraido.lower() or "receta" in texto_extraido.lower():
+                        categoria_ia = "📂 RECETA / ORDEN MÉDICA"
+                    else:
+                        categoria_ia = "📄 DOCUMENTO GENERAL"
+                    
+                    st.info(f"🤖 IA CLASIFICACIÓN: {categoria_ia}")
+                else:
+                    st.warning("IA: No se pudo leer texto claro en la imagen.")
+            except:
+                st.warning("⚠️ El motor OCR está en mantenimiento, use solo lectura de códigos.")
+
+            # --- MOTOR 3: ACCIÓN Y DISTRIBUCIÓN (LA ROBUSTEZ) ---
+            st.divider()
+            st.subheader("🚀 ¿A dónde enviamos la información?")
+            
+            col_a1, col_a2, col_a3 = st.columns(3)
+            
+            # Botón 1: Al Archivador Local
+            if col_a1.button("📂 AL ARCHIVADOR"):
+                nombre_archivo = f"SCAN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                img.save(f"archivador_quevedo/{nombre_archivo}")
+                st.success(f"Guardado en Archivador como: {nombre_archivo}")
+
+            # Botón 2: Al Asistente (Para que la IA lo analice luego)
+            if col_a2.button("🤖 AL ASISTENTE IA"):
+                st.session_state['memoria_asistente'] = texto_extraido if 'texto_extraido' in locals() else "Código detectado"
+                st.success("Enviado al cerebro de la IA para análisis.")
+
+            # Botón 3: A la Nube (Google Sheets / Drive)
+            if col_a3.button("☁️ A LA NUBE (G-SHEETS)"):
+                # Aquí conectamos con tu hoja de Google que ya tenemos configurada
+                df_cloud = pd.DataFrame([{
+                    "FECHA": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                    "TIPO": "ESCÁNER",
+                    "DETALLES": " ".join(datos_detectados) if datos_detectados else "Imagen procesada"
+                }])
+                conn_gs.create(data=df_cloud, worksheet="ESCÁNER")
+                st.success("¡Datos subidos a la Nube de Google con éxito!")
+
+        # 4. BOTÓN DE LIMPIEZA
+        st.sidebar.divider()
+        if st.sidebar.button("🗑️ LIMPIAR CÁMARA", key="btn_clear_cam"):
+            st.rerun()
+
 
 elif menu == "📂 ARCHIVADOR":
         st.header("📂 Archivador Digital Quevedo")
