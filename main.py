@@ -303,7 +303,7 @@ elif menu == "📸 ESCÁNER IA":
 if menu == "💰 FINANZAS":
     st.header("💰 Gestión Financiera Inteligente")
     
-    with st.form("form_finanzas", clear_on_submit=True):
+    with st.form("form_finanzas_reportes", clear_on_submit=True):
         col_f1, col_f2, col_f3 = st.columns(3)
         tipo = col_f1.selectbox("Tipo de Movimiento", ["GASTO", "INGRESO"])
         categoria = col_f2.selectbox("Categoría", ["Comida", "Salud", "Hogar", "Transporte", "Negocio", "Otros"])
