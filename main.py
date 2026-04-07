@@ -197,11 +197,7 @@ if verificar_acceso():
         st.header("🩺 Control de Glucosa")
         # ... tu código de ingreso de glucosa ...
         
-        if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
-            conn.execute("DELETE FROM glucosa")
-            conn.commit()
-            st.success("Historial eliminado")
-            st.rerun()
+       
 
     # 6. Módulo de Agenda
     elif menu == "💊 AGENDA MEDICA":
