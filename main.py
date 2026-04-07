@@ -290,7 +290,7 @@ elif menu == "📸 ESCÁNER IA":
 
                 img_file = st.camera_input("📷 CAPTURAR DOCUMENTO O CÓDIGO")
 
-    if img_file is not None:
+if img_file is not None:
         try:
             # 1. SEGURIDAD Y PREPARACIÓN
             u_file.seek(0)
