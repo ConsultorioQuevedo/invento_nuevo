@@ -284,7 +284,7 @@ elif menu == "💊 AGENDA MÉDICA":
                 st.info("No hay medicamentos registrados.")
 
 # --- MÓDULO: 📸 ESCÁNER IA ROBUSTO (BARCODE, QR & OCR) ---
-            elif menu == "📸 ESCÁNER IA":
+elif menu == "📸 ESCÁNER IA":
                 st.header("📸 Estación de Escaneo Profesional")
                 st.info("Sostenga el documento de forma firme y con buena luz para un escaneo óptimo.")
 
