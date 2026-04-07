@@ -43,7 +43,7 @@ if menu == "🏠 INICIO":
     # (Aquí va el resumen de tus datos)
 elif menu == "💰 FINANZAS IA":
     # (Aquí pegas el bloque de Finanzas que te mandé)
-elif menu == "🩺 BIOMONITOR":
+
     # (Aquí pegas el bloque de Glucosa y Semáforo)
 elif menu == "💊 AGENDA MÉDICA":
     # (Aquí va el bloque de Citas y Medicamentos)
