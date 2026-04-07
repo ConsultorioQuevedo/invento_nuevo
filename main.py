@@ -189,7 +189,8 @@ with st.sidebar:
         if st.button("📊 GENERAR REPORTE MAESTRO", key="btn_gen_reporte_quevedo"):
             pdf_data = generar_reporte_maestro_pdf()
         # 1. Primero generamos el reporte
-if st.button("📊 GENERAR REPORTE MAESTRO", key="btn_gen_reporte_quevedo"):
+# Le cambiamos el nombre a la key para que no choque con nada
+if st.button("📊 GENERAR REPORTE MAESTRO", key="boton_unico_reporte_final"):
     pdf_data = generar_reporte_maestro_pdf()
     
     # 2. Solo si el reporte se hizo bien, enseñamos el botón de descargar
