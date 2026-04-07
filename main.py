@@ -200,9 +200,9 @@ if verificar_acceso():
             st.download_button("📥 Descargar Reporte", pdf_data, f"MAESTRO_{datetime.now().strftime('%Y%m%d')}.pdf", "application/pdf", key="btn_descarga_pdf_quevedo")
         st.divider()
 st.download_button("📥 Descargar Reporte", pdf_data, f"MAESTRO_{datetime.now().strftime('%Y%m%d')}.pdf", "application/pdf", key="btn_descarga_pdf_quevedo")
-                    conn.execute("DELETE FROM glucosa")
-                    conn.commit()
-                    st.rerun()
+     conn.execute("DELETE FROM glucosa")
+     conn.commit()
+    st.rerun()
 
 if verificar_acceso():
     # 1. El Menú (4 espacios de sangría)
