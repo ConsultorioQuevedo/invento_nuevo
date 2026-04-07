@@ -219,7 +219,16 @@ elif menu == "💊 AGENDA MÉDICA":
         st.divider()
         st.subheader("📋 Citas Programadas")
         # Aquí es donde se recuperan los datos de la base de datos
-        df_citas = pd.read_sql_query("SELECT id, doctor, fecha, hora, centro FROM citas ORDER BY fecha ASC", conn)
+        # --- ESTO REEMPLAZA TU LÍNEA 222 ---
+try:
+    df_citas = pd.read_sql_query("SELECT id, doctor, fecha, hora, centro FROM citas ORDER BY fecha ASC", conn)
+except Exception:
+    # Si la tabla no existe, la creamos aquí mismo por emergencia
+    c.execute("""CREATE TABLE IF NOT EXISTS citas 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)""")
+    conn.commit()
+    df_citas = pd.DataFrame(columns=["id", "doctor", "fecha", "hora", "centro"])
+# ----------------------------------
         
         if not df_citas.empty:
             st.dataframe(df_citas, use_container_width=True, hide_index=True)
