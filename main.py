@@ -45,7 +45,7 @@ if st.button("🔓 DESBLOQUEAR SISTEMA", use_container_width=True):
 if st.session_state["autenticado"]:
     # Aquí ya no hay 'st.stop()' ni nada que te detenga
     # Sigue con la zapata de tu casa abajo...
-    if verificar_acceso():
+    if True:
     # Directorios y Base de Datos
         if not os.path.exists("archivador_quevedo"):
            os.makedirs("archivador_quevedo")
