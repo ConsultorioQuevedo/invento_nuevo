@@ -41,7 +41,7 @@ if st.button("🔓 DESBLOQUEAR SISTEMA", use_container_width=True):
       st.session_state["autenticado"] = True
       st.rerun()
     # Si no está autenticado en la memoria, devuelve False
-    return st.session_state.get("autenticado", False)
+return st.session_state.get("autenticado", False)
 
 # --- EJECUCIÓN ---
 if not st.session_state.get("autenticado", False):
