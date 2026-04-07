@@ -85,7 +85,7 @@ conn = iniciar_db()
 c = conn.cursor()
 
     # --- FUNCIÓN: GENERADOR REPORTE MAESTRO PDF (VERSIÓN ANTIBALAS) ---
-    def generar_reporte_maestro_pdf():
+def generar_reporte_maestro_pdf():
         try:
             pdf = FPDF()
             pdf.add_page()
