@@ -175,8 +175,38 @@ if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
                     conn.commit()
                     st.rerun()
 
- menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
+if verificar_acceso():
+    # 1. El Menú (4 espacios de sangría)
+    menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
+    
+    # 2. Conexión a Google (4 espacios de sangría)
+    conn_gs = st.connection("gsheets", type=GSheetsConnection)
 
+    # 3. Módulo de Inicio
+    if menu == "🏠 INICIO (RESUMEN)":
+        st.header("📊 Resumen Ejecutivo")
+        # Aquí sigue tu código de las métricas...
+
+    # 4. Módulo de Finanzas
+    elif menu == "💰 FINANZAS IA":
+        st.header("💰 Gestión de Finanzas")
+        # Aquí sigue tu código de gastos...
+
+    # 5. Módulo de Biomonitor (CON EL BOTÓN DE BORRAR DENTRO)
+    elif menu == "🩺 BIOMONITOR":
+        st.header("🩺 Control de Glucosa")
+        # ... tu código de ingreso de glucosa ...
+        
+        if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
+            conn.execute("DELETE FROM glucosa")
+            conn.commit()
+            st.success("Historial eliminado")
+            st.rerun()
+
+    # 6. Módulo de Agenda
+    elif menu == "💊 AGENDA MEDICA":
+        st.header("💊 Agenda Médica")
+        # Aquí sigue tu código de medicinas...
   # =========================================================
     # --- BLOQUE DE NAVEGACIÓN: EL MOTOR DEL SISTEMA ---
     # =========================================================
