@@ -178,7 +178,7 @@ contactos_data = {"Nombre": ["Mi Hijo", "Mi Hija", "Franklin", "Hermanito", "Dor
                       "Telefono": ["18292061693", "18292581449", "16463746377", "14077975432", "18298811692", "18293800425", "18097100995"]}
 
     # NAVEGACIÓN
-         st.sidebar.title("💎 SISTEMA QUEVEDO")
+st.sidebar.title("💎 SISTEMA QUEVEDO")
     
     # MEJORA: RECORDATORIO DE CITAS EN SIDEBAR
     df_c_prox = pd.read_sql_query("SELECT doctor, fecha FROM citas ORDER BY fecha ASC LIMIT 1", conn)
