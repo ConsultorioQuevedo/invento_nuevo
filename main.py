@@ -69,7 +69,7 @@ if verificar_acceso():
              (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)''')
 
     # Crear Tabla de Índice del Archivador (Para la IA OCR)
-      c.execute('''CREATE TABLE IF NOT EXISTS archivador_index 
+    c.execute('''CREATE TABLE IF NOT EXISTS archivador_index 
              (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)''')
 
        conn.commit()
