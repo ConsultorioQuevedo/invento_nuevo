@@ -80,7 +80,7 @@ if verificar_acceso():
     c.execute('CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, horario TEXT)')
     c.execute('CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT)')
     conn.commit()
-    return conn
+  
 
     conn = iniciar_db()
     c = conn.cursor()
