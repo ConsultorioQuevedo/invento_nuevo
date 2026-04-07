@@ -341,20 +341,95 @@ elif menu == "🩺 BIOMONITOR":
                 conn.commit()
                 st.rerun()
     # --- LOS SIGUIENTES MÓDULOS AHORA SÍ FUNCIONARÁN PORQUE ESTÁN BIEN ALINEADOS ---
+
+# --- MÓDULO 4: AGENDA MÉDICA PRO (CITAS Y MEDICINAS) ---
 elif menu == "💊 AGENDA MEDICA":
-        st.header("💊 Gestión Médica Profesional")
-        tab1, tab2 = st.tabs(["📋 Inventario de Medicinas", "📅 Control de Citas"])
+        st.header("📅 Agenda Médica y Control de Fármacos")
+        
+        tab1, tab2 = st.tabs(["📝 CITAS MÉDICAS", "💊 MEDICAMENTOS"])
+
+        # --- SUB-MÓDULO: CITAS MÉDICAS ---
         with tab1:
-            with st.expander("➕ Registrar Nuevo Medicamento"):
-                with st.form("form_med_pro"):
-                    nombre_m = st.text_input("Nombre")
-                    horario_m = st.text_input("Horario")
-                    if st.form_submit_button("💎 GUARDAR"):
-                        c.execute("INSERT INTO medicinas (nombre, horario) VALUES (?, ?)", (nombre_m, horario_m))
-                        conn.commit()
-                        st.rerun()
+            st.subheader("🏥 Programar Nueva Cita")
+            with st.form("form_citas", clear_on_submit=True):
+                col_c1, col_c2 = st.columns(2)
+                especialidad = col_c1.text_input("Especialidad / Doctor")
+                fecha_cita = col_c2.date_input("Fecha de la Cita")
+                
+                col_c3, col_c4 = st.columns(2)
+                # Selector de hora con AM/PM en Mayúsculas
+                hora = col_c3.time_input("Hora de la Cita")
+                centro = col_c4.text_input("Centro Médico / Clínica")
+                
+                if st.form_submit_button("💾 AGENDAR CITA"):
+                    # Formateamos la hora a AM/PM en MAYÚSCULAS
+                    hora_fmt = hora.strftime("%I:%M %p").upper()
+                    c.execute("INSERT INTO citas (doctor, fecha, hora, centro) VALUES (?,?,?,?)",
+                              (especialidad, str(fecha_cita), hora_fmt, centro))
+                    conn.commit()
+                    st.success(f"✅ Cita con {especialidad} agendada para las {hora_fmt}")
+                    st.rerun()
+
+            st.divider()
+            st.subheader("📋 Citas Programadas")
+            df_citas = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
+            
+            if not df_citas.empty:
+                st.dataframe(df_citas, use_container_width=True)
+                # BOTÓN DE BORRADO ÚNICO PARA CITAS
+                if st.button("🗑️ LIMPIAR TODAS LAS CITAS", key="btn_borrar_citas"):
+                    c.execute("DELETE FROM citas")
+                    conn.commit()
+                    st.rerun()
+            else:
+                st.info("No hay citas pendientes.")
+
+        # --- SUB-MÓDULO: MEDICAMENTOS ---
+        with tab2:
+            st.subheader("💊 Registro de Tratamiento")
+            with st.form("form_meds", clear_on_submit=True):
+                col_m1, col_m2 = st.columns(2)
+                med_nombre = col_m1.text_input("Nombre del Medicamento")
+                # TECLADO NUMÉRICO: Usamos number_input para que el celular abra los números
+                dosis = col_m2.number_input("Dosis (mg/ml/pastillas)", min_value=0, step=1)
+                
+                col_m3, col_m4 = st.columns(2)
+                # Frecuencia horaria
+                cada_cuanto = col_m3.selectbox("Frecuencia", ["Cada 4 horas", "Cada 6 horas", "Cada 8 horas", "Cada 12 horas", "Una vez al día"])
+                prox_toma = col_m4.time_input("Hora de la próxima toma")
+                
+                if st.form_submit_button("💾 GUARDAR MEDICAMENTO"):
+                    toma_fmt = prox_toma.strftime("%I:%M %p").upper()
+                    c.execute("INSERT INTO medicinas (nombre, dosis, frecuencia, hora_toma) VALUES (?,?,?,?)",
+                              (med_nombre, dosis, cada_cuanto, toma_fmt))
+                    conn.commit()
+                    st.success(f"✅ {med_nombre} agregado al tratamiento")
+                    st.rerun()
+
+            st.divider()
+            
+            # --- IA DE AGENDA: ANALIZADOR DE TRATAMIENTO ---
             df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
-            st.dataframe(df_meds, use_container_width=True)
+            if not df_meds.empty:
+                st.subheader("🤖 Análisis de IA: Tu Tratamiento")
+                conteo = len(df_meds)
+                if conteo > 5:
+                    st.warning(f"⚠️ IA: Tienes {conteo} medicamentos activos. Sugiero revisión de interacciones con tu médico.")
+                else:
+                    st.info("🤖 IA: Carga de medicación optimizada.")
+
+                st.dataframe(df_meds, use_container_width=True)
+                
+                # BOTÓN DE BORRADO ÚNICO PARA MEDICAMENTOS
+                if st.button("🗑️ VACIAR BOTIQUÍN", key="btn_borrar_meds"):
+                    c.execute("DELETE FROM medicinas")
+                    conn.commit()
+                    st.rerun()
+
+    # --- NOTA TÉCNICA: ASEGÚRATE DE TENER ESTAS TABLAS CREADAS AL INICIO ---
+    # c.execute('CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)')
+    # c.execute('CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)')
+
 elif menu == "📸 ESCANER":
         st.header("📸 Escáner de Visión Artificial")
         from pyzbar.pyzbar import decode
