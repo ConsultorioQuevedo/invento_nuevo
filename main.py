@@ -230,7 +230,7 @@ except Exception:
     df_citas = pd.DataFrame(columns=["id", "doctor", "fecha", "hora", "centro"])
 # ----------------------------------
         
-        if not df_citas.empty:
+    if not df_citas.empty:
             st.dataframe(df_citas, use_container_width=True, hide_index=True)
             
             # Botón para limpiar historial de citas si es necesario
