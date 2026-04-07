@@ -11,160 +11,260 @@ import unicodedata
 from PIL import Image
 import io
 from streamlit_gsheets import GSheetsConnection
+from pyzbar.pyzbar import decode
 
-# 1. CONFIGURACIÓN E IDENTIDAD
+# ==========================================
+# 1. CONFIGURACIÓN E IDENTIDAD (SIN LOGIN)
+# ==========================================
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
 
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
+ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
 
-# 2. FUNCIONES DE UTILIDAD
+# Conexión a Google Sheets (Nube)
+conn_gs = st.connection("gsheets", type=GSheetsConnection)
+
 def limpiar_texto(texto):
     if not texto: return ""
     return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
 
-def inicializar_sistema():
-    # Crear carpetas si no existen
-    base_path = "archivador_quevedo"
-    subcarpetas = ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]
-    if not os.path.exists(base_path):
-        os.makedirs(base_path)
-    for sub in subcarpetas:
-        os.makedirs(os.path.join(base_path, sub), exist_ok=True)
+# ==========================================
+# 2. BASE DE DATOS Y DIRECTORIOS
+# ==========================================
+def inicializar_todo():
+    # Estructura de Carpetas
+    base = "archivador_quevedo"
+    folders = ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]
+    if not os.path.exists(base):
+        os.makedirs(base)
+    for f in folders:
+        os.makedirs(os.path.join(base, f), exist_ok=True)
     
-    # Conexión y creación de tablas robustas
-    conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
-    c = conn.cursor()
-    c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS archivador_index (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)")
-    conn.commit()
-    return conn, c
+    # Base de Datos SQLite
+    db_conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
+    db_c = db_conn.cursor()
+    # Tablas
+    db_c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)")
+    db_c.execute("CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)")
+    db_c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)")
+    db_c.execute("CREATE TABLE IF NOT EXISTS archivador_index (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)")
+    db_c.execute("CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)")
+    db_conn.commit()
+    return db_conn, db_c
 
-conn, c = inicializar_sistema()
+conn, c = inicializar_todo()
 
-# 3. DISEÑO VISUAL
+# ==========================================
+# 3. INTERFAZ Y ESTILOS
+# ==========================================
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
-    .stButton>button { width: 100%; border-radius: 12px; background-color: #1b5e20; color: white; font-weight: bold; }
-    .resumen-card { background: linear-gradient(135deg, #1e2130 0%, #1b5e20 100%); padding: 15px; border-radius: 15px; border: 1px solid #4CAF50; text-align: center; }
+    .stButton>button { width: 100%; border-radius: 12px; background-color: #1b5e20; color: white; font-weight: bold; height: 3em; }
+    .resumen-card { background: linear-gradient(135deg, #1e2130 0%, #1b5e20 100%); padding: 20px; border-radius: 15px; border: 1px solid #4CAF50; text-align: center; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# 4. NAVEGACIÓN
-st.sidebar.title("💎 SISTEMA QUEVEDO")
-menu = st.sidebar.radio("MODULOS", ["🏠 INICIO", "💰 FINANZAS", "🩺 BIOMONITOR", "💊 AGENDA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
+# Navegación
+st.sidebar.title("💎 QUEVEDO INTEGRAL")
+menu = st.sidebar.radio("MODULOS PRINCIPALES", 
+    ["🏠 INICIO", "💰 FINANZAS", "🩺 BIOMONITOR", "💊 AGENDA MÉDICA", "📸 ESCÁNER IA", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
 
-# --- MODULO: INICIO ---
+# ==========================================
+# 4. LÓGICA DE MÓDULOS
+# ==========================================
+
+# --- INICIO ---
 if menu == "🏠 INICIO":
-    st.header(f"📊 Resumen: {NOMBRE_PROPIETARIO}")
+    st.header(f"📊 Panel de Control: {NOMBRE_PROPIETARIO}")
     c1, c2, c3 = st.columns(3)
     
-    df_fin = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
-    df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
-    
-    with c1:
-        st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-        st.metric("💰 BALANCE", f"RD$ {df_fin['total'][0] or 0:,.2f}")
-        st.markdown('</div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-        st.metric("🩺 ÚLTIMA GLUCOSA", f"{df_glu['valor'][0] if not df_glu.empty else 'N/A'} mg/dL")
-        st.markdown('</div>', unsafe_allow_html=True)
+    try:
+        df_fin = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
+        df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+        
+        with c1:
+            st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
+            st.metric("💰 BALANCE TOTAL", f"RD$ {df_fin['total'][0] or 0:,.2f}")
+            st.markdown('</div>', unsafe_allow_html=True)
+        with c2:
+            st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
+            st.metric("🩺 ÚLTIMA GLUCOSA", f"{df_glu['valor'][0] if not df_glu.empty else '0'} mg/dL")
+            st.markdown('</div>', unsafe_allow_html=True)
+    except:
+        st.warning("Inicializando datos...")
 
-# --- MODULO: BIOMONITOR ---
+# --- BIOMONITOR ---
 elif menu == "🩺 BIOMONITOR":
-    st.header("🩺 Control de Glucosa")
-    val_g = st.number_input("Nivel mg/dL", min_value=0)
-    if st.button("Guardar Medición"):
-        ahora = datetime.now(pytz.timezone('America/Santo_Domingo'))
-        c.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
-                  (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), "REGISTRADO"))
-        conn.commit()
-        st.success("¡Registrado!")
-        st.rerun()
-
-# --- MODULO: AGENDA ---
-elif menu == "💊 AGENDA":
-    st.header("📅 Agenda Médica y Fármacos")
-    t1, t2 = st.tabs(["📝 CITAS", "💊 MEDICAMENTOS"])
+    st.header("🩺 Control Biométrico")
+    col_g1, col_g2 = st.columns([1, 2])
+    with col_g1:
+        val_g = st.number_input("Nivel de Glucosa (mg/dL)", min_value=0, step=1)
+        if st.button("💾 GUARDAR MEDICIÓN"):
+            ahora = datetime.now(ZONA_HORARIA)
+            c.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
+                      (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), "REGISTRADO"))
+            conn.commit()
+            st.success("¡Dato guardado!")
+            st.rerun()
+    with col_g2:
+        df_hist = pd.read_sql_query("SELECT valor, fecha, hora FROM glucosa ORDER BY id DESC LIMIT 10", conn)
+        if not df_hist.empty:
+            fig = px.line(df_hist, x="fecha", y="valor", title="Tendencia Reciente", markers=True)
+            st.plotly_chart(fig, use_container_width=True)
+# --- MÓDULO: AGENDA MÉDICA PRO (CITAS Y MEDICINAS) ---
+elif menu == "💊 AGENDA MÉDICA":
+    st.header("📅 Agenda Médica y Control de Fármacos")
     
-    with t1:
-        with st.form("f_citas", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            doc = col1.text_input("Doctor/Especialidad")
-            f_cita = col2.date_input("Fecha")
-            h_cita = col1.time_input("Hora")
-            lug = col2.text_input("Centro Médico")
-            if st.form_submit_button("AGENDAR"):
-                h_fmt = h_cita.strftime("%I:%M %p").upper()
-                c.execute("INSERT INTO citas (doctor, fecha, hora, centro) VALUES (?,?,?,?)", (doc, str(f_cita), h_fmt, lug))
+    tab1, tab2 = st.tabs(["📝 CITAS MÉDICAS", "💊 MEDICAMENTOS"])
+
+    # --- SUB-MÓDULO: CITAS MÉDICAS ---
+    with tab1:
+        st.subheader("🏥 Programar Nueva Cita")
+        with st.form("form_citas", clear_on_submit=True):
+            col_c1, col_c2 = st.columns(2)
+            especialidad = col_c1.text_input("Especialidad / Doctor")
+            fecha_cita = col_c2.date_input("Fecha de la Cita")
+            
+            col_c3, col_c4 = st.columns(2)
+            hora = col_c3.time_input("Hora de la Cita")
+            centro = col_c4.text_input("Centro Médico / Clínica")
+            
+            if st.form_submit_button("💾 AGENDAR CITA"):
+                # Formateamos la hora a AM/PM en MAYÚSCULAS para consistencia
+                hora_fmt = hora.strftime("%I:%M %p").upper()
+                c.execute("INSERT INTO citas (doctor, fecha, hora, centro) VALUES (?,?,?,?)",
+                          (especialidad, str(fecha_cita), hora_fmt, centro))
+                conn.commit()
+                st.success(f"✅ Cita con {especialidad} agendada.")
+                st.rerun()
+
+        st.divider()
+        st.subheader("📋 Citas Programadas")
+        # Aquí es donde se recuperan los datos de la base de datos
+        df_citas = pd.read_sql_query("SELECT id, doctor, fecha, hora, centro FROM citas ORDER BY fecha ASC", conn)
+        
+        if not df_citas.empty:
+            st.dataframe(df_citas, use_container_width=True, hide_index=True)
+            
+            # Botón para limpiar historial de citas si es necesario
+            if st.button("🗑️ LIMPIAR TODAS LAS CITAS", key="btn_borrar_citas"):
+                c.execute("DELETE FROM citas")
+                conn.commit()
+                st.warning("Historial de citas eliminado.")
+                st.rerun()
+        else:
+            st.info("No tienes citas pendientes en este momento.")
+
+    # --- SUB-MÓDULO: MEDICAMENTOS ---
+    with tab2:
+        st.subheader("💊 Registro de Tratamiento")
+        with st.form("form_meds", clear_on_submit=True):
+            col_m1, col_m2 = st.columns(2)
+            med_nombre = col_m1.text_input("Nombre del Medicamento")
+            dosis = col_m2.number_input("Dosis (mg/ml/pastillas)", min_value=0, step=1)
+            
+            col_m3, col_m4 = st.columns(2)
+            cada_cuanto = col_m3.selectbox("Frecuencia", ["Cada 4 horas", "Cada 6 horas", "Cada 8 horas", "Cada 12 horas", "Una vez al día"])
+            prox_toma = col_m4.time_input("Hora de la próxima toma")
+            
+            if st.form_submit_button("💾 GUARDAR MEDICAMENTO"):
+                toma_fmt = prox_toma.strftime("%I:%M %p").upper()
+                c.execute("INSERT INTO medicinas (nombre, dosis, frecuencia, hora_toma) VALUES (?,?,?,?)",
+                          (med_nombre, dosis, cada_cuanto, toma_fmt))
+                conn.commit()
+                st.success(f"✅ {med_nombre} agregado.")
+                st.rerun()
+
+        st.divider()
+        st.subheader("💊 Medicación Activa")
+        df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
+        
+        if not df_meds.empty:
+            st.dataframe(df_meds, use_container_width=True, hide_index=True)
+            
+            # IA DE ANÁLISIS DE TRATAMIENTO
+            conteo = len(df_meds)
+            if conteo > 5:
+                st.warning(f"⚠️ IA Alerta: Tienes {conteo} medicamentos activos. Consulta interacciones con tu médico.")
+            else:
+                st.info("🤖 IA: Carga de medicación dentro de rangos normales.")
+            
+            if st.button("🗑️ VACIAR BOTIQUÍN", key="btn_borrar_meds"):
+                c.execute("DELETE FROM medicinas")
                 conn.commit()
                 st.rerun()
-        df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
-        st.dataframe(df_c, use_container_width=True)
 
-    with t2:
-        with st.form("f_meds", clear_on_submit=True):
-            m_nom = st.text_input("Medicamento")
-            m_dos = st.number_input("Dosis", min_value=0)
-            m_fre = st.selectbox("Frecuencia", ["Cada 8h", "Cada 12h", "1 al día"])
-            if st.form_submit_button("GUARDAR"):
-                c.execute("INSERT INTO medicinas (nombre, dosis, frecuencia) VALUES (?,?,?)", (m_nom, m_dos, m_fre))
-                conn.commit()
-                st.rerun()
-        st.dataframe(pd.read_sql_query("SELECT * FROM medicinas", conn), use_container_width=True)
-
-# --- MODULO: ESCANER ---
-elif menu == "📸 ESCANER":
-    st.header("📸 Inteligencia Visual")
-    img_file = st.camera_input("SCANNER QUEVEDO")
+# --- ESCÁNER IA ---
+elif menu == "📸 ESCÁNER IA":
+    st.header("📸 Escáner de Visión Artificical")
+    img_file = st.camera_input("📷 CAPTURAR")
     if img_file:
         img = Image.open(img_file)
-        st.image(img, width=400)
-        st.info("🤖 Procesando imagen... (Asegúrate de tener pyzbar y pytesseract instalados)")
-        # Aquí va tu lógica de OCR y Nube que ya tenías configurada.
-
-# --- MODULO: ARCHIVADOR ---
-elif menu == "📂 ARCHIVADOR":
-    st.header("📂 Archivador v3.0")
-    t_bus, t_sub = st.tabs(["🔍 BUSCADOR", "📤 SUBIR"])
-    
-    with t_bus:
-        q = st.text_input("Buscar en documentos")
-        if q:
-            res = c.execute("SELECT * FROM archivador_index WHERE texto_ocr LIKE ?", (f'%{q}%',)).fetchall()
-            st.write(res if res else "No hay coincidencias.")
+        st.image(img, caption="Imagen para procesar", width=400)
+        
+        # Procesamiento OCR e IA
+        try:
+            import pytesseract
+            texto = pytesseract.image_to_string(img, lang='spa')
+            st.subheader("📝 Texto Extraído por IA")
+            st.write(texto if texto.strip() else "No se detectó texto claro.")
             
-    with t_sub:
-        u_file = st.file_uploader("Documento", type=["jpg", "png"])
-        u_cat = st.selectbox("Carpeta", ["MEDICAL", "GASTOS", "PERSONALES"])
-        if u_file and st.button("PROCESAR"):
+            # Guardar en Nube (G-Sheets)
+            if st.button("☁️ SUBIR DATOS A GOOGLE"):
+                df_scan = pd.DataFrame([{"FECHA": datetime.now().strftime("%Y-%m-%d"), "DETALLES": texto[:100]}])
+                conn_gs.create(data=df_scan, worksheet="ESCÁNER")
+                st.success("¡Sincronizado con Google Sheets!")
+        except:
+            st.error("Error en motor OCR. Verifique instalación de Tesseract.")
+
+# --- ARCHIVADOR ---
+elif menu == "📂 ARCHIVADOR":
+    st.header("📂 El Archivador de Quevedo")
+    t_a1, t_a2 = st.tabs(["🔍 BUSCADOR", "📤 INDEXAR"])
+    
+    with t_a1:
+        query = st.text_input("Buscar por palabra clave")
+        if query:
+            res = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE texto_ocr LIKE '%{query}%'", conn)
+            st.write(res)
+            
+    with t_a2:
+        u_file = st.file_uploader("Subir documento", type=["jpg", "png", "pdf"])
+        u_cat = st.selectbox("Categoría", ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"])
+        if u_file and st.button("PROCESAR Y ARCHIVAR"):
             fname = f"{u_cat}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-            fpath = os.path.join("archivador_quevedo", u_cat, fname)
-            Image.open(u_file).save(fpath)
+            path = os.path.join("archivador_quevedo", u_cat, fname)
+            Image.open(u_file).save(path)
             c.execute("INSERT INTO archivador_index (nombre, categoria, fecha) VALUES (?,?,?)", (fname, u_cat, datetime.now().strftime("%d/%m/%y")))
             conn.commit()
-            st.success("Guardado localmente.")
+            st.success(f"Archivado en {u_cat}")
 
-# --- MODULO: ASISTENTE ---
+# --- ASISTENTE ---
 elif menu == "🤖 ASISTENTE":
-    st.header("🤖 Inteligencia Predictiva")
-    st.subheader("🔮 Salud")
-    df_g = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 10", conn)
-    if not df_g.empty:
-        prom = df_g['valor'].mean()
-        st.metric("Promedio Reciente", f"{int(prom)} mg/dL")
-    
-    st.divider()
-    preg = st.text_input("Consulta al sistema")
-    if preg:
-        st.write("🤖 Analizando tus datos históricos...")
+    st.header("🤖 Asistente Personal IA")
+    col_as1, col_as2 = st.columns(2)
+    with col_as1:
+        st.info("Predicción de Salud")
+        # Lógica IA Predictiva Simple
+        df_g = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 5", conn)
+        if not df_g.empty:
+            avg = df_g['valor'].mean()
+            st.write(f"Basado en tus últimos datos, tu promedio es **{int(avg)}**.")
+    with col_as2:
+        st.link_button("📧 IR A GMAIL", "https://mail.google.com/")
+        st.link_button("💬 WHATSAPP", "https://web.whatsapp.com/")
 
-# --- CIERRE ---
+# ==========================================
+# 5. PIE DE PÁGINA (CRÉDITOS)
+# ==========================================
 st.sidebar.divider()
-st.sidebar.markdown(f"**Propiedad de:** {NOMBRE_PROPIETARIO}")
-st.sidebar.caption("Versión Robusta 2026 - RD 🇩🇴")
+with st.sidebar:
+    st.markdown(f"""
+        <div style='text-align: center; padding: 15px; background-color: #1E1E1E; border-radius: 10px; border: 1px solid #FFD700;'>
+            <h4 style='color: #FFD700; margin: 0;'>💎 PROPIEDAD DE:</h4>
+            <h3 style='color: white; margin: 5px 0;'>{NOMBRE_PROPIETARIO}</h3>
+            <p style='color: #888; font-size: 11px;'>VERSIÓN ROBUSTA 2026</p>
+        </div>
+    """, unsafe_allow_html=True)
