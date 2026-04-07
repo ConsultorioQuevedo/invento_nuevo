@@ -38,17 +38,13 @@ with col2:
         
 if st.button("🔓 DESBLOQUEAR SISTEMA", use_container_width=True):
     # No le preguntes nada, dale para adentro de una vez
-      st.session_state["autenticado"] = True
-      st.rerun()
-    # Si no está autenticado en la memoria, devuelve False
-    return st.session_state.get("autenticado", False)
+# LÍNEA 41 (Todo pegadito a la izquierda)
+st.session_state["autenticado"] = True
 
-# --- EJECUCIÓN ---
-if not st.session_state.get("autenticado", False):
-    verificar_acceso()
-    st.stop() # Esto detiene el programa aquí hasta que pongas la clave
-
-
+# LÍNEA 43 (Directo al grano)
+if st.session_state["autenticado"]:
+    # Aquí ya no hay 'st.stop()' ni nada que te detenga
+    # Sigue con la zapata de tu casa abajo...
 if verificar_acceso():
     # Directorios y Base de Datos
     if not os.path.exists("archivador_quevedo"):
