@@ -27,7 +27,7 @@ def verificar_acceso():
     if "autenticado" not in st.session_state:
         st.session_state["autenticado"] = False
     def verificar_acceso():
-    st.markdown("<h1 style='text-align: center;'>🔐 ACCESO AL SISTEMA</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center;'>🔐 ACCESO AL SISTEMA</h1>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
