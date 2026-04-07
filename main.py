@@ -294,27 +294,126 @@ elif menu == "📸 ESCÁNER IA":
         except:
             st.error("Error en motor OCR. Verifique instalación de Tesseract.")
 
-# --- ARCHIVADOR ---
-elif menu == "📂 ARCHIVADOR":
-    st.header("📂 El Archivador de Quevedo")
-    t_a1, t_a2 = st.tabs(["🔍 BUSCADOR", "📤 INDEXAR"])
+# ==========================================
+# MÓDULO INTEGRADO: FINANZAS & ARCHIVADOR PRO
+# ==========================================
+
+# --- MÓDULO: 💰 FINANZAS (IA & ANALÍTICA) ---
+if menu == "💰 FINANZAS":
+    st.header("💰 Gestión Financiera Inteligente")
     
-    with t_a1:
-        query = st.text_input("Buscar por palabra clave")
-        if query:
-            res = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE texto_ocr LIKE '%{query}%'", conn)
-            st.write(res)
-            
-    with t_a2:
-        u_file = st.file_uploader("Subir documento", type=["jpg", "png", "pdf"])
-        u_cat = st.selectbox("Categoría", ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"])
-        if u_file and st.button("PROCESAR Y ARCHIVAR"):
-            fname = f"{u_cat}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-            path = os.path.join("archivador_quevedo", u_cat, fname)
-            Image.open(u_file).save(path)
-            c.execute("INSERT INTO archivador_index (nombre, categoria, fecha) VALUES (?,?,?)", (fname, u_cat, datetime.now().strftime("%d/%m/%y")))
+    with st.form("form_finanzas", clear_on_submit=True):
+        col_f1, col_f2, col_f3 = st.columns(3)
+        tipo = col_f1.selectbox("Tipo de Movimiento", ["GASTO", "INGRESO"])
+        categoria = col_f2.selectbox("Categoría", ["Comida", "Salud", "Hogar", "Transporte", "Negocio", "Otros"])
+        monto = col_f3.number_input("Monto RD$", min_value=0.0, step=100.0)
+        
+        if st.form_submit_button("🚀 REGISTRAR MOVIMIENTO"):
+            # Lógica Robusta: Los gastos se guardan negativos para balance automático
+            monto_final = monto if tipo == "INGRESO" else -monto
+            ahora = datetime.now(ZONA_HORARIA).strftime("%d/%m/%y")
+            c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?,?,?,?)",
+                      (tipo, categoria, monto_final, ahora))
             conn.commit()
-            st.success(f"Archivado en {u_cat}")
+            st.success(f"✅ {tipo} registrado: RD$ {monto:,.2f}")
+            st.rerun()
+
+    st.divider()
+
+    # Cerebro Analítico de Finanzas
+    df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
+    
+    if not df_f.empty:
+        ingresos = df_f[df_f['monto'] > 0]['monto'].sum()
+        gastos = abs(df_f[df_f['monto'] < 0]['monto'].sum())
+        balance = ingresos - gastos
+        
+        # Panel de Métricas
+        m1, m2, m3 = st.columns(3)
+        m1.metric("📥 INGRESOS", f"RD$ {ingresos:,.2f}")
+        m2.metric("📤 GASTOS", f"RD$ {gastos:,.2f}", delta=f"-{gastos:,.2f}", delta_color="inverse")
+        m3.metric("💎 BALANCE", f"RD$ {balance:,.2f}", delta=f"{balance:,.2f}")
+
+        # --- IA DE ANÁLISIS FINANCIERO ---
+        st.subheader("🤖 Análisis de IA")
+        if ingresos > 0:
+            ratio = (gastos / ingresos) * 100
+            if ratio > 80:
+                st.error(f"⚠️ **ALERTA IA:** Gastos críticos ({ratio:.1f}%). Se recomienda frenar salidas de efectivo.")
+            elif ratio > 50:
+                st.warning(f"💡 **SUGERENCIA IA:** Gastos moderados ({ratio:.1f}%). Vigile la categoría '{df_f[df_f['monto'] < 0]['categoria'].mode()[0]}'.")
+            else:
+                st.success(f"✅ **IA STATUS:** Finanzas saludables. Capacidad de ahorro del {100-ratio:.1f}%.")
+
+        # Gráfico de Distribución
+        df_gasto_chart = df_f[df_f['monto'] < 0].copy()
+        df_gasto_chart['monto'] = abs(df_gasto_chart['monto'])
+        if not df_gasto_chart.empty:
+            fig = px.pie(df_gasto_chart, values='monto', names='categoria', hole=0.5, title="Distribución de Gastos")
+            st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Esperando datos para iniciar análisis financiero.")
+
+# --- MÓDULO: 📂 ARCHIVADOR (CON VALIDACIÓN DE SEGURIDAD) ---
+elif menu == "📂 ARCHIVADOR":
+    st.header("📂 Archivador Inteligente v3.0")
+    t_bus, t_sub = st.tabs(["🔍 BUSCADOR IA", "📤 SUBIDA PROTEGIDA"])
+
+    with t_bus:
+        q = st.text_input("Buscar palabra clave en documentos...")
+        if q:
+            res = pd.read_sql_query("SELECT nombre, categoria, fecha FROM archivador_index WHERE texto_ocr LIKE ?", conn, params=(f'%{q}%',))
+            if not res.empty:
+                st.write(res)
+            else:
+                st.warning("No se encontraron coincidencias.")
+
+    with t_sub:
+        st.subheader("📤 Indexar Documento")
+        u_file = st.file_uploader("Subir imagen", type=["jpg", "png", "jpeg"])
+        u_cat = st.selectbox("Destino", ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"])
+
+        if u_file is not None:
+            try:
+                # VALIDACIÓN DE SEGURIDAD: Evita el UnidentifiedImageError
+                u_file.seek(0) # Resetear puntero
+                img_check = Image.open(u_file)
+                
+                # Normalización de formato para robustez
+                if img_check.mode in ("RGBA", "P"):
+                    img_check = img_check.convert("RGB")
+                
+                st.image(img_check, width=300, caption="Documento detectado")
+
+                if st.button("🚀 PROCESAR Y ARCHIVAR"):
+                    with st.spinner("🤖 IA Analizando archivo..."):
+                        fname = f"{u_cat}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+                        path = os.path.join("archivador_quevedo", u_cat, fname)
+                        
+                        # Guardado Seguro
+                        img_check.save(path, format="JPEG", quality=85)
+                        
+                        # Registro en Base de Datos
+                        c.execute("INSERT INTO archivador_index (nombre, categoria, fecha) VALUES (?,?,?)",
+                                  (fname, u_cat, datetime.now(ZONA_HORARIA).strftime("%d/%m/%y")))
+                        conn.commit()
+                        
+                        st.success(f"✅ Archivado correctamente en {u_cat}")
+                        st.balloons()
+            
+            except Exception as e:
+                st.error("❌ Error de Seguridad: El archivo no es una imagen válida o está corrupto.")
+
+    # Resumen de Almacén
+    st.divider()
+    st.subheader("📊 Estado del Archivador")
+    cols = st.columns(4)
+    for i, folder in enumerate(["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]):
+        path = os.path.join("archivador_quevedo", folder)
+        count = len(os.listdir(path)) if os.path.exists(path) else 0
+        cols[i].metric(folder, f"{count} Docs")
+
+
 
 # --- ASISTENTE ---
 elif menu == "🤖 ASISTENTE":
