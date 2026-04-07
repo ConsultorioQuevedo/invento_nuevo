@@ -181,7 +181,7 @@ contactos_data = {"Nombre": ["Mi Hijo", "Mi Hija", "Franklin", "Hermanito", "Dor
 st.sidebar.title("💎 SISTEMA QUEVEDO")
     
     # MEJORA: RECORDATORIO DE CITAS EN SIDEBAR
-    df_c_prox = pd.read_sql_query("SELECT doctor, fecha FROM citas ORDER BY fecha ASC LIMIT 1", conn)
+df_c_prox = pd.read_sql_query("SELECT doctor, fecha FROM citas ORDER BY fecha ASC LIMIT 1", conn)
     if not df_c_prox.empty:
         st.sidebar.warning(f"🔔 PRÓXIMA CITA:\n{df_c_prox['doctor'][0]} - {df_c_prox['fecha'][0]}")
 
