@@ -54,25 +54,25 @@ if verificar_acceso():
         c = conn.cursor()
        
         # --- INICIALIZACIÓN DE BASE DE DATOS (LA ZAPATA) ---
-c = conn.cursor()
+    c = conn.cursor()
 
-# Crear Tabla de Glucosa
-c.execute('''CREATE TABLE IF NOT EXISTS glucosa 
+    # Crear Tabla de Glucosa
+     c.execute('''CREATE TABLE IF NOT EXISTS glucosa 
              (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)''')
 
-# Crear Tabla de Citas (Aquí es donde estaba el jabón)
-c.execute('''CREATE TABLE IF NOT EXISTS citas 
+    # Crear Tabla de Citas (Aquí es donde estaba el jabón)
+    c.execute('''CREATE TABLE IF NOT EXISTS citas 
              (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)''')
 
-# Crear Tabla de Medicinas
-c.execute('''CREATE TABLE IF NOT EXISTS medicinas 
+    # Crear Tabla de Medicinas
+    c.execute('''CREATE TABLE IF NOT EXISTS medicinas 
              (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)''')
 
-# Crear Tabla de Índice del Archivador (Para la IA OCR)
-c.execute('''CREATE TABLE IF NOT EXISTS archivador_index 
+    # Crear Tabla de Índice del Archivador (Para la IA OCR)
+      c.execute('''CREATE TABLE IF NOT EXISTS archivador_index 
              (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)''')
 
-conn.commit()
+       conn.commit()
         
         c.execute('CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)')
         c.execute('CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY AUTOINCREMENT, limite REAL)')
