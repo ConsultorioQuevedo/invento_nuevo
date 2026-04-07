@@ -272,29 +272,87 @@ elif menu == "💊 AGENDA MÉDICA":
                 conn.commit()
                 st.rerun()
 
-# --- ESCÁNER IA ---
+# --- MÓDULO: 📸 ESCÁNER IA ROBUSTO (BARCODE, QR & OCR) ---
 elif menu == "📸 ESCÁNER IA":
-    st.header("📸 Escáner de Visión Artificical")
-    img_file = st.camera_input("📷 CAPTURAR")
-    if img_file:
-        img = Image.open(img_file)
-        st.image(img, caption="Imagen para procesar", width=400)
-        
-        # Procesamiento OCR e IA
-        try:
-            import pytesseract
-            texto = pytesseract.image_to_string(img, lang='spa')
-            st.subheader("📝 Texto Extraído por IA")
-            st.write(texto if texto.strip() else "No se detectó texto claro.")
-            
-            # Guardar en Nube (G-Sheets)
-            if st.button("☁️ SUBIR DATOS A GOOGLE"):
-                df_scan = pd.DataFrame([{"FECHA": datetime.now().strftime("%Y-%m-%d"), "DETALLES": texto[:100]}])
-                conn_gs.create(data=df_scan, worksheet="ESCÁNER")
-                st.success("¡Sincronizado con Google Sheets!")
-        except:
-            st.error("Error en motor OCR. Verifique instalación de Tesseract.")
+    st.header("📸 Estación de Escaneo Profesional")
+    st.info("Sostenga el documento de forma firme y con buena luz para un escaneo óptimo.")
 
+    img_file = st.camera_input("📷 CAPTURAR DOCUMENTO O CÓDIGO")
+
+    if img_file is not None:
+        try:
+            # 1. SEGURIDAD Y PREPARACIÓN
+            u_file.seek(0)
+            img = Image.open(img_file)
+            img_np = np.array(img.convert('RGB')) # Convertir para OpenCV/Zbar
+
+            col_res1, col_res2 = st.columns(2)
+
+            with col_res1:
+                st.image(img, caption="Imagen Capturada", use_container_width=True)
+
+            with col_res2:
+                with st.spinner("🤖 IA Analizando..."):
+                    # --- MOTOR 1: DETECCIÓN DE CÓDIGOS (BARCODE/QR) ---
+                    codigos = decode(img)
+                    if codigos:
+                        st.subheader("🏷️ Códigos Detectados")
+                        for obj in codigos:
+                            tipo = obj.type
+                            datos = obj.data.decode('utf-8')
+                            st.success(f"**TIPO:** {tipo}")
+                            st.code(datos)
+                            # IA: Si detecta un enlace, permite abrirlo
+                            if "http" in datos:
+                                st.link_button("🌐 Abrir Enlace del Análisis", datos)
+                    else:
+                        st.warning("🔍 No se detectaron códigos de barra o QR.")
+
+                    # --- MOTOR 2: LECTURA DE TEXTO (OCR) ---
+                    st.subheader("📝 Contenido del Documento")
+                    # Convertimos a escala de grises para que la IA lea mejor
+                    import cv2
+                    gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
+                    # Aplicamos un filtro de nitidez (Umbralizado)
+                    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+                    
+                    import pytesseract
+                    texto_extraido = pytesseract.image_to_string(thresh, lang='spa')
+
+                    if texto_extraido.strip():
+                        st.text_area("Texto Detectado:", texto_extraido, height=200)
+                        
+                        # --- MOTOR 3: IA DE CLASIFICACIÓN ---
+                        palabras_clave = ["glucosa", "hemoglobina", "receta", "mg/dl", "laboratorio"]
+                        encontradas = [p for p in palabras_clave if p in texto_extraido.lower()]
+                        
+                        if encontradas:
+                            st.info(f"💡 **Sugerencia IA:** Este documento parece ser de tipo: **{', '.join(encontradas).upper()}**.")
+                    else:
+                        st.error("No se pudo extraer texto legible. Intente con más luz.")
+
+            # 2. ACCIONES DE ARCHIVADO
+            st.divider()
+            col_acc1, col_acc2 = st.columns(2)
+            
+            with col_acc1:
+                cat_save = st.selectbox("Clasificar como:", ["MEDICAL", "GASTOS", "PERSONALES"])
+            
+            with col_acc2:
+                if st.button("💾 ARCHIVAR PERMANENTEMENTE", key="btn_archivar_robusto"):
+                    # Generar nombre único
+                    nombre_archivo = f"SCAN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+                    ruta = os.path.join("archivador_quevedo", cat_save, nombre_archivo)
+                    
+                    # Guardar imagen y registro
+                    img.save(ruta, "JPEG", quality=90)
+                    c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)",
+                              (nombre_archivo, cat_save, texto_extraido, datetime.now(ZONA_HORARIA).strftime("%d/%m/%y")))
+                    conn.commit()
+                    st.success(f"✅ Documento blindado y guardado en {cat_save}")
+
+        except Exception as e:
+            st.error(f"❌ Error en el motor de visión: {str(e)}")
 # ==========================================
 # MÓDULO INTEGRADO: FINANZAS & ARCHIVADOR PRO
 # ==========================================
