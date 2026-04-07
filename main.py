@@ -39,7 +39,7 @@ with col2:
 if st.button("🔓 DESBLOQUEAR SISTEMA", use_container_width=True):
     # No le preguntes nada, dale para adentro de una vez
 # LÍNEA 41 (Todo pegadito a la izquierda)
-st.session_state["autenticado"] = True
+   st.session_state["autenticado"] = True
 
 # LÍNEA 43 (Directo al grano)
 if st.session_state["autenticado"]:
