@@ -488,7 +488,7 @@ elif menu == "📂 ARCHIVADOR":
         cols[i].metric(folder, f"{count} Docs")
 
 # --- MÓDULO: 🤖 ASISTENTE IA PERSONAL ---
-    elif menu == "🤖 ASISTENTE IA":
+elif menu == "🤖 ASISTENTE IA":
         st.header("🤖 Mi Asistente Personal Inteligente")
         
         # 1. BARRA DE BÚSQUEDA GLOBAL (Recorre todo el programa)
@@ -562,15 +562,28 @@ elif menu == "📂 ARCHIVADOR":
                 st.write("Analizando patrones... (Esta función requiere conexión a GPT-4 o Gemini)")
 
 
-# ==========================================
-# 5. PIE DE PÁGINA (CRÉDITOS)
-# ==========================================
-st.sidebar.divider()
-with st.sidebar:
-    st.markdown(f"""
-        <div style='text-align: center; padding: 15px; background-color: #1E1E1E; border-radius: 10px; border: 1px solid #FFD700;'>
-            <h4 style='color: #FFD700; margin: 0;'>💎 PROPIEDAD DE:</h4>
-            <h3 style='color: white; margin: 5px 0;'>{NOMBRE_PROPIETARIO}</h3>
-            <p style='color: #888; font-size: 11px;'>VERSIÓN ROBUSTA 2026</p>
-        </div>
+# --- PIE DE PÁGINA PERSONALIZADO ---
+st.divider()
+st.markdown(
+    """
+    <style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: transparent;
+        color: grey;
+        text-align: center;
+        font-size: 12px;
+        padding: 10px;
+    }
+    </style>
+    <div class="footer">
+        <p>🚀 <b>Invento Nuevo: El Archivador de Quevedo</b> | Desarrollado por <b>Luis Rafael</b> © 2026</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
     """, unsafe_allow_html=True)
