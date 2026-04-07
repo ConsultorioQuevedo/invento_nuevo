@@ -44,7 +44,7 @@ if menu == "🏠 INICIO":
 elif menu == "💰 FINANZAS IA":
     # (Aquí pegas el bloque de Finanzas que te mandé)
 
- elif menu == "💊 AGENDA MÉDICA":
+elif menu == "💊 AGENDA MÉDICA":
     st.header("💊 Gestión de Salud y Citas")
     # Asegúrate de que estas líneas de abajo tengan los 4 espacios a la izquierda
     tab1, tab2 = st.tabs(["📅 Citas Médicas", "💊 Mis Medicamentos"])
