@@ -242,7 +242,7 @@ except Exception:
             st.info("No tienes citas pendientes en este momento.")
 
     # --- SUB-MÓDULO: MEDICAMENTOS ---
-      with tab2:
+     with tab2:
         st.subheader("💊 Registro de Tratamiento")
         with st.form("form_meds", clear_on_submit=True):
             col_m1, col_m2 = st.columns(2)
