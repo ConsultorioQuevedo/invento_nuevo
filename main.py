@@ -487,22 +487,80 @@ elif menu == "📂 ARCHIVADOR":
         count = len(os.listdir(path)) if os.path.exists(path) else 0
         cols[i].metric(folder, f"{count} Docs")
 
+# --- MÓDULO: 🤖 ASISTENTE IA PERSONAL ---
+    elif menu == "🤖 ASISTENTE IA":
+        st.header("🤖 Mi Asistente Personal Inteligente")
+        
+        # 1. BARRA DE BÚSQUEDA GLOBAL (Recorre todo el programa)
+        st.subheader("🔍 Buscador Predictivo")
+        busqueda = st.text_input("¿Qué necesitas encontrar hoy?", placeholder="Ej: 'Cita con cardiólogo' o 'Dosis de Aspirina'...")
 
+        if busqueda:
+            st.write("🔎 Resultado de la búsqueda rápida:")
+            # Busca en citas
+            df_busq_citas = pd.read_sql_query(f"SELECT * FROM citas WHERE doctor LIKE '%{busqueda}%' OR centro LIKE '%{busqueda}%'", conn)
+            # Busca en medicinas
+            df_busq_meds = pd.read_sql_query(f"SELECT * FROM medicinas WHERE nombre LIKE '%{busqueda}%'", conn)
+            
+            if not df_busq_citas.empty:
+                st.dataframe(df_busq_citas)
+            if not df_busq_meds.empty:
+                st.dataframe(df_busq_meds)
+            if df_busq_citas.empty and df_busq_meds.empty:
+                st.info("No encontré nada con ese nombre, jefe.")
 
-# --- ASISTENTE ---
-elif menu == "🤖 ASISTENTE":
-    st.header("🤖 Asistente Personal IA")
-    col_as1, col_as2 = st.columns(2)
-    with col_as1:
-        st.info("Predicción de Salud")
-        # Lógica IA Predictiva Simple
-        df_g = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 5", conn)
-        if not df_g.empty:
-            avg = df_g['valor'].mean()
-            st.write(f"Basado en tus últimos datos, tu promedio es **{int(avg)}**.")
-    with col_as2:
-        st.link_button("📧 IR A GMAIL", "https://mail.google.com/")
-        st.link_button("💬 WHATSAPP", "https://web.whatsapp.com/")
+        st.divider()
+
+        # 2. SISTEMA DE PREDICCIÓN Y ALERTAS (El Plato Fuerte)
+        col_ia1, col_ia2 = st.columns(2)
+
+        with col_ia1:
+            st.subheader("📅 Alertas de Agenda")
+            try:
+                # Buscamos citas para hoy o mañana
+                hoy = datetime.now().strftime("%Y-%m-%d")
+                df_proximas = pd.read_sql_query(f"SELECT * FROM citas WHERE fecha >= '{hoy}' ORDER BY fecha ASC LIMIT 2", conn)
+                
+                if not df_proximas.empty:
+                    for i, row in df_proximas.iterrows():
+                        st.warning(f"🔔 **RECORDATORIO:** Cita con {row['doctor']} el {row['fecha']} a las {row['hora']}.")
+                else:
+                    st.success("✅ No tienes citas próximas. ¡Día libre!")
+            except:
+                st.info("Aún no hay datos en la agenda.")
+
+        with col_ia2:
+            st.subheader("💊 Control de Fármacos")
+            try:
+                df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
+                if not df_meds.empty:
+                    st.info(f"💊 Tienes {len(df_meds)} medicamentos en curso.")
+                    # Predicción simple
+                    st.write("📌 **Próximas tomas estimadas:**")
+                    for i, row in df_meds.iterrows():
+                        st.write(f"- {row['nombre']}: {row['hora_toma']}")
+                else:
+                    st.success("Limpio de medicamentos por ahora.")
+            except:
+                st.info("Sin registro de medicinas.")
+
+        st.divider()
+
+        # 3. ACCESO RÁPIDO (COMUNICACIÓN ACTIVA)
+        st.subheader("📲 Comunicación Directa")
+        col_link1, col_link2, col_link3 = st.columns(3)
+        
+        with col_link1:
+            # WhatsApp dinámico: puede añadir un mensaje predeterminado
+            st.link_button("💬 WhatsApp Farmacia", "https://wa.me/tu_numero_aqui?text=Hola,%20necesito%20cotizar%20esta%20receta")
+            
+        with col_link2:
+            st.link_button("📧 Enviar a Médico", "mailto:correo@medico.com?subject=Documentación%20Luis%20Rafael")
+            
+        with col_link3:
+            if st.button("🤖 IA: Analizar Salud"):
+                st.write("Analizando patrones... (Esta función requiere conexión a GPT-4 o Gemini)")
+
 
 # ==========================================
 # 5. PIE DE PÁGINA (CRÉDITOS)
