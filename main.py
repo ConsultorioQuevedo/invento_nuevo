@@ -95,6 +95,81 @@ if menu == "🏠 INICIO":
     except:
         st.warning("Inicializando datos...")
 
+# --- MÓDULO: FINANZAS ROBUSTO (IA & ANALÍTICA) ---
+elif menu == "💰 FINANZAS":
+    st.header("💰 Gestión Financiera Inteligente")
+    
+    # 1. ENTRADA DE DATOS
+    with st.form("form_finanzas", clear_on_submit=True):
+        col_f1, col_f2, col_f3 = st.columns(3)
+        tipo = col_f1.selectbox("Tipo de Movimiento", ["GASTO", "INGRESO"])
+        categoria = col_f2.selectbox("Categoría", ["Comida", "Salud", "Hogar", "Transporte", "Negocio", "Otros"])
+        monto = col_f3.number_input("Monto RD$", min_value=0.0, step=100.0)
+        
+        if st.form_submit_button("🚀 REGISTRAR MOVIMIENTO"):
+            # Si es gasto, lo guardamos como negativo para que la suma sea automática
+            monto_final = monto if tipo == "INGRESO" else -monto
+            c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?,?,?,?)",
+                      (tipo, categoria, monto_final, datetime.now(ZONA_HORARIA).strftime("%d/%m/%y")))
+            conn.commit()
+            st.success(f"¡{tipo} de RD$ {monto:,.2f} registrado con éxito!")
+            st.rerun()
+
+    st.divider()
+
+    # 2. CÁLCULO DE BALANCE (EL CEREBRO DEL MÓDULO)
+    df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
+    
+    if not df_f.empty:
+        ingresos = df_f[df_f['monto'] > 0]['monto'].sum()
+        gastos = abs(df_f[df_f['monto'] < 0]['monto'].sum())
+        balance = ingresos - gastos
+        
+        # Métricas principales con diseño visual
+        c_m1, c_m2, c_m3 = st.columns(3)
+        c_m1.metric("📥 TOTAL INGRESOS", f"RD$ {ingresos:,.2f}", delta_color="normal")
+        c_m2.metric("📤 TOTAL GASTOS", f"RD$ {gastos:,.2f}", delta="-"+f"{gastos:,.2f}", delta_color="inverse")
+        c_m3.metric("💎 BALANCE NETO", f"RD$ {balance:,.2f}", delta=f"{balance:,.2f}")
+
+        # 3. ANÁLISIS DE IA (ROBUSTEZ)
+        st.subheader("🤖 Análisis de IA Financiera")
+        if ingresos > 0:
+            porcentaje_gasto = (gastos / ingresos) * 100
+            if porcentaje_gasto > 80:
+                st.error(f"⚠️ **ALERTA IA:** Estás gastando el {porcentaje_gasto:.1f}% de tus ingresos. Peligro de liquidez.")
+            elif porcentaje_gasto > 50:
+                st.warning(f"💡 **SUGERENCIA IA:** Tus gastos ocupan el {porcentaje_gasto:.1f}%. Considera reducir categorías no esenciales.")
+            else:
+                st.success(f"✅ **IA STATUS:** Finanzas saludables. Gastas solo el {porcentaje_gasto:.1f}% de lo que entra.")
+        
+        # 4. GRÁFICOS DE DISTRIBUCIÓN
+        st.divider()
+        col_g1, col_g2 = st.columns(2)
+        
+        with col_g1:
+            st.write("### 📊 Gastos por Categoría")
+            df_gastos = df_f[df_f['monto'] < 0].copy()
+            df_gastos['monto'] = abs(df_gastos['monto'])
+            if not df_gastos.empty:
+                fig_pie = px.pie(df_gastos, values='monto', names='categoria', hole=0.4,
+                                 color_discrete_sequence=px.colors.sequential.Greens_r)
+                st.plotly_chart(fig_pie, use_container_width=True)
+            else:
+                st.info("No hay gastos para mostrar gráfico.")
+
+        with col_g2:
+            st.write("### 📈 Historial de Movimientos")
+            st.dataframe(df_f.tail(10), use_container_width=True, hide_index=True)
+
+        # 5. BOTÓN DE LIMPIEZA
+        if st.button("🗑️ REINICIAR CONTABILIDAD"):
+            c.execute("DELETE FROM finanzas")
+            conn.commit()
+            st.rerun()
+    else:
+        st.info("Aún no hay movimientos registrados. Empieza agregando un ingreso o gasto arriba.")
+
+
 # --- BIOMONITOR ---
 elif menu == "🩺 BIOMONITOR":
     st.header("🩺 Control Biométrico")
