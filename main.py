@@ -36,8 +36,8 @@ def verificar_acceso():
         
     if st.button("🔓 DESBLOQUEAR SISTEMA", use_container_width=True):
     # No le preguntes nada, dale para adentro de una vez
-    st.session_state["autenticado"] = True
-    st.rerun()
+      st.session_state["autenticado"] = True
+      st.rerun()
     # Si no está autenticado en la memoria, devuelve False
     return st.session_state.get("autenticado", False)
 
