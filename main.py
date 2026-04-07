@@ -25,7 +25,14 @@ def limpiar_texto(texto):
 # --- SISTEMA DE SEGURIDAD (LOGIN) ---
 def verificar_acceso():
     if "autenticado" not in st.session_state:
-        st.session_state["autenticado"] = False
+# --- BYPASS TOTAL: Entra directo sin preguntar nada ---
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = True 
+
+# Si esto es True, el programa salta el login y va al menú
+if st.session_state["autenticado"]:
+    # AQUÍ EMPIEZA TU MENÚ (BIOMONITOR, AGENDA, etc.)
+    menu = st.sidebar.radio("MODULOS", ["🏠 INICIO", "💉 BIOMONITOR", "📅 AGENDA", "📦 ARCHIVADOR"])       
     def verificar_acceso():
         st.markdown("<h1 style='text-align: center;'>🔐 ACCESO AL SISTEMA</h1>", unsafe_allow_html=True)
     
