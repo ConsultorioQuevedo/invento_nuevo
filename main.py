@@ -146,7 +146,7 @@ def generar_reporte_maestro_pdf():
             return None
     
     # --- FUNCIÓN GENERAR PDF SALUD ---
-    def generar_pdf_salud(df_g, df_m):
+def generar_pdf_salud(df_g, df_m):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", 'B', 16)
