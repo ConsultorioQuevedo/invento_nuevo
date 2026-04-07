@@ -164,7 +164,7 @@ def generar_pdf_salud(df_g, df_m):
         return nombre
 
     # DISEÑO VISUAL CSS
-         st.markdown("""
+        st.markdown("""
         <style>
         .main { background-color: #0e1117; }
         .stButton>button { width: 100%; border-radius: 12px; background-color: #1b5e20; color: white; height: 3.5em; font-weight: bold; }
