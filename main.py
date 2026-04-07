@@ -189,92 +189,99 @@ elif menu == "🩺 BIOMONITOR":
         if not df_hist.empty:
             fig = px.line(df_hist, x="fecha", y="valor", title="Tendencia Reciente", markers=True)
             st.plotly_chart(fig, use_container_width=True)
+            
 # --- MÓDULO: AGENDA MÉDICA PRO (CITAS Y MEDICINAS) ---
-elif menu == "💊 AGENDA MÉDICA":
-    st.header("📅 Agenda Médica y Control de Fármacos")
-    tab1, tab2 = st.tabs(["📝 CITAS MÉDICAS", "💊 MEDICAMENTOS"])
+    elif menu == "💊 AGENDA MÉDICA":
+        st.header("📅 Agenda Médica y Control de Fármacos")
+        tab1, tab2 = st.tabs(["📝 CITAS MÉDICAS", "💊 MEDICAMENTOS"])
 
+        # --- SUB-MÓDULO: CITAS MÉDICAS ---
+        with tab1:
+            st.subheader("🏥 Programar Nueva Cita")
+            with st.form("form_citas", clear_on_submit=True):
+                col_c1, col_c2 = st.columns(2)
+                especialidad = col_c1.text_input("Especialidad / Doctor")
+                fecha_cita = col_c2.date_input("Fecha de la Cita")
+                
+                col_c3, col_c4 = st.columns(2)
+                hora = col_c3.time_input("Hora de la Cita")
+                centro = col_c4.text_input("Centro Médico / Clínica")
+                
+                if st.form_submit_button("💾 AGENDAR CITA"):
+                    hora_fmt = hora.strftime("%I:%M %p").upper()
+                    c.execute("INSERT INTO citas (doctor, fecha, hora, centro) VALUES (?,?,?,?)",
+                              (especialidad, str(fecha_cita), hora_fmt, centro))
+                    conn.commit()
+                    st.success(f"✅ Cita con {especialidad} agendada.")
+                    st.rerun()
 
-    # --- SUB-MÓDULO: CITAS MÉDICAS ---
-    with tab1:
-        st.subheader("🏥 Programar Nueva Cita")
-        with st.form("form_citas", clear_on_submit=True):
-            col_c1, col_c2 = st.columns(2)
-            especialidad = col_c1.text_input("Especialidad / Doctor")
-            fecha_cita = col_c2.date_input("Fecha de la Cita")
+            st.divider()
+            st.subheader("📋 Citas Programadas")
             
-            col_c3, col_c4 = st.columns(2)
-            hora = col_c3.time_input("Hora de la Cita")
-            centro = col_c4.text_input("Centro Médico / Clínica")
-            
-            if st.form_submit_button("💾 AGENDAR CITA"):
-                hora_fmt = hora.strftime("%I:%M %p").upper()
-                c.execute("INSERT INTO citas (doctor, fecha, hora, centro) VALUES (?,?,?,?)",
-                          (especialidad, str(fecha_cita), hora_fmt, centro))
+            try:
+                df_citas = pd.read_sql_query("SELECT id, doctor, fecha, hora, centro FROM citas ORDER BY fecha ASC", conn)
+            except Exception:
+                c.execute("""CREATE TABLE IF NOT EXISTS citas 
+                             (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)""")
                 conn.commit()
-                st.success(f"✅ Cita con {especialidad} agendada.")
-                st.rerun()
-
-        st.divider()
-        st.subheader("📋 Citas Programadas")
-        
-        try:
-            df_citas = pd.read_sql_query("SELECT id, doctor, fecha, hora, centro FROM citas ORDER BY fecha ASC", conn)
-        except Exception:
-            c.execute("""CREATE TABLE IF NOT EXISTS citas 
-                         (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)""")
-            conn.commit()
-            df_citas = pd.DataFrame(columns=["id", "doctor, fecha, hora, centro"])
-        
-        if not df_citas.empty:
-            st.dataframe(df_citas, use_container_width=True, hide_index=True)
-            if st.button("🗑️ LIMPIAR TODAS LAS CITAS", key="btn_borrar_citas"):
-                c.execute("DELETE FROM citas")
-                conn.commit()
-                st.warning("Historial de citas eliminado.")
-                st.rerun()
-        else:
-            st.info("No tienes citas pendientes en este momento.")
-
-    # --- SUB-MÓDULO: MEDICAMENTOS ---
-    with tab2:
-        st.subheader("💊 Registro de Tratamiento")
-        with st.form("form_meds", clear_on_submit=True):
-            col_m1, col_m2 = st.columns(2)
-            med_nombre = col_m1.text_input("Nombre del Medicamento")
-            dosis = col_m2.number_input("Dosis (mg/ml/pastillas)", min_value=0, step=1)
-
-    
-            col_m3, col_m4 = st.columns(2)
-            cada_cuanto = col_m3.selectbox("Frecuencia", ["Cada 4 horas", "Cada 6 horas", "Cada 8 horas", "Cada 12 horas", "Una vez al día"])
-            prox_toma = col_m4.time_input("Hora de la próxima toma")
+                df_citas = pd.DataFrame(columns=["id", "doctor", "fecha", "hora", "centro"])
             
-            if st.form_submit_button("💾 GUARDAR MEDICAMENTO"):
-                toma_fmt = prox_toma.strftime("%I:%M %p").upper()
-                c.execute("INSERT INTO medicinas (nombre, dosis, frecuencia, hora_toma) VALUES (?,?,?,?)",
-                          (med_nombre, dosis, cada_cuanto, toma_fmt))
-                conn.commit()
-                st.success(f"✅ {med_nombre} agregado.")
-                st.rerun()
-
-        st.divider()
-        st.subheader("💊 Medicación Activa")
-        df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
-        
-        if not df_meds.empty:
-            st.dataframe(df_meds, use_container_width=True, hide_index=True)
-            
-            # IA DE ANÁLISIS DE TRATAMIENTO
-            conteo = len(df_meds)
-            if conteo > 5:
-                st.warning(f"⚠️ IA Alerta: Tienes {conteo} medicamentos activos. Consulta interacciones con tu médico.")
+            if not df_citas.empty:
+                st.dataframe(df_citas, use_container_width=True, hide_index=True)
+                if st.button("🗑️ LIMPIAR TODAS LAS CITAS", key="btn_borrar_citas"):
+                    c.execute("DELETE FROM citas")
+                    conn.commit()
+                    st.warning("Historial de citas eliminado.")
+                    st.rerun()
             else:
-                st.info("🤖 IA: Carga de medicación dentro de rangos normales.")
+                st.info("No tienes citas pendientes en este momento.")
+
+        # --- SUB-MÓDULO: MEDICAMENTOS ---
+        with tab2:
+            st.subheader("💊 Registro de Tratamiento")
+            with st.form("form_meds", clear_on_submit=True):
+                col_m1, col_m2 = st.columns(2)
+                med_nombre = col_m1.text_input("Nombre del Medicamento")
+                dosis = col_m2.number_input("Dosis (mg/ml/pastillas)", min_value=0, step=1)
+                
+                col_m3, col_m4 = st.columns(2)
+                cada_cuanto = col_m3.selectbox("Frecuencia", ["Cada 4 horas", "Cada 6 horas", "Cada 8 horas", "Cada 12 horas", "Una vez al día"])
+                prox_toma = col_m4.time_input("Hora de la próxima toma")
+                
+                if st.form_submit_button("💾 GUARDAR MEDICAMENTO"):
+                    toma_fmt = prox_toma.strftime("%I:%M %p").upper()
+                    c.execute("INSERT INTO medicinas (nombre, dosis, frecuencia, hora_toma) VALUES (?,?,?,?)",
+                              (med_nombre, dosis, cada_cuanto, toma_fmt))
+                    conn.commit()
+                    st.success(f"✅ {med_nombre} agregado.")
+                    st.rerun()
+
+            st.divider()
+            st.subheader("💊 Medicación Activa")
             
-            if st.button("🗑️ VACIAR BOTIQUÍN", key="btn_borrar_meds"):
-                c.execute("DELETE FROM medicinas")
+            try:
+                df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
+            except Exception:
+                c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)")
                 conn.commit()
-                st.rerun()
+                df_meds = pd.DataFrame(columns=["id", "nombre", "dosis", "frecuencia", "hora_toma"])
+            
+            if not df_meds.empty:
+                st.dataframe(df_meds, use_container_width=True, hide_index=True)
+                
+                # IA de análisis de carga
+                conteo = len(df_meds)
+                if conteo > 5:
+                    st.warning(f"⚠️ IA Alerta: Tienes {conteo} medicamentos activos. Consulta interacciones.")
+                else:
+                    st.info("🤖 IA: Carga de medicación estable.")
+                
+                if st.button("🗑️ VACIAR BOTIQUÍN", key="btn_borrar_meds"):
+                    c.execute("DELETE FROM medicinas")
+                    conn.commit()
+                    st.rerun()
+            else:
+                st.info("No hay medicamentos registrados.")
 
 # --- MÓDULO: 📸 ESCÁNER IA ROBUSTO (BARCODE, QR & OCR) ---
             elif menu == "📸 ESCÁNER IA":
