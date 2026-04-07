@@ -285,85 +285,89 @@ elif menu == "💊 AGENDA MÉDICA":
 
 # --- MÓDULO: 📸 ESCÁNER IA ROBUSTO (BARCODE, QR & OCR) ---
 elif menu == "📸 ESCÁNER IA":
-                st.header("📸 Estación de Escaneo Profesional")
-                st.info("Sostenga el documento de forma firme y con buena luz para un escaneo óptimo.")
+        st.header("📸 Estación de Escaneo Profesional")
+        st.info("Sostenga el documento de forma firme y con buena luz para un escaneo óptimo.")
 
-                img_file = st.camera_input("📷 CAPTURAR DOCUMENTO O CÓDIGO")
+        img_file = st.camera_input("📷 CAPTURAR DOCUMENTO O CÓDIGO")
 
-if img_file is not None:
-        try:
-            # 1. SEGURIDAD Y PREPARACIÓN
-            u_file.seek(0)
-            img = Image.open(img_file)
-            img_np = np.array(img.convert('RGB')) # Convertir para OpenCV/Zbar
+        if img_file is not None:
+            try:
+                # 1. SEGURIDAD Y PREPARACIÓN
+                import cv2
+                import numpy as np
+                import pytesseract
+                from pyzbar.pyzbar import decode
+                from PIL import Image
 
-            col_res1, col_res2 = st.columns(2)
+                img = Image.open(img_file)
+                img_np = np.array(img.convert('RGB')) 
 
-            with col_res1:
-                st.image(img, caption="Imagen Capturada", use_container_width=True)
+                col_res1, col_res2 = st.columns(2)
 
-            with col_res2:
-                with st.spinner("🤖 IA Analizando..."):
-                    # --- MOTOR 1: DETECCIÓN DE CÓDIGOS (BARCODE/QR) ---
-                    codigos = decode(img)
-                    if codigos:
-                        st.subheader("🏷️ Códigos Detectados")
-                        for obj in codigos:
-                            tipo = obj.type
-                            datos = obj.data.decode('utf-8')
-                            st.success(f"**TIPO:** {tipo}")
-                            st.code(datos)
-                            # IA: Si detecta un enlace, permite abrirlo
-                            if "http" in datos:
-                                st.link_button("🌐 Abrir Enlace del Análisis", datos)
-                    else:
-                        st.warning("🔍 No se detectaron códigos de barra o QR.")
+                with col_res1:
+                    st.image(img, caption="Imagen Capturada", use_container_width=True)
 
-                    # --- MOTOR 2: LECTURA DE TEXTO (OCR) ---
-                    st.subheader("📝 Contenido del Documento")
-                    # Convertimos a escala de grises para que la IA lea mejor
-                    import cv2
-                    gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
-                    # Aplicamos un filtro de nitidez (Umbralizado)
-                    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
-                    
-                    import pytesseract
-                    texto_extraido = pytesseract.image_to_string(thresh, lang='spa')
+                with col_res2:
+                    with st.spinner("🤖 IA Analizando..."):
+                        # --- MOTOR 1: DETECCIÓN DE CÓDIGOS (BARCODE/QR) ---
+                        codigos = decode(img)
+                        if codigos:
+                            st.subheader("🏷️ Códigos Detectados")
+                            for obj in codigos:
+                                tipo = obj.type
+                                datos = obj.data.decode('utf-8')
+                                st.success(f"**TIPO:** {tipo}")
+                                st.code(datos)
+                                if "http" in datos:
+                                    st.link_button("🌐 Abrir Enlace", datos)
+                        else:
+                            st.warning("🔍 No se detectaron códigos.")
 
-                    if texto_extraido.strip():
-                        st.text_area("Texto Detectado:", texto_extraido, height=200)
+                        # --- MOTOR 2: LECTURA DE TEXTO (OCR) ---
+                        st.subheader("📝 Contenido del Documento")
+                        gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
+                        _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
                         
-                        # --- MOTOR 3: IA DE CLASIFICACIÓN ---
-                        palabras_clave = ["glucosa", "hemoglobina", "receta", "mg/dl", "laboratorio"]
-                        encontradas = [p for p in palabras_clave if p in texto_extraido.lower()]
+                        texto_extraido = pytesseract.image_to_string(thresh, lang='spa')
+
+                        if texto_extraido.strip():
+                            st.text_area("Texto Detectado:", texto_extraido, height=200)
+                            
+                            # --- MOTOR 3: IA DE CLASIFICACIÓN ---
+                            palabras_clave = ["glucosa", "hemoglobina", "receta", "mg/dl", "laboratorio"]
+                            encontradas = [p for p in palabras_clave if p in texto_extraido.lower()]
+                            
+                            if encontradas:
+                                st.info(f"💡 **Sugerencia IA:** Tipo detectado: **{', '.join(encontradas).upper()}**.")
+                        else:
+                            st.error("No se pudo extraer texto legible.")
+
+                # 2. ACCIONES DE ARCHIVADO
+                st.divider()
+                col_acc1, col_acc2 = st.columns(2)
+                
+                with col_acc1:
+                    cat_save = st.selectbox("Clasificar como:", ["MEDICAL", "GASTOS", "PERSONALES"])
+                
+                with col_acc2:
+                    if st.button("💾 ARCHIVAR PERMANENTEMENTE", key="btn_archivar_robusto"):
+                        nombre_archivo = f"SCAN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+                        # Aseguramos que la carpeta existe
+                        if not os.path.exists(os.path.join("archivador_quevedo", cat_save)):
+                            os.makedirs(os.path.join("archivador_quevedo", cat_save))
                         
-                        if encontradas:
-                            st.info(f"💡 **Sugerencia IA:** Este documento parece ser de tipo: **{', '.join(encontradas).upper()}**.")
-                    else:
-                        st.error("No se pudo extraer texto legible. Intente con más luz.")
+                        ruta = os.path.join("archivador_quevedo", cat_save, nombre_archivo)
+                        img.save(ruta, "JPEG", quality=90)
+                        
+                        c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)",
+                                  (nombre_archivo, cat_save, texto_extraido, datetime.now().strftime("%d/%m/%y")))
+                        conn.commit()
+                        st.success(f"✅ Documento blindado y guardado en {cat_save}")
 
-            # 2. ACCIONES DE ARCHIVADO
-            st.divider()
-            col_acc1, col_acc2 = st.columns(2)
-            
-            with col_acc1:
-                cat_save = st.selectbox("Clasificar como:", ["MEDICAL", "GASTOS", "PERSONALES"])
-            
-            with col_acc2:
-                if st.button("💾 ARCHIVAR PERMANENTEMENTE", key="btn_archivar_robusto"):
-                    # Generar nombre único
-                    nombre_archivo = f"SCAN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-                    ruta = os.path.join("archivador_quevedo", cat_save, nombre_archivo)
-                    
-                    # Guardar imagen y registro
-                    img.save(ruta, "JPEG", quality=90)
-                    c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)",
-                              (nombre_archivo, cat_save, texto_extraido, datetime.now(ZONA_HORARIA).strftime("%d/%m/%y")))
-                    conn.commit()
-                    st.success(f"✅ Documento blindado y guardado en {cat_save}")
+            except Exception as e:
+                st.error(f"❌ Error en el motor de visión: {str(e)}")
 
-        except Exception as e:
-            st.error(f"❌ Error en el motor de visión: {str(e)}")
+                        
 # ==========================================
 # MÓDULO INTEGRADO: FINANZAS & ARCHIVADOR PRO
 # ==========================================
