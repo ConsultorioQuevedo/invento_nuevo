@@ -44,8 +44,12 @@ if menu == "🏠 INICIO":
 elif menu == "💰 FINANZAS IA":
     # (Aquí pegas el bloque de Finanzas que te mandé)
 
-    # (Aquí pegas el bloque de Glucosa y Semáforo)
-elif menu == "💊 AGENDA MÉDICA":
+ elif menu == "💊 AGENDA MÉDICA":
+    st.header("💊 Gestión de Salud y Citas")
+    # Asegúrate de que estas líneas de abajo tengan los 4 espacios a la izquierda
+    tab1, tab2 = st.tabs(["📅 Citas Médicas", "💊 Mis Medicamentos"])
+    with tab1:
+        st.subheader("🗓️ Programar Nueva Cita") 
     # (Aquí va el bloque de Citas y Medicamentos)
 elif menu == "📸 ESCANER":
     # (Aquí va el bloque de la Cámara y OCR)
