@@ -57,7 +57,7 @@ if verificar_acceso():
     c = conn.cursor()
 
     # Crear Tabla de Glucosa
-     c.execute('''CREATE TABLE IF NOT EXISTS glucosa 
+    c.execute('''CREATE TABLE IF NOT EXISTS glucosa 
              (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)''')
 
     # Crear Tabla de Citas (Aquí es donde estaba el jabón)
