@@ -195,7 +195,7 @@ conn.execute("DELETE FROM glucosa")
 conn.commit()
 st.rerun()
 
-if verificar_acceso():
+if True:  # <--- Cambia 'verificar_acceso()' por 'True'
     # 1. El Menú (4 espacios de sangría)
     menu = st.sidebar.radio("MODULOS", ["🏠 INICIO (RESUMEN)", "💰 FINANZAS IA", "🩺 BIOMONITOR", "💊 AGENDA MEDICA", "📸 ESCANER", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
     
