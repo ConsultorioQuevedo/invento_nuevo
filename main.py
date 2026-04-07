@@ -35,3 +35,30 @@ tablas = [
 for t in tablas:
     c.execute(f"CREATE TABLE IF NOT EXISTS {t}")
 conn.commit()
+
+
+# --- ESTA ES LA ESTRUCTURA CORRECTA QUE DEBES PEGAR ---
+
+if menu == "🏠 INICIO":
+    st.header("🏠 Panel Principal de Luis Rafael")
+    # (Aquí va el resumen de tus datos)
+
+elif menu == "💰 FINANZAS IA":
+    # (Aquí pegas el bloque de Finanzas que te mandé)
+
+elif menu == "🩺 BIOMONITOR":
+    # (Aquí pegas el bloque de Glucosa y Semáforo)
+
+elif menu == "💊 AGENDA MÉDICA":
+    # (Aquí va el bloque de Citas y Medicamentos)
+
+elif menu == "📸 ESCANER":
+    # (Aquí va el bloque de la Cámara y OCR)
+
+elif menu == "📂 ARCHIVADOR":
+    # (Aquí va el bloque para guardar tus papeles de Referencia)
+
+elif menu == "🤖 ASISTENTE":
+    # (¡AQUÍ ES DONDE VA EL BLOQUE 7 QUE TE MANDÉ!)
+    st.header("🤖 Inteligencia Artificial Quevedo")
+    # (Todo el código del chat e IA va aquí adentro)
