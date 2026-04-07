@@ -691,3 +691,26 @@ elif menu == "🤖 ASISTENTE":
                 else:
                     st.write("🤖 No encontré ese dato específico, pero lo tengo guardado en el Archivador. ¿Quieres que lo busque por OCR?")
     
+
+
+
+# --- SECCIÓN FINAL: LOS CRÉDITOS DE ORO ---
+st.sidebar.divider()
+with st.sidebar:
+    st.markdown(f"""
+        <div style='text-align: center; padding: 20px; background-color: #1E1E1E; border-radius: 15px; border: 1px solid #FFD700;'>
+            <h3 style='color: #FFD700; margin: 0;'>💎 EL ARCHIVADOR</h3>
+            <h2 style='color: white; margin: 5px 0;'>LUIS RAFAEL QUEVEDO</h2>
+            <p style='color: #888; font-size: 12px;'>Ingeniería de Datos & IA Personal</p>
+            <hr style='border: 0.5px solid #333;'>
+            <p style='color: #FFD700; font-weight: bold;'>VERSIÓN 2026 - ROBUSTA</p>
+            <p style='color: white; font-size: 10px;'>Higuey, La Altagracia, RD 🇩🇴</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+# Pie de página en el cuerpo principal
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.markdown("---")
+col_f1, col_f2 = st.columns([3, 1])
+col_f1.write("© 2026 Todos los derechos reservados. | **Tecnología Quevedo Integral**")
+col_f2.write("🚀 *Paso a paso.*")
