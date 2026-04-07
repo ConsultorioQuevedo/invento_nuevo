@@ -192,7 +192,6 @@ elif menu == "🩺 BIOMONITOR":
 # --- MÓDULO: AGENDA MÉDICA PRO (CITAS Y MEDICINAS) ---
 elif menu == "💊 AGENDA MÉDICA":
     st.header("📅 Agenda Médica y Control de Fármacos")
-    
     tab1, tab2 = st.tabs(["📝 CITAS MÉDICAS", "💊 MEDICAMENTOS"])
 
     # --- SUB-MÓDULO: CITAS MÉDICAS ---
