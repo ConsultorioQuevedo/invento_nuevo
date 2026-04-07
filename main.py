@@ -188,7 +188,13 @@ with st.sidebar:
         st.subheader("🚀 Reportes Globales")
         if st.button("📊 GENERAR REPORTE MAESTRO", key="btn_gen_reporte_quevedo"):
             pdf_data = generar_reporte_maestro_pdf()
-            st.download_button("📥 Descargar Reporte", pdf_data, f"MAESTRO_{datetime.now().strftime('%Y%m%d')}.pdf", "application/pdf", key="btn_descarga_pdf_quevedo")
+        # 1. Primero generamos el reporte
+if st.button("📊 GENERAR REPORTE MAESTRO", key="btn_gen_reporte_quevedo"):
+    pdf_data = generar_reporte_maestro_pdf()
+    
+    # 2. Solo si el reporte se hizo bien, enseñamos el botón de descargar
+    if pdf_data is not None:
+        st.download_button("📥 Descargar Reporte", pdf_data, "Reporte.pdf", "application/pdf", key="btn_descarga_pdf_quevedo")
         st.divider()
 st.download_button("📥 Descargar Reporte", pdf_data, f"MAESTRO_{datetime.now().strftime('%Y%m%d')}.pdf", "application/pdf", key="btn_descarga_pdf_quevedo")
 conn.execute("DELETE FROM glucosa")
