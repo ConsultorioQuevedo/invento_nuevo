@@ -248,70 +248,78 @@ elif menu == "💰 FINANZAS IA":
         if not df_f.empty:
             st.dataframe(df_f[['fecha', 'categoria', 'monto']], use_container_width=True, hide_index=True)
 
-# --- MÓDULO 3: BIOMONITOR PRO (CON ALERTAS Y GRÁFICOS) ---
+# --- MÓDULO 3: BIOMONITOR PRO (GASOLINA PURA) ---
 elif menu == "🩺 BIOMONITOR":
-        st.header("🩺 Centro de Control Biométrico")
+        st.header("🩺 Centro de Control Biométrico Quevedo")
         
+        # Conexión local para los datos
+        df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC", conn)
+
         col_input, col_semaforo = st.columns([1, 1])
 
         with col_input:
+            st.subheader("📝 Nueva Toma")
             val_g = st.number_input("Nivel de Glucosa (mg/dL)", min_value=0, key="input_g_pro")
-            btn_guardar = st.button("💾 REGISTRAR Y NOTIFICAR", key="btn_g_pro", use_container_width=True)
+            btn_guardar = st.button("💾 REGISTRAR Y EVALUAR", key="btn_g_pro", use_container_width=True)
 
-        # 1. LÓGICA DEL SEMÁFORO Y ALERTAS
+        # 1. LÓGICA DEL SEMÁFORO (Visualización Instantánea)
         if val_g > 0:
             if val_g < 70:
-                estado, color, msj = "HIPOGLICEMIA (BAJA)", "blue", "⚠️ ¡Azúcar muy baja! Consume algo dulce."
+                estado, color, msj = "🚨 HIPOGLICEMIA (MUY BAJA)", "#1E90FF", "¡Azúcar muy baja! Consume algo dulce ya."
             elif val_g <= 140:
-                estado, color, msj = "NORMAL", "green", "✅ Todo bajo control, Quevedo."
+                estado, color, msj = "✅ NORMAL", "#2E8B57", "Excelente, Luis Rafael. Estás en el rango."
             elif val_g <= 199:
-                estado, color, msj = "PRE-DIABETES (ALTA)", "orange", "🟠 Cuidado, el nivel está subiendo."
+                estado, color, msj = "🟠 PRE-DIABETES (ALTA)", "#FF8C00", "Atención, el nivel está subiendo."
             else:
-                estado, color, msj = "DIABETES (CRÍTICO)", "red", "🚨 ¡ALERTA CRÍTICA! Nivel muy alto."
+                estado, color, msj = "🔴 CRÍTICO (MUY ALTA)", "#B22222", "ALERTA: Nivel muy alto. Revisa tu medicación."
             
             with col_semaforo:
-                st.markdown(f"<div style='text-align:center; background-color:{color}; padding:15px; border-radius:10px; color:white;'><h3>{estado}</h3><h1>{val_g}</h1></div>", unsafe_allow_html=True)
-                st.write(msj)
+                st.markdown(f"""
+                    <div style='text-align:center; background-color:{color}; padding:20px; border-radius:15px; color:white;'>
+                        <h2 style='margin:0;'>{estado}</h2>
+                        <h1 style='font-size:50px; margin:0;'>{val_g}</h1>
+                        <p style='font-size:18px;'>{msj}</p>
+                    </div>
+                """, unsafe_allow_html=True)
 
-        # 2. ACCIÓN DE GUARDAR Y WHATSAPP
-        if btn_guardar:
+        # 2. ACCIÓN: GUARDAR, GRAFICAR Y WHATSAPP
+        if btn_guardar and val_g > 0:
             ahora = datetime.now(pytz.timezone('America/Santo_Domingo'))
             c.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
                       (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), estado))
             conn.commit()
 
-            # --- LA GASOLINA: ALERTA WHATSAPP ---
+            # --- LA ALERTA DE WHATSAPP ---
             if val_g > 180 or val_g < 70:
-                msg_whatsapp = f"🚨 ALERTA MÉDICA - LUIS RAFAEL QUEVEDO: Nivel de glucosa crítico: {val_g} mg/dL ({estado}) a las {ahora.strftime('%I:%M %p')}."
-                # Esto genera un link directo para que solo tengas que darle a enviar
-                link_wa = f"https://wa.me/1849XXXXXXX?text={msg_whatsapp.replace(' ', '%20')}" # Cambia las X por tu número
-                st.warning("⚠️ NIVEL CRÍTICO DETECTADO")
-                st.markdown(f"[📲 ENVIAR ALERTA A CONTACTOS]({link_wa})")
+                texto_alerta = f"🚨 ALERTA MÉDICA - LUIS RAFAEL QUEVEDO: Glucosa en {val_g} mg/dL ({estado}) a las {ahora.strftime('%I:%M %p')}."
+                # Sustituye el número por el de tu contacto (ej: 18491234567)
+                link_wa = f"https://wa.me/1849XXXXXXX?text={texto_alerta.replace(' ', '%20')}"
+                st.error("⚠️ NIVEL FUERA DE RANGO DETECTADO")
+                st.markdown(f"### [📲 ENVIAR ALERTA POR WHATSAPP]({link_wa})")
             
-            st.success("✅ Registro completado.")
+            st.success("✅ Registro guardado.")
             st.rerun()
 
         st.divider()
 
-        # 3. EL GRÁFICO (Para ver la tendencia)
-        st.subheader("📈 Análisis de Tendencia Histórica")
-        df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 20", conn)
-        
+        # 3. GRÁFICO DE TENDENCIA (Para que veas el movimiento)
         if not df_g.empty:
-            # Gráfico de línea profesional
-            fig = px.line(df_g, x="hora", y="valor", title="Evolución de Glucosa", 
-                         markers=True, color_discrete_sequence=[color if val_g > 0 else "green"])
-            st.plotly_chart(fig, use_container_width=True)
+            st.subheader("📈 Evolución de tus Niveles")
+            # Invertimos el DF para que el gráfico vaya de pasado a presente
+            df_plot = df_g.iloc[::-1] 
+            st.line_chart(data=df_plot, x="hora", y="valor")
             
-            # Tabla de datos
-            with st.expander("📄 Ver historial detallado"):
+            with st.expander("📄 Ver Historial de Datos"):
                 st.dataframe(df_g, use_container_width=True)
         
-        # 4. ZONA DE PELIGRO
-        with st.expander("🗑️ ADMINISTRAR BASE DE DATOS"):
-            if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA", key="btn_borrar_final"):
+        # 4. ZONA DE PELIGRO (Aquí arreglamos el error del botón duplicado)
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        with st.expander("🗑️ ADMINISTRAR DATOS (ZONA DE PELIGRO)"):
+            # Le ponemos una KEY única para que Streamlit no se confunda
+            if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA", key="btn_borrado_total_final"):
                 c.execute("DELETE FROM glucosa")
                 conn.commit()
+                st.warning("Historial borrado completamente.")
                 st.rerun()
 
     # --- LOS SIGUIENTES MÓDULOS AHORA SÍ FUNCIONARÁN PORQUE ESTÁN BIEN ALINEADOS ---
