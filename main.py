@@ -487,15 +487,13 @@ elif menu == "📂 ARCHIVADOR":
         count = len(os.listdir(path)) if os.path.exists(path) else 0
         cols[i].metric(folder, f"{count} Docs")
 
+# --- MÓDULO: @ ASISTENTE (EL CEREBRO DEL SISTEMA) ---
+elif menu == "@ ASISTENTE":
+        st.header(f"👋 ¡Centro de Mando: Luis Rafael!")
+        st.subheader("IA Personal Activa - Análisis de Núcleo en tiempo real")
 
-# --- MÓDULO: 🤖 ASISTENTE IA PERSONAL (PROACTIVO) ---
-elif menu == "🤖 ASISTENTE IA":
-        st.header(f"👋 ¡Buen día, Luis Rafael!")
-        st.subheader("Soy tu IA Personal. Aquí está el estado de tu sistema:")
-
-        # 1. ESTADO DEL SISTEMA (Resumen de Inteligencia)
+        # 1. MÉTRICAS DE ESTADO (Resumen General)
         col_st1, col_st2, col_st3 = st.columns(3)
-        
         try:
             total_citas = len(pd.read_sql_query("SELECT id FROM citas", conn))
             total_meds = len(pd.read_sql_query("SELECT id FROM medicinas", conn))
@@ -509,68 +507,167 @@ elif menu == "🤖 ASISTENTE IA":
 
         st.divider()
 
-        # 2. PANEL DE CONTROL PROACTIVO
-        tab_ia1, tab_ia2, tab_ia3 = st.tabs(["🚀 ACCIONES RÁPIDAS", "🩺 ANÁLISIS DE SALUD", "🔍 BÚSQUEDA GLOBAL"])
+        # 2. PANEL DE INTELIGENCIA PROACTIVA
+        tab_ia1, tab_ia2, tab_ia3, tab_ia4 = st.tabs([
+            "🚨 ALERTAS", "🩺 SALUD", "🔍 BUSCADOR", "📄 REPORTE PDF"
+        ])
 
         with tab_ia1:
-            st.write("### 🚨 Pendientes para hoy")
+            st.write("### 🚨 Pendientes y Predicciones")
             hoy = datetime.now().strftime("%Y-%m-%d")
-            
-            # Recordatorio de Citas
             try:
                 proxima = pd.read_sql_query(f"SELECT * FROM citas WHERE fecha >= '{hoy}' ORDER BY fecha ASC LIMIT 1", conn)
                 if not proxima.empty:
-                    st.warning(f"⚠️ **ATENCIÓN:** Tu próxima cita es con **{proxima['doctor'][0]}** el día **{proxima['fecha'][0]}**.")
-                    # Cálculo de días (Predicción)
-                    dias = (datetime.strptime(proxima['fecha'][0], "%Y-%m-%d") - datetime.now()).days
-                    st.info(f"💡 Faltan **{dias}** días. ¿Quieres que preparemos los documentos?")
+                    st.warning(f"⚠️ **PRÓXIMA CITA:** {proxima['doctor'][0]} el {proxima['fecha'][0]}.")
+                    fecha_dt = datetime.strptime(proxima['fecha'][0], "%Y-%m-%d")
+                    dias = (fecha_dt - datetime.now()).days + 1
+                    st.info(f"💡 Faltan **{dias}** días para este compromiso.")
                 else:
-                    st.success("✅ No tienes compromisos médicos pendientes.")
+                    st.success("✅ No tienes citas pendientes para los próximos días.")
             except:
-                st.write("No hay datos en la agenda.")
+                st.write("Agenda vacía.")
 
         with tab_ia2:
-            st.write("### 🤖 Análisis de Tratamiento")
+            st.write("### 🤖 Análisis de Carga Médica")
             try:
                 df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
                 if not df_meds.empty:
-                    st.write(f"Actualmente manejas **{len(df_meds)}** fármacos.")
+                    st.write(f"Gestionando **{len(df_meds)}** medicamentos activos.")
                     if len(df_meds) > 4:
-                        st.error("❗ **ALERTA IA:** Carga de medicamentos alta. Verifica con tu médico posibles interacciones.")
+                        st.error("❗ **ALERTA:** Tienes muchos medicamentos activos. Consulta interacciones.")
                     else:
-                        st.success("✔ Carga de medicamentos bajo control.")
-                    
-                    st.info("📌 **Sugerencia:** Mantén tu hidratación alta al tomar estos medicamentos.")
+                        st.success("✔ Carga dentro de parámetros normales.")
                 else:
-                    st.write("No tienes medicamentos registrados.")
+                    st.info("No hay medicamentos registrados en el sistema.")
             except:
-                st.write("Módulo de medicinas no inicializado.")
+                st.write("Módulo de medicinas sin datos.")
 
         with tab_ia3:
-            st.write("### 🕵️ Explorador del Sistema")
-            query = st.text_input("Dime qué buscas (Nombre de médico, medicina o documento):")
+            st.write("### 🕵️ Explorador del Programa")
+            query = st.text_input("Escribe lo que buscas (Doctor, Medicina, Concepto):")
             if query:
-                # La IA recorre las 3 tablas principales al mismo tiempo
                 res_c = pd.read_sql_query(f"SELECT * FROM citas WHERE doctor LIKE '%{query}%'", conn)
                 res_m = pd.read_sql_query(f"SELECT * FROM medicinas WHERE nombre LIKE '%{query}%'", conn)
-                res_a = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE texto_ocr LIKE '%{query}%'", conn)
-                
                 if not res_c.empty: st.write("📅 En Citas:", res_c)
                 if not res_m.empty: st.write("💊 En Medicinas:", res_m)
-                if not res_a.empty: st.write("📂 En Archivador:", res_a)
-                if res_c.empty and res_m.empty and res_a.empty:
-                    st.error("No encontré nada con ese nombre en el Archivador de Quevedo.")
+                if res_c.empty and res_m.empty:
+                    st.error("No se encontró rastro de esa información.")
+
+        with tab_ia4:
+            st.write("### 📄 Generar Documento Limpio y Timbrado")
+            st.write("Este reporte consolida tus registros de citas y finanzas en un PDF profesional.")
+            
+            if st.button("🚀 GENERAR REPORTE MAESTRO"):
+                from fpdf import FPDF
+                try:
+                    pdf = FPDF()
+                    pdf.add_page()
+                    # Cabecera / Timbrado
+                    pdf.set_font("Arial", 'B', 16)
+                    pdf.cell(200, 10, "QUEVEDO INTEGRAL - REPORTE OFICIAL", ln=True, align='C')
+                    pdf.set_font("Arial", 'I', 11)
+                    pdf.cell(200, 8, f"Propietario: Luis Rafael | Fecha: {datetime.now().strftime('%d/%m/%Y')}", ln=True, align='C')
+                    pdf.line(10, 35, 200, 35)
+                    pdf.ln(10)
+
+                    # Sección Citas
+                    pdf.set_font("Arial", 'B', 12)
+                    pdf.cell(200, 10, "DETALLE DE CITAS MÉDICAS:", ln=True)
+                    pdf.set_font("Arial", '', 10)
+                    df_c = pd.read_sql_query("SELECT * FROM citas", conn)
+                    for _, r in df_c.iterrows():
+                        pdf.cell(200, 7, f"- {r['fecha']} | {r['doctor']} | {r['centro']}", ln=True)
+
+                    nombre_pdf = "Reporte_Luis_Rafael.pdf"
+                    pdf.output(nombre_pdf)
+                    with open(nombre_pdf, "rb") as f:
+                        st.download_button("📥 DESCARGAR PDF", f, file_name=nombre_pdf)
+                except Exception as e:
+                    st.error(f"Error generando PDF: {e}")
 
         st.divider()
-        # 3. CONECTIVIDAD TOTAL
-        st.write("### 📲 Enlaces de Emergencia")
+        st.write("### 📲 Conectividad Activa")
         c1, c2, c3 = st.columns(3)
-        c1.link_button("🏥 Mi Clínica", "https://referencia.do") # Como está en Referencia ahora mismo...
+        c1.link_button("🏥 Mi Clínica", "https://referencia.do")
         c2.link_button("📩 Email Médico", "mailto:doctor@ejemplo.com")
-        c3.link_button("📞 WhatsApp", "https://wa.me/tu_numero")         
-    
+        c3.link_button("📞 WhatsApp", "https://wa.me/1234567890")
 
 
+
+
+# --- MÓDULO: 📄 REPORTE PROFESIONAL PDF ---
+elif menu == "📄 GENERAR REPORTE":
+        st.header("📄 Generador de Reportes Timbrados")
+        st.info("Este módulo extraerá toda su información y creará un PDF oficial.")
+        
+        from fpdf import FPDF
+
+        if st.button("🚀 GENERAR DOCUMENTO MAESTRO"):
+            try:
+                pdf = FPDF()
+                pdf.add_page()
+                
+                # --- TIMBRADO PROFESIONAL ---
+                pdf.set_font("Arial", 'B', 16)
+                pdf.cell(200, 10, "EL ARCHIVADOR DE QUEVEDO", ln=True, align='C')
+                pdf.set_font("Arial", 'I', 12)
+                pdf.cell(200, 10, "Reporte Oficial de Registros Consolidados", ln=True, align='C')
+                pdf.cell(200, 10, f"Propietario: LUIS RAFAEL", ln=True, align='C')
+                pdf.line(10, 40, 200, 40) # Línea divisoria
+                pdf.ln(15)
+
+                # --- SECCIÓN 1: REGISTROS MÉDICOS ---
+                pdf.set_font("Arial", 'B', 14)
+                pdf.cell(200, 10, "1. HISTORIAL DE CITAS MÉDICAS", ln=True)
+                pdf.set_font("Arial", '', 10)
+                
+                df_citas_pdf = pd.read_sql_query("SELECT doctor, fecha, hora, centro FROM citas", conn)
+                for i, row in df_citas_pdf.iterrows():
+                    pdf.cell(200, 8, f"- {row['fecha']} | {row['doctor']} | {row['centro']}", ln=True)
+                
+                pdf.ln(10)
+
+                # --- SECCIÓN 2: CONTROL DE FINANZAS / GASTOS ---
+                pdf.set_font("Arial", 'B', 14)
+                pdf.cell(200, 10, "2. RESUMEN DE GASTOS Y ARCHIVADOR", ln=True)
+                pdf.set_font("Arial", '', 10)
+                
+                df_docs_pdf = pd.read_sql_query("SELECT nombre, categoria, fecha FROM archivador_index", conn)
+                for i, row in df_docs_pdf.iterrows():
+                    pdf.cell(200, 8, f"- {row['fecha']} | {row['categoria']} | {row['nombre']}", ln=True)
+
+                # --- PIE DE PÁGINA DEL PDF ---
+                pdf.ln(20)
+                pdf.set_font("Arial", 'I', 8)
+                pdf.cell(200, 10, f"Documento generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}", align='C')
+
+                # GUARDAR Y DESCARGAR
+                nombre_pdf = f"Reporte_Luis_Rafael_{datetime.now().strftime('%Y%m%d')}.pdf"
+                pdf.output(nombre_pdf)
+                
+                with open(nombre_pdf, "rb") as f:
+                    st.download_button("📥 DESCARGAR MI REPORTE (PDF)", f, file_name=nombre_pdf)
+                st.success("✅ ¡Reporte blindado y listo para descargar!")
+
+            except Exception as e:
+                st.error(f"Error al generar el PDF: {e}")        
+        
+
+                # --- PIE DE PÁGINA DEL PDF ---
+                pdf.ln(20)
+                pdf.set_font("Arial", 'I', 8)
+                pdf.cell(200, 10, f"Documento generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}", align='C')
+
+                # GUARDAR Y DESCARGAR
+                nombre_pdf = f"Reporte_Luis_Rafael_{datetime.now().strftime('%Y%m%d')}.pdf"
+                pdf.output(nombre_pdf)
+                
+                with open(nombre_pdf, "rb") as f:
+                    st.download_button("📥 DESCARGAR MI REPORTE (PDF)", f, file_name=nombre_pdf)
+                st.success("✅ ¡Reporte blindado y listo para descargar!")
+
+            except Exception as e:
+                st.error(f"Error al generar el PDF: {e}")
 # --- PIE DE PÁGINA PERSONALIZADO ---
 st.divider()
 st.markdown(
