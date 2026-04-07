@@ -195,9 +195,9 @@ if verificar_acceso():
 
     with st.sidebar:
         st.subheader("🚀 Reportes Globales")
-        if st.button("📊 GENERAR REPORTE MAESTRO"):
+        if st.button("📊 GENERAR REPORTE MAESTRO", key="btn_gen_reporte_quevedo"):
             pdf_data = generar_reporte_maestro_pdf()
-            st.download_button("📥 Descargar Reporte", pdf_data, f"MAESTRO_{datetime.now().strftime('%Y%m%d')}.pdf", "application/pdf")
+            st.download_button("📥 Descargar Reporte", pdf_data, f"MAESTRO_{datetime.now().strftime('%Y%m%d')}.pdf", "application/pdf", key="btn_descarga_pdf_quevedo")
         st.divider()
 if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA"):
                     conn.execute("DELETE FROM glucosa")
