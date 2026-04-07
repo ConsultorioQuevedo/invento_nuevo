@@ -81,8 +81,8 @@ c.execute('CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMEN
 conn.commit()
   
 
-    conn = iniciar_db()
-    c = conn.cursor()
+         conn = iniciar_db()
+         c = conn.cursor()
 
     # --- FUNCIÓN: GENERADOR REPORTE MAESTRO PDF (VERSIÓN ANTIBALAS) ---
     def generar_reporte_maestro_pdf():
