@@ -29,8 +29,7 @@ def verificar_acceso():
         
 # --- BYPASS TOTAL: Entra directo sin preguntar nada ---
  
-    st.session_state["autenticado"] = True 
-
+   
 # Si esto es True, el programa salta el login y va al menú
 if st.session_state["autenticado"]:
     # AQUÍ EMPIEZA TU MENÚ (BIOMONITOR, AGENDA, etc.)
