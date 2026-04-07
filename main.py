@@ -34,14 +34,10 @@ def verificar_acceso():
         u = st.text_input("Usuario", key="user_login")
         p = st.text_input("Contraseña", type="password", key="pass_login")
         
-        if st.button("🔓 DESBLOQUEAR SISTEMA", use_container_width=True):
-            if u == "Amin" and p == "1234":
-                st.session_state["autenticado"] = True
-                st.success("✅ Acceso concedido")
-                st.rerun()
-            else:
-                st.error("❌ Credenciales incorrectas")
-
+       if st.button("🔓 DESBLOQUEAR SISTEMA", use_container_width=True):
+    # No le preguntes nada, dale para adentro de una vez
+    st.session_state["autenticado"] = True
+    st.rerun()
     # Si no está autenticado en la memoria, devuelve False
     return st.session_state.get("autenticado", False)
 
