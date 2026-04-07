@@ -244,80 +244,102 @@ elif menu == "💰 FINANZAS IA":
         if not df_f.empty:
             st.dataframe(df_f[['fecha', 'categoria', 'monto']], use_container_width=True, hide_index=True)
 
-# --- MÓDULO 3: BIOMONITOR PRO (GASOLINA PURA) ---
+# --- MÓDULO 3: BIOMONITOR PRO CON IA Y ALERTAS ---
 elif menu == "🩺 BIOMONITOR":
-        st.header("🩺 Centro de Control Biométrico Quevedo")
+        st.header("🩺 Centro de Análisis Biométrico Quevedo")
         
-        # Conexión local para los datos
+        # 1. Recuperar Historial para la IA
         df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC", conn)
 
         col_input, col_semaforo = st.columns([1, 1])
 
         with col_input:
-            st.subheader("📝 Nueva Toma")
-            val_g = st.number_input("Nivel de Glucosa (mg/dL)", min_value=0, key="input_g_pro")
-            btn_guardar = st.button("💾 REGISTRAR Y EVALUAR", key="btn_g_pro", use_container_width=True)
+            st.subheader("📝 Nueva Medición")
+            val_g = st.number_input("Nivel de Glucosa (mg/dL)", min_value=0, key="input_g_final_ia")
+            btn_registrar = st.button("💾 PROCESAR Y NOTIFICAR", key="btn_save_g_final")
 
-        # 1. LÓGICA DEL SEMÁFORO (Visualización Instantánea)
+        # 2. SEMÁFORO INTELIGENTE Y ANÁLISIS DE ESTADO
         if val_g > 0:
             if val_g < 70:
-                estado, color, msj = "🚨 HIPOGLICEMIA (MUY BAJA)", "#1E90FF", "¡Azúcar muy baja! Consume algo dulce ya."
+                estado, color, consejo = "🚨 HIPOGLICEMIA", "#1E90FF", "¡CRÍTICO! Azúcar muy baja. Consume glucosa inmediata."
             elif val_g <= 140:
-                estado, color, msj = "✅ NORMAL", "#2E8B57", "Excelente, Luis Rafael. Estás en el rango."
-            elif val_g <= 199:
-                estado, color, msj = "🟠 PRE-DIABETES (ALTA)", "#FF8C00", "Atención, el nivel está subiendo."
+                estado, color, consejo = "✅ NORMAL", "#2E8B57", "Nivel excelente. Mantén tu ritmo actual."
+            elif val_g <= 190:
+                estado, color, consejo = "🟠 PRE-DIABETES", "#FF8C00", "Atención: Nivel elevado. Revisa tu dieta reciente."
             else:
-                estado, color, msj = "🔴 CRÍTICO (MUY ALTA)", "#B22222", "ALERTA: Nivel muy alto. Revisa tu medicación."
-            
+                estado, color, consejo = "🔴 CRÍTICO / ALTA", "#B22222", "🚨 NIVEL PELIGROSO. Activando Protocolo de Emergencia."
+
             with col_semaforo:
                 st.markdown(f"""
-                    <div style='text-align:center; background-color:{color}; padding:20px; border-radius:15px; color:white;'>
+                    <div style='text-align:center; background-color:{color}; padding:20px; border-radius:15px; color:white; border: 2px solid white;'>
                         <h2 style='margin:0;'>{estado}</h2>
-                        <h1 style='font-size:50px; margin:0;'>{val_g}</h1>
-                        <p style='font-size:18px;'>{msj}</p>
+                        <h1 style='font-size:55px; margin:0;'>{val_g}</h1>
+                        <p style='font-size:16px;'>{consejo}</p>
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 2. ACCIÓN: GUARDAR, GRAFICAR Y WHATSAPP
-        if btn_guardar and val_g > 0:
+        # 3. LÓGICA DE IA Y WHATSAPP (EL CORAZÓN DEL SISTEMA)
+        if btn_registrar and val_g > 0:
             ahora = datetime.now(pytz.timezone('America/Santo_Domingo'))
+            fecha_act = ahora.strftime("%d/%m/%y")
+            hora_act = ahora.strftime("%I:%M %p")
+            
             c.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
-                      (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), estado))
+                      (val_g, fecha_act, hora_act, estado))
             conn.commit()
 
-            # --- LA ALERTA DE WHATSAPP ---
-            if val_g > 180 or val_g < 70:
-                texto_alerta = f"🚨 ALERTA MÉDICA - LUIS RAFAEL QUEVEDO: Glucosa en {val_g} mg/dL ({estado}) a las {ahora.strftime('%I:%M %p')}."
-                # Sustituye el número por el de tu contacto (ej: 18491234567)
-                link_wa = f"https://wa.me/1849XXXXXXX?text={texto_alerta.replace(' ', '%20')}"
-                st.error("⚠️ NIVEL FUERA DE RANGO DETECTADO")
-                st.markdown(f"### [📲 ENVIAR ALERTA POR WHATSAPP]({link_wa})")
+            # --- PROTOCOLO DE EMERGENCIA 190+ ---
+            if val_g > 190:
+                st.error(f"🚨 NIVEL DE EMERGENCIA: {val_g} mg/dL")
+                msg_emergencia = f"🚨 *EMERGENCIA MÉDICA* - LUIS RAFAEL QUEVEDO: Mi nivel de glucosa es CRÍTICO ({val_g} mg/dL) a las {hora_act}. Por favor, contáctame de inmediato."
+                
+                st.subheader("📲 Notificar a mis 7 Contactos de Emergencia:")
+                
+                # Lista de contactos (Los que ya configuramos antes)
+                contactos = {
+                    "FAMILIA 1": "1849XXXXXXX", "FAMILIA 2": "1849XXXXXXX",
+                    "DR. ANALISIS": "1829XXXXXXX", "CONTACTO 4": "1809XXXXXXX",
+                    "CONTACTO 5": "1849XXXXXXX", "CONTACTO 6": "1849XXXXXXX",
+                    "CONTACTO 7": "1809XXXXXXX"
+                }
+                
+                cols_wa = st.columns(7)
+                for i, (nombre, num) in enumerate(contactos.items()):
+                    link = f"https://wa.me/{num}?text={msg_emergencia.replace(' ', '%20')}"
+                    cols_wa[i].markdown(f"[🆘 {nombre}]({link})")
             
-            st.success("✅ Registro guardado.")
+            # --- IA: ANÁLISIS DE TENDENCIA ---
+            if not df_g.empty:
+                promedio = df_g['valor'].mean()
+                if val_g > promedio + 20:
+                    st.warning(f"🤖 IA: Detecto un aumento del {int(((val_g-promedio)/promedio)*100)}% sobre tu promedio usual.")
+                elif val_g < promedio - 20:
+                    st.info(f"🤖 IA: Tu nivel está significativamente más bajo de lo normal ({int(promedio)} mg/dL).")
+
+            st.success("✅ Registro completado y analizado.")
             st.rerun()
 
         st.divider()
 
-        # 3. GRÁFICO DE TENDENCIA (Para que veas el movimiento)
+        # 4. VISUALIZACIÓN ROBUSTA (GRÁFICOS)
         if not df_g.empty:
-            st.subheader("📈 Evolución de tus Niveles")
-            # Invertimos el DF para que el gráfico vaya de pasado a presente
-            df_plot = df_g.iloc[::-1] 
-            st.line_chart(data=df_plot, x="hora", y="valor")
+            col_graph, col_data = st.columns([2, 1])
             
-            with st.expander("📄 Ver Historial de Datos"):
-                st.dataframe(df_g, use_container_width=True)
-        
-        # 4. ZONA DE PELIGRO (Aquí arreglamos el error del botón duplicado)
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        with st.expander("🗑️ ADMINISTRAR DATOS (ZONA DE PELIGRO)"):
-            # Le ponemos una KEY única para que Streamlit no se confunda
-            if st.button("BORRAR TODO EL HISTORIAL DE GLUCOSA", key="btn_borrado_total_final"):
+            with col_graph:
+                st.subheader("📈 Curva de Tendencia")
+                # Gráfico interactivo con el historial
+                st.line_chart(df_g.head(15), x="hora", y="valor")
+            
+            with col_data:
+                st.subheader("📄 Historial Reciente")
+                st.dataframe(df_g.head(10)[["valor", "hora", "estado"]], use_container_width=True)
+
+        # 5. MANTENIMIENTO (ZONA SEGURA)
+        with st.expander("🗑️ ADMINISTRAR BASE DE DATOS"):
+            if st.button("BORRAR TODO EL HISTORIAL", key="btn_borrado_total_final_v2"):
                 c.execute("DELETE FROM glucosa")
                 conn.commit()
-                st.warning("Historial borrado completamente.")
                 st.rerun()
-
     # --- LOS SIGUIENTES MÓDULOS AHORA SÍ FUNCIONARÁN PORQUE ESTÁN BIEN ALINEADOS ---
 elif menu == "💊 AGENDA MEDICA":
         st.header("💊 Gestión Médica Profesional")
