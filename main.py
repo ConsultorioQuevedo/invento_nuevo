@@ -26,7 +26,7 @@ def limpiar_texto(texto):
 def verificar_acceso():
     if "autenticado" not in st.session_state:
 # --- BYPASS TOTAL: Entra directo sin preguntar nada ---
-if "autenticado" not in st.session_state:
+    if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = True 
 
 # Si esto es True, el programa salta el login y va al menú
