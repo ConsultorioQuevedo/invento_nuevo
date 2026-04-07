@@ -191,7 +191,7 @@ elif menu == "🩺 BIOMONITOR":
             st.plotly_chart(fig, use_container_width=True)
             
 # --- MÓDULO: AGENDA MÉDICA PRO (CITAS Y MEDICINAS) ---
-    elif menu == "💊 AGENDA MÉDICA":
+elif menu == "💊 AGENDA MÉDICA":
         st.header("📅 Agenda Médica y Control de Fármacos")
         tab1, tab2 = st.tabs(["📝 CITAS MÉDICAS", "💊 MEDICAMENTOS"])
 
