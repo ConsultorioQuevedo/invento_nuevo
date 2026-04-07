@@ -31,7 +31,7 @@ def verificar_acceso():
  
    
 # Si esto es True, el programa salta el login y va al menú
-if st.session_state["autenticado"]:
+
     # AQUÍ EMPIEZA TU MENÚ (BIOMONITOR, AGENDA, etc.)
     menu = st.sidebar.radio("MODULOS", ["🏠 INICIO", "💉 BIOMONITOR", "📅 AGENDA", "📦 ARCHIVADOR"])       
     def verificar_acceso():
