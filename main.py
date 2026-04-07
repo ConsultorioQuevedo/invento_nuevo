@@ -487,113 +487,108 @@ elif menu == "📂 ARCHIVADOR":
         count = len(os.listdir(path)) if os.path.exists(path) else 0
         cols[i].metric(folder, f"{count} Docs")
 
-# --- MÓDULO: @ ASISTENTE (EL CEREBRO DEL SISTEMA) ---
-elif menu == "@ ASISTENTE":
+# --- MÓDULO: ASISTENTE PERSONAL (BUSCA LA PALABRA CLAVE) ---
+elif "ASISTENTE" in menu:
         st.header(f"👋 ¡Centro de Mando: Luis Rafael!")
-        st.subheader("IA Personal Activa - Análisis de Núcleo en tiempo real")
+        st.subheader("Tu IA Personal está analizando el núcleo del programa.")
 
-        # 1. MÉTRICAS DE ESTADO (Resumen General)
-        col_st1, col_st2, col_st3 = st.columns(3)
+        # 1. MÉTRICAS (Resumen de vida del programa)
+        c1, c2, c3 = st.columns(3)
         try:
-            total_citas = len(pd.read_sql_query("SELECT id FROM citas", conn))
-            total_meds = len(pd.read_sql_query("SELECT id FROM medicinas", conn))
-            total_docs = len(pd.read_sql_query("SELECT id FROM archivador_index", conn))
+            # Intentamos leer las tablas, si no existen ponemos 0
+            n_citas = len(pd.read_sql_query("SELECT id FROM citas", conn))
+            n_meds = len(pd.read_sql_query("SELECT id FROM medicinas", conn))
+            n_docs = len(pd.read_sql_query("SELECT id FROM archivador_index", conn))
         except:
-            total_citas = total_meds = total_docs = 0
+            n_citas = n_meds = n_docs = 0
 
-        col_st1.metric("📅 Citas", total_citas)
-        col_st2.metric("💊 Medicinas", total_meds)
-        col_st3.metric("📂 Documentos", total_docs)
+        c1.metric("📅 Citas", n_citas)
+        c2.metric("💊 Medicinas", n_meds)
+        c3.metric("📂 Archivos", n_docs)
 
         st.divider()
 
-        # 2. PANEL DE INTELIGENCIA PROACTIVA
-        tab_ia1, tab_ia2, tab_ia3, tab_ia4 = st.tabs([
-            "🚨 ALERTAS", "🩺 SALUD", "🔍 BUSCADOR", "📄 REPORTE PDF"
+        # 2. PANEL DE CONTROL CON PESTAÑAS (Aquí está el PDF)
+        # He puesto el PDF de PRIMERO para que lo veas de una vez
+        tab_pdf, tab_alertas, tab_salud, tab_busca = st.tabs([
+            "📄 REPORTE PDF", "🚨 ALERTAS", "🩺 SALUD", "🔍 BUSCADOR"
         ])
 
-        with tab_ia1:
-            st.write("### 🚨 Pendientes y Predicciones")
-            hoy = datetime.now().strftime("%Y-%m-%d")
-            try:
-                proxima = pd.read_sql_query(f"SELECT * FROM citas WHERE fecha >= '{hoy}' ORDER BY fecha ASC LIMIT 1", conn)
-                if not proxima.empty:
-                    st.warning(f"⚠️ **PRÓXIMA CITA:** {proxima['doctor'][0]} el {proxima['fecha'][0]}.")
-                    fecha_dt = datetime.strptime(proxima['fecha'][0], "%Y-%m-%d")
-                    dias = (fecha_dt - datetime.now()).days + 1
-                    st.info(f"💡 Faltan **{dias}** días para este compromiso.")
-                else:
-                    st.success("✅ No tienes citas pendientes para los próximos días.")
-            except:
-                st.write("Agenda vacía.")
-
-        with tab_ia2:
-            st.write("### 🤖 Análisis de Carga Médica")
-            try:
-                df_meds = pd.read_sql_query("SELECT * FROM medicinas", conn)
-                if not df_meds.empty:
-                    st.write(f"Gestionando **{len(df_meds)}** medicamentos activos.")
-                    if len(df_meds) > 4:
-                        st.error("❗ **ALERTA:** Tienes muchos medicamentos activos. Consulta interacciones.")
-                    else:
-                        st.success("✔ Carga dentro de parámetros normales.")
-                else:
-                    st.info("No hay medicamentos registrados en el sistema.")
-            except:
-                st.write("Módulo de medicinas sin datos.")
-
-        with tab_ia3:
-            st.write("### 🕵️ Explorador del Programa")
-            query = st.text_input("Escribe lo que buscas (Doctor, Medicina, Concepto):")
-            if query:
-                res_c = pd.read_sql_query(f"SELECT * FROM citas WHERE doctor LIKE '%{query}%'", conn)
-                res_m = pd.read_sql_query(f"SELECT * FROM medicinas WHERE nombre LIKE '%{query}%'", conn)
-                if not res_c.empty: st.write("📅 En Citas:", res_c)
-                if not res_m.empty: st.write("💊 En Medicinas:", res_m)
-                if res_c.empty and res_m.empty:
-                    st.error("No se encontró rastro de esa información.")
-
-        with tab_ia4:
-            st.write("### 📄 Generar Documento Limpio y Timbrado")
-            st.write("Este reporte consolida tus registros de citas y finanzas en un PDF profesional.")
+        with tab_pdf:
+            st.write("### 📄 Generador de Reporte Maestro")
+            st.info("Este botón extrae todo del núcleo y crea un documento timbrado con tu nombre.")
             
-            if st.button("🚀 GENERAR REPORTE MAESTRO"):
+            if st.button("🚀 GENERAR PDF TIMBRADO AHORA"):
                 from fpdf import FPDF
                 try:
                     pdf = FPDF()
                     pdf.add_page()
-                    # Cabecera / Timbrado
+                    # Cabecera Profesional
                     pdf.set_font("Arial", 'B', 16)
                     pdf.cell(200, 10, "QUEVEDO INTEGRAL - REPORTE OFICIAL", ln=True, align='C')
                     pdf.set_font("Arial", 'I', 11)
-                    pdf.cell(200, 8, f"Propietario: Luis Rafael | Fecha: {datetime.now().strftime('%d/%m/%Y')}", ln=True, align='C')
+                    pdf.cell(200, 8, f"Propietario: Luis Rafael | {datetime.now().strftime('%d/%m/%Y')}", ln=True, align='C')
                     pdf.line(10, 35, 200, 35)
                     pdf.ln(10)
 
-                    # Sección Citas
+                    # Extraer Citas
                     pdf.set_font("Arial", 'B', 12)
-                    pdf.cell(200, 10, "DETALLE DE CITAS MÉDICAS:", ln=True)
+                    pdf.cell(200, 10, "RESUMEN DE CITAS MÉDICAS:", ln=True)
                     pdf.set_font("Arial", '', 10)
-                    df_c = pd.read_sql_query("SELECT * FROM citas", conn)
-                    for _, r in df_c.iterrows():
+                    df_p = pd.read_sql_query("SELECT * FROM citas", conn)
+                    for _, r in df_p.iterrows():
                         pdf.cell(200, 7, f"- {r['fecha']} | {r['doctor']} | {r['centro']}", ln=True)
 
-                    nombre_pdf = "Reporte_Luis_Rafael.pdf"
-                    pdf.output(nombre_pdf)
-                    with open(nombre_pdf, "rb") as f:
-                        st.download_button("📥 DESCARGAR PDF", f, file_name=nombre_pdf)
+                    # Generar descarga
+                    nombre_archivo = "Reporte_Maestro_Quevedo.pdf"
+                    pdf.output(nombre_archivo)
+                    with open(nombre_archivo, "rb") as f:
+                        st.download_button("📥 DESCARGAR MI PDF", f, file_name=nombre_archivo)
+                    st.success("✅ ¡PDF Timbrado generado con éxito!")
                 except Exception as e:
-                    st.error(f"Error generando PDF: {e}")
+                    st.error(f"Hubo un lío con el PDF: {e}")
+
+        with tab_alertas:
+            st.write("### 🚨 Predicciones de Agenda")
+            hoy = datetime.now().strftime("%Y-%m-%d")
+            try:
+                prox = pd.read_sql_query(f"SELECT * FROM citas WHERE fecha >= '{hoy}' ORDER BY fecha ASC LIMIT 1", conn)
+                if not prox.empty:
+                    st.warning(f"🔔 PRÓXIMA CITA: {prox['doctor'][0]} el {prox['fecha'][0]}")
+                else:
+                    st.success("✅ No tienes citas próximas.")
+            except: st.write("Agenda lista.")
+
+        with tab_salud:
+            st.write("### 🤖 Análisis IA de Salud")
+            try:
+                df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+                if not df_m.empty:
+                    st.info(f"Gestionando {len(df_m)} medicinas. ¡Sigue así!")
+                else:
+                    st.write("Limpio de medicinas.")
+            except: st.write("Sin datos.")
+
+        with tab_busca:
+            st.write("### 🔍 Buscador Global")
+            q = st.text_input("Dime qué buscamos en el sistema:")
+            if q:
+                # Busca en todo el programa
+                res_c = pd.read_sql_query(f"SELECT * FROM citas WHERE doctor LIKE '%{q}%'", conn)
+                if not res_c.empty: st.write(res_c)
+                else: st.error("No encontré nada con ese nombre.")
 
         st.divider()
-        st.write("### 📲 Conectividad Activa")
-        c1, c2, c3 = st.columns(3)
-        c1.link_button("🏥 Mi Clínica", "https://referencia.do")
-        c2.link_button("📩 Email Médico", "mailto:doctor@ejemplo.com")
-        c3.link_button("📞 WhatsApp", "https://wa.me/1234567890")
+        # 3. ENLACES RÁPIDOS
+        st.write("### 📲 Conectividad Directa")
+        col1, col2, col3 = st.columns(3)
+        col1.link_button("🏥 Clínica", "https://referencia.do")
+        col2.link_button("📧 Email", "mailto:tu_correo@gmail.com")
+        col3.link_button("💬 WhatsApp", "https://wa.me/tu_numero")
+       
 
-
-
+                  
+                  
 
 # --- MÓDULO: 📄 REPORTE PROFESIONAL PDF ---
 elif menu == "📄 GENERAR REPORTE":
