@@ -185,7 +185,7 @@ df_c_prox = pd.read_sql_query("SELECT doctor, fecha FROM citas ORDER BY fecha AS
 if not df_c_prox.empty:
         st.sidebar.warning(f"🔔 PRÓXIMA CITA:\n{df_c_prox['doctor'][0]} - {df_c_prox['fecha'][0]}")
 
-    with st.sidebar:
+ with st.sidebar:
         st.subheader("🚀 Reportes Globales")
         if st.button("📊 GENERAR REPORTE MAESTRO", key="btn_gen_reporte_quevedo"):
             pdf_data = generar_reporte_maestro_pdf()
