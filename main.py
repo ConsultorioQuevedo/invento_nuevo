@@ -197,7 +197,9 @@ if st.button("📊 GENERAR REPORTE MAESTRO", key="boton_unico_reporte_final"):
     if pdf_data is not None:
         st.download_button("📥 Descargar Reporte", pdf_data, "Reporte.pdf", "application/pdf", key="btn_descarga_pdf_quevedo")
         st.divider()
-st.download_button("📥 Descargar Reporte", pdf_data, f"MAESTRO_{datetime.now().strftime('%Y%m%d')}.pdf", "application/pdf", key="btn_descarga_pdf_quevedo")
+# Le ponemos un 'if False' para que el programa ignore este botón por ahora y te deje ENTRAR
+if False:
+    st.download_button("📥 Descargar Reporte", None, "Reporte.pdf", "application/pdf", key="boton_provisional")
 conn.execute("DELETE FROM glucosa")
 conn.commit()
 st.rerun()
