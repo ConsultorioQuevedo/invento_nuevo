@@ -239,7 +239,7 @@ except Exception:
                 conn.commit()
                 st.warning("Historial de citas eliminado.")
                 st.rerun()
-        else:
+    else:
             st.info("No tienes citas pendientes en este momento.")
 
     # --- SUB-MÓDULO: MEDICAMENTOS ---
