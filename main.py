@@ -22,20 +22,14 @@ def limpiar_texto(texto):
     if not texto: return ""
     return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
 
-# --- SISTEMA DE SEGURIDAD (LOGIN) ---
-def verificar_acceso():
-    if "autenticado" not in st.session_state:
+# --- SISTEMA DE SEGURIDAD (BYPASS TOTAL) ---
+# Esto hace que el programa crea que ya pusiste la clave
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = True
 
-        
-# --- BYPASS TOTAL: Entra directo sin preguntar nada ---
- 
-   
-# Si esto es True, el programa salta el login y va al menú
+# AQUÍ EMPIEZA TU MENÚ (Todo esto alineado a la izquierda)
+menu = st.sidebar.radio("MODULOS", ["🏠 INICIO", "💉 BIOMONITOR", "📅 AGENDA", "📦 ARCHIVADOR"])
 
-    # AQUÍ EMPIEZA TU MENÚ (BIOMONITOR, AGENDA, etc.)
-    menu = st.sidebar.radio("MODULOS", ["🏠 INICIO", "💉 BIOMONITOR", "📅 AGENDA", "📦 ARCHIVADOR"])       
-    def verificar_acceso():
-        st.markdown("<h1 style='text-align: center;'>🔐 ACCESO AL SISTEMA</h1>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
