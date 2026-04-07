@@ -37,25 +37,4 @@ for t in tablas:
 conn.commit()
 
 
-# --- ESTA ES LA ESTRUCTURA CORRECTA QUE DEBES PEGAR ---
-if menu == "🏠 INICIO":
-    st.header("🏠 Panel Principal de Luis Rafael")
-    # (Aquí va el resumen de tus datos)
-elif menu == "💰 FINANZAS IA":
-    # (Aquí pegas el bloque de Finanzas que te mandé)
 
-elif menu == "💊 AGENDA MÉDICA":
-    st.header("💊 Gestión de Salud y Citas")
-    # Asegúrate de que estas líneas de abajo tengan los 4 espacios a la izquierda
-    tab1, tab2 = st.tabs(["📅 Citas Médicas", "💊 Mis Medicamentos"])
-    with tab1:
-        st.subheader("🗓️ Programar Nueva Cita") 
-    # (Aquí va el bloque de Citas y Medicamentos)
-elif menu == "📸 ESCANER":
-    # (Aquí va el bloque de la Cámara y OCR)
-elif menu == "📂 ARCHIVADOR":
-    # (Aquí va el bloque para guardar tus papeles de Referencia)
-elif menu == "🤖 ASISTENTE":
-    # (¡AQUÍ ES DONDE VA EL BLOQUE 7 QUE TE MANDÉ!)
-    st.header("🤖 Inteligencia Artificial Quevedo")
-    # (Todo el código del chat e IA va aquí adentro)
