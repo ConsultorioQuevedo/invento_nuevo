@@ -223,9 +223,12 @@ elif menu == "💰 FINANZAS":
 elif menu == "🩺 BIOMONITOR":
     st.header("🩺 Control de Glucosa y Biomonitoreo")
     # --- BOTÓN ÚNICO DE LIMPIEZA ---
+   # Este es el botón que aparecerá arriba de la lista
     if st.button("♻️ DESHACER ÚLTIMO REGISTRO", use_container_width=True):
         borrar_ultimo("glucosa")
-    st.divider()
+    
+    st.divider() # Esto separa el botón de la lista de abajo
+   
 
     # 1. REPARACIÓN AUTOMÁTICA DE TABLA
     c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)")
