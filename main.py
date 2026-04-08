@@ -145,6 +145,9 @@ if menu == "🏠 INICIO":
 # --- MÓDULO FINANZAS: INTELIGENTE Y PERSISTENTE ---
 elif menu == "💰 FINANZAS":
     st.header("💰 Gestión Financiera Inteligente")
+    if st.button("♻️ DESHACER ÚLTIMO MOVIMIENTO", use_container_width=True):
+        borrar_ultimo("finanzas")
+    st.divider()
 
     # 1. PERSISTENCIA REAL: Asegurar tablas
     c.execute("CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY, monto REAL)")
