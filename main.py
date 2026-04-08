@@ -541,112 +541,110 @@ elif menu == "📂 ARCHIVADOR":
                             st.rerun()
 
     try: pass
-    except: pass    
+    except: pass 
+
+
     
-
-       
-  
-# --- ASISTENTE ANALÍTICO v5.0: EL CEREBRO DE QUEVEDO PRO ---
 elif menu == "🤖 ASISTENTE":
-    st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
-    st.caption(f"📅 Análisis actualizado al: {datetime.now().strftime('%d de %B, %Y')}")
+    st.header(f"🤖 Asistente Virtual Inteligente")
+    st.info(f"Usuario: {NOMBRE_PROPIETARIO} | Bot: @Luis_Quevedo_Bot")
 
-    # --- 1. MONITOR DE ALERTAS PROACTIVAS ---
+    # --- FUNCIÓN DE ENVÍO (La herramienta nueva) ---
+    def enviar_telegram_asistente(mensaje):
+        token = "8138335338:AAFM4rcrzEZm2zrbfgNaIwEjbp6k49K1QRE"
+        chat_id = "6879823201"
+        try:
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            requests.get(url, params={"chat_id": chat_id, "text": mensaje, "parse_mode": "Markdown"}, timeout=5)
+        except: pass
+
+    # --- SECCIÓN 1: CONTROL DE NOTIFICACIONES ---
+    with st.expander("🔔 Configuración de Alertas"):
+        st.write("Estado: **Conectado al celular**")
+        if st.button("📲 ENVIAR PRUEBA DE CONEXIÓN"):
+            enviar_telegram_asistente("✅ *¡Conexión Exitosa!* Tu programa ya puede hablarte.")
+            st.success("Revisa tu Telegram.")
+
+    st.divider()
+
+    # --- SECCIÓN 2: ALERTAS CRÍTICAS DE HOY ---
     fecha_hoy = datetime.now().strftime('%Y-%m-%d')
     
-    with st.container():
-        c_alert1, c_alert2 = st.columns(2)
-        with c_alert1:
-            # Alerta de Citas
-            df_hoy = pd.read_sql_query("SELECT * FROM citas WHERE fecha = ?", conn, params=(fecha_hoy,))
-            if not df_hoy.empty:
-                st.error(f"🚨 **CITA HOY:** {df_hoy['doctor'][0]} en {df_hoy['clinica'][0]}")
-            else:
-                st.info("✅ Sin citas para hoy")
-        
-        with c_alert2:
-            # Alerta de Glucosa
-            df_glu_hoy = pd.read_sql_query("SELECT * FROM glucosa WHERE fecha = ?", conn, params=(fecha_hoy,))
-            if df_glu_hoy.empty:
-                st.warning("⚠️ **PENDIENTE:** Medición de azúcar de hoy")
-            else:
-                st.success("✅ Glucosa de hoy registrada")
+    # 1. Alerta de Citas
+    df_citas_hoy = pd.read_sql_query("SELECT * FROM citas WHERE fecha = ?", conn, params=(fecha_hoy,))
+    if not df_citas_hoy.empty:
+        for i, row in df_citas_hoy.iterrows():
+            st.error(f"📅 **CITA HOY:** {row['doctor']} en {row['clinica']}")
+            if st.button(f"📲 Mandar a Telegram cita con {row['doctor']}"):
+                enviar_telegram_asistente(f"🚨 *RECORDATORIO:* Tienes cita hoy con el {row['doctor']} en {row['clinica']}.")
+                st.toast("Enviado al celular")
 
-    st.divider()
-
-    # --- 2. ANÁLISIS DE DATOS (MÚSCULO ANALÍTICO) ---
-    st.subheader("📊 Análisis de Situación Actual")
-    col_an1, col_an2, col_an3 = st.columns(3)
-
-    # Análisis de Salud: Comparativa
-    with col_an1:
-        st.markdown("**Salud (Glucosa)**")
-        df_comp = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 2", conn)
-        if len(df_comp) == 2:
-            actual = int(df_comp['valor'][0])
-            anterior = int(df_comp['valor'][1])
-            dif = actual - anterior
-            if dif > 0:
-                st.metric("Nivel Actual", f"{actual} mg/dL", f"+{dif} (Subió)", delta_color="inverse")
-            else:
-                st.metric("Nivel Actual", f"{actual} mg/dL", f"{dif} (Bajó)")
-        else:
-            st.write("Faltan datos para comparar")
-
-    # Análisis de Finanzas: Gasto Mensual
-    with col_an2:
-        st.markdown("**Finanzas (Gastos)**")
-        try:
-            mes_actual = datetime.now().strftime('-%m-')
-            df_gastos = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas WHERE fecha LIKE ?", conn, params=(f"%{mes_actual}%",))
-            total_g = df_gastos['total'][0] if df_gastos['total'][0] else 0
-            st.metric("Gasto del Mes", f"RD$ {total_g:,.2f}")
-        except: st.write("Sin datos de gastos")
-
-    # Análisis de Archivador: Inventario
-    with col_an3:
-        st.markdown("**Bóveda Digital**")
-        cant_docs = pd.read_sql_query("SELECT COUNT(*) as total FROM archivos", conn)['total'][0]
-        cant_med = pd.read_sql_query("SELECT COUNT(*) as total FROM medicinas", conn)['total'][0]
-        st.write(f"📂 **{cant_docs}** documentos")
-        st.write(f"💊 **{cant_med}** medicinas activas")
-
-    st.divider()
-
-    # --- 3. BÚSQUEDA Y FARMACIAS ---
-    col_bus, col_far = st.columns([2, 1])
+    # 2. Alerta de Glucosa Pendiente
+    df_glu_hoy = pd.read_sql_query("SELECT * FROM glucosa WHERE fecha = ?", conn, params=(fecha_hoy,))
+    if df_glu_hoy.empty:
+        st.warning("⚠️ **ATENCIÓN:** Aún no has registrado niveles de azúcar el día de hoy.")
     
-    with col_bus:
-        st.subheader("🔍 Buscador de Asistente")
-        q_asist = st.text_input("¿Qué buscas hoy?", placeholder="Ej: glucosa, receta, dr...")
-        if q_asist:
-            # Lógica de búsqueda que ya tenemos...
-            query = f"%{q_asist.lower()}%"
-            res = pd.read_sql_query("""
-                SELECT '📅 Cita' as T, doctor as D, fecha as I FROM citas WHERE lower(doctor) LIKE ?
-                UNION ALL
-                SELECT '💰 Gasto' as T, categoria as D, monto as I FROM finanzas WHERE lower(categoria) LIKE ?
-                UNION ALL
-                SELECT '💊 Med' as T, nombre as D, frecuencia as I FROM medicinas WHERE lower(nombre) LIKE ?
-            """, conn, params=(query, query, query))
-            st.dataframe(res, use_container_width=True, hide_index=True)
+    st.divider()
 
-    with col_far:
-        st.subheader("🏥 Farmacias")
-        msg = "Hola, soy Luis Rafael (8092714672). Necesito consultar algo."
-        st.markdown(f'<a href="https://wa.me/18495060398?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#0047AB;color:white;padding:10px;text-align:center;border-radius:10px;margin-bottom:5px;">VALUED</div></a>', unsafe_allow_html=True)
-        st.markdown(f'<a href="https://wa.me/18296555546?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#E31E24;color:white;padding:10px;text-align:center;border-radius:10px;">GBC</div></a>', unsafe_allow_html=True)
+    # --- SECCIÓN 3: RESUMEN ANALÍTICO (SALUD Y DINERO) ---
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("🩸 Salud (Último Dato)")
+        df_u_glu = pd.read_sql_query("SELECT valor, fecha FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+        if not df_u_glu.empty:
+            v = df_u_glu['valor'][0]
+            st.metric("Glucosa", f"{v} mg/dL", delta=f"{v-100}" if v > 100 else None, delta_color="inverse")
+            if v > 160:
+                st.warning("Nivel alto. ¿Quieres avisar por Telegram?")
+                if st.button("📲 Avisar alerta de glucosa"):
+                    enviar_telegram_asistente(f"⚠️ *ALERTA DE SALUD:* Tu nivel de azúcar está en {v} mg/dL. Toma precauciones.")
+        else:
+            st.write("No hay datos de salud.")
+
+    with col2:
+        st.subheader("💰 Finanzas (Mes Actual)")
+        mes_actual = datetime.now().strftime('-%m-')
+        df_gastos = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas WHERE fecha LIKE ?", conn, params=(f"%{mes_actual}%",))
+        total = df_gastos['total'][0] if df_gastos['total'][0] else 0
+        st.metric("Gastado este mes", f"RD$ {total:,.2f}")
+        if total > 5000: # Ejemplo de límite
+            st.info("Has superado el presupuesto base sugerido.")
 
     st.divider()
 
-    # --- 4. ACCIÓN MAESTRA: REPORTE ---
-    if st.button("🚀 GENERAR REPORTE PDF INTEGRAL", use_container_width=True):
-        # (Aquí va el código del PDF que ya tenemos pulido)
-        st.info("Procesando expediente completo...")
-        # ... (Cierre de función PDF)
+    # --- SECCIÓN 4: EL BUSCADOR GLOBAL (LO QUE NO PUEDE FALTAR) ---
+    st.subheader("🔍 Buscador de Expedientes")
+    busqueda = st.text_input("Escribe el nombre de un doctor, una medicina o un gasto:")
+    
+    if busqueda:
+        term = f"%{busqueda.lower()}%"
+        # Esta consulta busca en 3 tablas al mismo tiempo
+        query_global = """
+            SELECT 'CITA' as Origen, doctor as Detalle, fecha as Dato FROM citas WHERE lower(doctor) LIKE ?
+            UNION ALL
+            SELECT 'GASTO' as Origen, categoria as Detalle, monto as Dato FROM finanzas WHERE lower(categoria) LIKE ?
+            UNION ALL
+            SELECT 'MEDICINA' as Origen, nombre as Detalle, frecuencia as Dato FROM medicinas WHERE lower(nombre) LIKE ?
+        """
+        resultados = pd.read_sql_query(query_global, conn, params=(term, term, term))
+        
+        if not resultados.empty:
+            st.table(resultados)
+        else:
+            st.write("No se encontró nada con ese nombre.")
 
-    try: pass
-    except: pass
+    st.divider()
+    
+    # --- SECCIÓN 5: ACCIONES RÁPIDAS ---
+    if st.button("📄 GENERAR REPORTE PDF COMPLETO", use_container_width=True):
+        st.write("Procesando documento...")
+        # Aquí llamarías a tu función de PDF
+       
+  
+      
+  
+  
    
    
    
