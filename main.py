@@ -371,7 +371,6 @@ elif menu == "💊 AGENDA MÉDICA":
     try: pass
     except: pass
   
-
 # --- MÓDULO ESCÁNER IA: INTELIGENCIA Y COMUNICACIÓN DIRECTA ---
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Estación de Escaneo IA")
