@@ -341,26 +341,76 @@ elif menu == "📂 ARCHIVADOR":
                         st.rerun()
 
 
-# --- ASISTENTE Y PDF ---
+# --- ASISTENTE INTELIGENTE PRO ---
 elif menu == "🤖 ASISTENTE":
-    st.header("👋 Centro de Mando: Luis Rafael")
-    if st.button("🚀 GENERAR REPORTE PDF TIMBRADO"):
+    st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
+    
+    # 1. BUSCADOR DENTRO DEL ASISTENTE
+    st.subheader("🔍 Consulta Rápida al Sistema")
+    q_asist = st.text_input("¿Qué deseas encontrar hoy? (ej: 'cita', 'azucar', 'enero')")
+    
+    if q_asist:
+        query = f"%{q_asist.lower()}%"
+        # Busca en todo simultáneamente
+        res_total = pd.read_sql_query("""
+            SELECT 'Médico' as Tipo, doctor as Detalle, fecha as Fecha FROM citas WHERE lower(doctor) LIKE ?
+            UNION ALL
+            SELECT 'Gasto' as Tipo, categoria as Detalle, monto as Fecha FROM finanzas WHERE lower(categoria) LIKE ?
+            UNION ALL
+            SELECT 'Medicina' as Tipo, nombre as Detalle, frecuencia as Fecha FROM medicinas WHERE lower(nombre) LIKE ?
+        """, conn, params=(query, query, query))
+        
+        if not res_total.empty:
+            st.dataframe(res_total, use_container_width=True)
+        else:
+            st.warning("No encontré registros con ese nombre.")
+
+    st.divider()
+
+    # 2. GENERADOR DE REPORTE INTEGRAL (PDF)
+    st.subheader("📄 Generación de Expediente Oficial")
+    if st.button("🚀 GENERAR REPORTE COMPLETO (PDF)"):
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", 'B', 16)
-        pdf.cell(200, 10, "SISTEMA QUEVEDO INTEGRAL - REPORTE OFICIAL", ln=True, align='C')
-        pdf.set_font("Arial", 'I', 11)
-        pdf.cell(200, 10, f"Propietario: {NOMBRE_PROPIETARIO} | {datetime.now().strftime('%d/%m/%Y')}", ln=True, align='C')
-        pdf.line(10, 35, 200, 35)
-        pdf.ln(10)
         
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(200, 10, "RESUMEN DE FINANZAS:", ln=True)
+        # Encabezado con Identidad
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(200, 10, "EXPEDIENTE INTEGRAL - QUEVEDO PRO", ln=True, align='C')
         pdf.set_font("Arial", '', 10)
-        df_pdf = pd.read_sql_query("SELECT * FROM finanzas", conn)
-        for _, r in df_pdf.iterrows():
-            pdf.cell(200, 7, f"- {r['fecha']} | {r['categoria']} | RD$ {r['monto']}", ln=True)
-            
-        pdf.output("Reporte_Quevedo.pdf")
-        with open("Reporte_Quevedo.pdf", "rb") as f:
-            st.download_button("📥 DESCARGAR REPORTE", f, file_name="Reporte_Quevedo.pdf")
+        pdf.cell(200, 10, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align='C')
+        pdf.line(10, 30, 200, 30)
+        pdf.ln(10)
+
+        # SECCIÓN 1: SALUD (Esto es lo que te faltaba)
+        pdf.set_font("Arial", 'B', 12)
+        pdf.set_fill_color(230, 230, 230)
+        pdf.cell(190, 10, " I. RESUMEN MÉDICO Y BIOMONITOR", ln=True, fill=True)
+        pdf.set_font("Arial", '', 10)
+        
+        # Glucosa
+        df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 5", conn)
+        pdf.cell(200, 7, "Últimos niveles de Glucosa:", ln=True)
+        for _, r in df_g.iterrows():
+            pdf.cell(200, 7, f" - {r['fecha']}: {r['valor']} mg/dL ({r['estado']})", ln=True)
+        
+        # Citas
+        df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha DESC LIMIT 5", conn)
+        pdf.ln(5)
+        pdf.cell(200, 7, "Próximas Citas Médicas:", ln=True)
+        for _, r in df_c.iterrows():
+            pdf.cell(200, 7, f" - {r['fecha']} con {r['doctor']} en {r['centro']}", ln=True)
+
+        pdf.ln(10)
+
+        # SECCIÓN 2: FINANZAS
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(190, 10, " II. ESTADO FINANCIERO", ln=True, fill=True)
+        pdf.set_font("Arial", '', 10)
+        df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC LIMIT 10", conn)
+        for _, r in df_f.iterrows():
+            pdf.cell(200, 7, f" - {r['fecha']} | {r['categoria']} | RD$ {r['monto']}", ln=True)
+
+        # Salvar y Descargar
+        pdf.output("Reporte_Quevedo_Total.pdf")
+        with open("Reporte_Quevedo_Total.pdf", "rb") as f:
+            st.download_button("📥 DESCARGAR EXPEDIENTE COMPLETO", f, file_name=f"Reporte_Quevedo_{datetime.now().strftime('%d_%m')}.pdf")
