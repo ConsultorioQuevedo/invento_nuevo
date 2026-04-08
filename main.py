@@ -387,6 +387,9 @@ elif menu == "💊 AGENDA MÉDICA":
 # --- MÓDULO ESCÁNER IA: INTELIGENCIA Y COMUNICACIÓN DIRECTA ---
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Estación de Escaneo IA")
+    if st.button("♻️ DESHACER ÚLTIMO ESCANEO", use_container_width=True):
+        borrar_ultimo("inventario")
+    st.divider()
 
     # 1. CONFIGURACIÓN DE CONTACTOS (Tus datos reales)
     MI_NUMERO = "18092714672"
@@ -463,6 +466,9 @@ elif menu == "📸 ESCÁNER IA":
 # --- ARCHIVADOR INTEGRAL v5.1: RECTIFICACIÓN DE VARIABLES ---
 elif menu == "📂 ARCHIVADOR":
     st.header("📂 Archivador Inteligente v5.1")
+    if st.button("♻️ DESHACER ÚLTIMO DOCUMENTO", use_container_width=True):
+        borrar_ultimo("documentos")
+    st.divider()
     
     # 1. Entrada de búsqueda
     q = st.text_input("🔍 ¿Qué buscas? (ej: 'glucosa', 'doctor', 'receta')", placeholder="Escribe aquí...")
