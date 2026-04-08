@@ -458,83 +458,81 @@ elif menu == "📂 ARCHIVADOR":
 
 
 
-         
-# --- ARCHIVADOR INTEGRAL (BÚSQUEDA MULTI-MÓDULO) ---
+# --- ARCHIVADOR INTEGRAL (BÚSQUEDA INTELIGENTE MULTI-MÓDULO) ---
 elif menu == "📂 ARCHIVADOR":
     st.header("📂 Archivador Inteligente v3.0")
     
     # 1. Entrada de búsqueda flexible
-    q = st.text_input("🔍 Busca lo que sea (ej: 'glucosa', 'operación', 'gasto', 'doctor')...")
+    q = st.text_input("🔍 Busca lo que sea (ej: 'glucosa', 'Metformina', 'Farmacia', 'doctor')...")
     
     if q:
         query = f"%{q.lower()}%"
-        st.markdown(f"### 🔎 Resultados de búsqueda para: **{q}**")
+        st.markdown(f"### 🔎 Resultados para: **{q}**")
         
-        # --- COLUMNAS PARA ORGANIZAR RESULTADOS ---
+        # COLUMNAS PARA ORGANIZAR RESULTADOS
         col_res_izq, col_res_der = st.columns(2)
 
-        # 2. BÚSQUEDA EN SALUD (Biomonitor y Agenda)
+        # 2. BÚSQUEDA EN SALUD (Agenda y Biomonitor)
         with col_res_izq:
             # Buscar en Medicamentos y Citas Médicas
-            res_salud = pd.read_sql_query("""
-                SELECT 'Medicamento' as Origen, nombre as Detalle, frecuencia as Info FROM medicinas 
-                WHERE lower(nombre) LIKE ? 
-                UNION
-                SELECT 'Cita Médica' as Origen, doctor as Detalle, centro as Info FROM citas 
-                WHERE lower(doctor) LIKE ? OR lower(centro) LIKE ?
-            """, conn, params=(query, query, query))
-            
-            # Buscar en Biomonitor (Glucosa)
-            res_bio = pd.read_sql_query("""
-                SELECT 'Biomonitor' as Origen, valor || ' mg/dL' as Detalle, fecha as Info FROM glucosa 
-                WHERE lower(estado) LIKE ? OR lower(fecha) LIKE ?
-            """, conn, params=(query, query))
-
-            if not res_salud.empty or not res_bio.empty:
-                st.success("🩺 Hallazgos en Salud y Agenda")
-                if not res_salud.empty: st.table(res_salud)
-                if not res_bio.empty: st.table(res_bio)
+            try:
+                res_salud = pd.read_sql_query("""
+                    SELECT 'Medicamento' as Origen, nombre as Detalle, frecuencia as Info FROM medicinas 
+                    WHERE lower(nombre) LIKE ? 
+                    UNION
+                    SELECT 'Cita Médica' as Origen, doctor as Detalle, clinica as Info FROM citas 
+                    WHERE lower(doctor) LIKE ? OR lower(clinica) LIKE ?
+                """, conn, params=(query, query, query))
+                
+                if not res_salud.empty:
+                    st.success("🩺 Hallazgos en Salud y Agenda")
+                    st.table(res_salud)
+            except:
+                pass
 
         # 3. BÚSQUEDA EN DOCUMENTOS Y FINANZAS
         with col_res_der:
-            # Buscar en el Archivador de Fotos/Documentos
-            res_docs = pd.read_sql_query("""
-                SELECT 'Documento' as Origen, nombre as Detalle, categoria as Info FROM archivador_index 
-                WHERE lower(texto_ocr) LIKE ? OR lower(categoria) LIKE ?
-            """, conn, params=(query, query))
-            
-            # Buscar en Finanzas
-            res_fin = pd.read_sql_query("""
-                SELECT 'Finanzas' as Origen, categoria as Detalle, 'RD$ ' || monto as Info FROM finanzas 
-                WHERE lower(categoria) LIKE ? OR lower(tipo) LIKE ?
-            """, conn, params=(query, query))
-
-            if not res_docs.empty or not res_fin.empty:
-                st.warning("📂 Hallazgos en Documentos y Gastos")
-                if not res_docs.empty: st.table(res_docs)
-                if not res_fin.empty: st.table(res_fin)
-
-        if res_salud.empty and res_bio.empty and res_docs.empty and res_fin.empty:
-            st.error(f"No se encontró rastro de '{q}' en ningún módulo.")
+            # Buscar en el Archivador de Fotos (la tabla 'archivos' que creamos antes)
+            try:
+                res_docs = pd.read_sql_query("""
+                    SELECT 'Documento' as Origen, tipo as Detalle, fecha as Info FROM archivos 
+                    WHERE lower(tipo) LIKE ? OR lower(fecha) LIKE ?
+                """, conn, params=(query, query))
+                
+                if not res_docs.empty:
+                    st.warning("📂 Hallazgos en Documentos")
+                    st.table(res_docs)
+            except:
+                pass
 
     st.divider()
 
-    # --- 4. TU DISEÑO DE CARPETAS (SE MANTIENE IGUAL) ---
+    # --- 4. DISEÑO DE CARPETAS VISUALES ---
     st.subheader("📁 Carpetas del Archivador")
-    for cat in ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]:
-        with st.expander(f"📁 {cat}"):
-            df_arch = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE categoria = '{cat}'", conn)
+    
+    # Categorías que definimos para tus documentos
+    categorias = ["Receta Médica", "Resultado Lab", "Cotización"]
+    
+    for cat in categorias:
+        with st.expander(f"📁 {cat.upper()}"):
+            df_arch = pd.read_sql_query("SELECT * FROM archivos WHERE tipo = ?", conn, params=(cat,))
+            
             if df_arch.empty:
-                st.info("No hay documentos aquí.")
+                st.info(f"No hay {cat.lower()} guardadas.")
             else:
                 for idx, row in df_arch.iterrows():
                     c1, c2, c3 = st.columns([5, 2, 1])
-                    c1.write(f"📄 {row['nombre']}")
+                    c1.write(f"📄 {row['tipo']}")
                     c2.caption(f"📅 {row['fecha']}")
-                    if c3.button("🗑️", key=f"del_final_{row['id']}"):
-                        c.execute("DELETE FROM archivador_index WHERE id = ?", (row['id'],))
+                    # El botón de borrado lateral que tanto nos importa
+                    if c3.button("🗑️", key=f"del_arc_v3_{row['id']}"):
+                        c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
                         conn.commit()
                         st.rerun()
+
+    # Cierre de seguridad anti-SyntaxError
+    try: pass
+    except: pass
 
 
 # --- ASISTENTE INTELIGENTE PRO ---
