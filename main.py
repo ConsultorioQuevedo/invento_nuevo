@@ -263,56 +263,83 @@ elif menu == "📸 ESCÁNER IA":
                 conn.commit()
                 st.success("Guardado y indexado.")
 
-# --- ARCHIVADOR (ARQUITECTURA ORIGINAL POTENCIADA) ---
+
+# --- ARCHIVADOR INTELIGENTE (BÚSQUEDA FLEXIBLE) ---
 elif menu == "📂 ARCHIVADOR":
     st.header("📂 Archivador Inteligente v3.0")
     
-    # 1. Buscador Universal (Mismo diseño, más potencia)
-    q = st.text_input("🔍 Buscar en todo el sistema (documentos, gastos, salud)...").lower()
+    # Input de búsqueda
+    q = st.text_input("🔍 Buscar (ej: 'medico', 'receta', 'farmacia')...")
     
     if q:
-        # Buscamos en documentos escaneados (Tu lógica original)
-        res_docs = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE lower(texto_ocr) LIKE '%{q}%' OR lower(categoria) LIKE '%{q}%'", conn)
+        # Limpiamos la búsqueda para que no importe mayúsculas/minúsculas
+        query = f"%{q.lower()}%"
         
-        # Buscamos en finanzas (Lo que faltaba para que veas tus "gastos")
-        res_fin = pd.read_sql_query(f"SELECT * FROM finanzas WHERE lower(categoria) LIKE '%{q}%' OR lower(tipo) LIKE '%{q}%'", conn)
+        st.markdown(f"### 🔎 Resultados para: '{q}'")
         
-        if not res_docs.empty:
-            st.subheader("📄 Documentos Encontrados")
-            st.dataframe(res_docs, use_container_width=True)
+        # 1. BUSCAR EN DOCUMENTOS ESCANEADOS
+        res_docs = pd.read_sql_query("""
+            SELECT nombre, categoria, fecha, texto_ocr FROM archivador_index 
+            WHERE lower(texto_ocr) LIKE ? OR lower(categoria) LIKE ?
+        """, conn, params=(query, query))
+        
+        # 2. BUSCAR EN FINANZAS (Gastos e Ingresos)
+        res_fin = pd.read_sql_query("""
+            SELECT tipo, categoria, monto, fecha FROM finanzas 
+            WHERE lower(categoria) LIKE ? OR lower(tipo) LIKE ?
+        """, conn, params=(query, query))
+        
+        # 3. BUSCAR EN SALUD (Medicamentos y Citas)
+        res_meds = pd.read_sql_query("""
+            SELECT nombre, dosis, frecuencia FROM medicinas 
+            WHERE lower(nombre) LIKE ?
+        """, conn, params=(query,))
+        
+        res_citas = pd.read_sql_query("""
+            SELECT doctor, centro, fecha FROM citas 
+            WHERE lower(doctor) LIKE ? OR lower(centro) LIKE ?
+        """, conn, params=(query, query))
+
+        # --- MOSTRAR RESULTADOS SI EXISTEN ---
+        col_res1, col_res2 = st.columns(2)
+        
+        with col_res1:
+            if not res_docs.empty:
+                st.info("📄 Documentos Encontrados")
+                st.write(res_docs[['nombre', 'categoria', 'fecha']])
             
-        if not res_fin.empty:
-            st.subheader("💰 Registros de Gastos/Ingresos Encontrados")
-            st.dataframe(res_fin, use_container_width=True)
-            
-        if res_docs.empty and res_fin.empty:
-            st.info(f"No hay resultados para: '{q}'")
-    
+            if not res_meds.empty or not res_citas.empty:
+                st.success("🩺 Salud y Citas")
+                if not res_meds.empty: st.write(res_meds)
+                if not res_citas.empty: st.write(res_citas)
+
+        with col_res2:
+            if not res_fin.empty:
+                st.warning("💰 Registros Financieros")
+                st.write(res_fin)
+
+        if res_docs.empty and res_fin.empty and res_meds.empty and res_citas.empty:
+            st.error(f"No se encontró ninguna coincidencia para '{q}'.")
+
     st.divider()
 
-    # 2. Tu Arquitectura de Carpetas (Intacta)
+    # --- TU DISEÑO DE CARPETAS ORIGINAL (INTACTO) ---
     for cat in ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]:
         with st.expander(f"📁 {cat}"):
-            # Recuperamos los archivos de esta categoría
             df_arch = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE categoria = '{cat}'", conn)
-            
             if df_arch.empty:
-                st.write("No hay archivos en esta categoría.")
+                st.write("Carpeta vacía.")
             else:
                 for idx, row in df_arch.iterrows():
-                    # Mantenemos tus 3 columnas originales
                     col_a1, col_a2, col_a3 = st.columns([5, 2, 1])
-                    
-                    with col_a1:
-                        st.write(f"📄 **{row['nombre']}**")
-                    with col_a2:
-                        st.caption(f"📅 {row['fecha']}")
-                    with col_a3:
-                        # Botón de borrado con tu lógica de persistencia
-                        if st.button("🗑️", key=f"del_arch_{row['id']}"):
-                            c.execute("DELETE FROM archivador_index WHERE id = ?", (row['id'],))
-                            conn.commit()
-                            st.rerun()
+                    col_a1.write(f"📄 {row['nombre']}")
+                    col_a2.write(f"📅 {row['fecha']}")
+                    if col_a3.button("🗑️", key=f"del_arch_v3_{row['id']}"):
+                        c.execute("DELETE FROM archivador_index WHERE id = ?", (row['id'],))
+                        conn.commit()
+                        st.rerun()      
+
+   
 
 
 # --- ASISTENTE Y PDF ---
