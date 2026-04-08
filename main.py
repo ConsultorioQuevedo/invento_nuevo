@@ -441,10 +441,7 @@ elif menu == "📸 ESCÁNER IA":
             r1, r2, r3 = st.columns([3, 4, 1])
             r1.write(f"📅 {row['fecha']}")
             r2.write(f"📄 **{row['tipo']}**")
-            if r3.button("🗑️", key=f"del_arc_{row['id']}"):
-                c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
-                conn.commit()
-                st.rerun()
+          
 # --- FINAL DEL ESCÁNER IA (Cierre del historial) ---
     else:
         st.info("No hay documentos en el archivador.")
