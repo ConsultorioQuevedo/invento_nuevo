@@ -26,10 +26,15 @@ ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
 
 def borrar_ultimo(tabla):
     try:
-        cursor.execute(f"SELECT MAX(id) FROM {tabla}")
-        max_id = cursor.fetchone()[0]
+        # Usamos la conexión que ya tienes creada en el programa
+        global conn, c 
+        
+        # Buscamos el ID más alto (el último)
+        c.execute(f"SELECT MAX(id) FROM {tabla}")
+        max_id = c.fetchone()[0]
+        
         if max_id:
-            cursor.execute(f"DELETE FROM {tabla} WHERE id = ?", (max_id,))
+            c.execute(f"DELETE FROM {tabla} WHERE id = ?", (max_id,))
             conn.commit()
             st.success(f"✅ Registro eliminado de {tabla}")
             st.rerun()
@@ -37,7 +42,6 @@ def borrar_ultimo(tabla):
             st.info("No hay nada que borrar.")
     except Exception as e:
         st.error(f"Error: {e}")
-
 def limpiar_texto(texto):
     if not texto: return ""
     return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
