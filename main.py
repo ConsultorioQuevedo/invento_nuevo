@@ -442,13 +442,17 @@ elif menu == "📸 ESCÁNER IA":
                 c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
                 conn.commit()
                 st.rerun()
+# --- FINAL DEL ESCÁNER IA (Cierre del historial) ---
     else:
         st.info("No hay documentos en el archivador.")
 
-# Cierre de seguridad para el siguiente módulo
-try: pass
-except: pass   
-                
+    # ESTO ES LO QUE ESTÁ FALTANDO Y CAUSA EL ERROR:
+    try: pass
+    except: pass
+
+# --- AHORA LA LÍNEA 460 YA NO DARÁ ERROR ---
+elif menu == "📂 ARCHIVADOR":
+    st.header("📂 Archivador Central de Documentos")             
               
 
 
