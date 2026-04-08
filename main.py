@@ -542,7 +542,110 @@ elif menu == "📂 ARCHIVADOR":
     try: pass
     except: pass    
     
-      
+# --- ASISTENTE INTELIGENTE PRO v4.0 ---
+elif menu == "🤖 ASISTENTE":
+    st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
+    
+    # 1. BUSCADOR INTEGRAL CON TRADUCTOR DE GLUCOSA
+    st.subheader("🔍 Consulta Rápida al Sistema")
+    q_asist = st.text_input("¿Qué deseas encontrar hoy? (ej: 'glucosa', 'cita', 'farmacia')")
+    
+    if q_asist:
+        query = f"%{q_asist.lower()}%"
+        # IA: Detectar si el usuario busca glucosa aunque no esté la palabra en la tabla
+        busca_glucosa = any(t in q_asist.lower() for t in ["glucosa", "azucar", "diabetes", "mg"])
+        
+        # Búsqueda unificada
+        res_total = pd.read_sql_query("""
+            SELECT '📅 Médico' as Tipo, doctor as Detalle, fecha as Info FROM citas WHERE lower(doctor) LIKE ? OR lower(clinica) LIKE ?
+            UNION ALL
+            SELECT '💰 Gasto' as Tipo, categoria as Detalle, 'RD$ ' || monto as Info FROM finanzas WHERE lower(categoria) LIKE ?
+            UNION ALL
+            SELECT '💊 Medicina' as Tipo, nombre as Detalle, frecuencia as Info FROM medicinas WHERE lower(nombre) LIKE ?
+        """, conn, params=(query, query, query, query))
+        
+        # Si busca glucosa, inyectamos los datos del biomonitor
+        if busca_glucosa:
+            res_bio = pd.read_sql_query("SELECT '🩸 Glucosa' as Tipo, valor || ' mg/dL' as Detalle, fecha as Info FROM glucosa ORDER BY id DESC LIMIT 5", conn)
+            res_total = pd.concat([res_total, res_bio])
+        
+        if not res_total.empty:
+            st.dataframe(res_total, use_container_width=True, hide_index=True)
+        else:
+            st.warning("No encontré registros con ese nombre.")
+
+    st.divider()
+
+    # 2. GESTIÓN DIRECTA CON FARMACIAS
+    st.subheader("🏥 Contacto Directo Farmacias")
+    c_f1, c_f2 = st.columns(2)
+    msg_f = f"Hola, soy Luis Rafael (Tel: 8092714672). Necesito una cotización."
+    
+    with c_f1:
+        st.markdown(f'<a href="https://wa.me/18495060398?text={msg_f}" target="_blank" style="text-decoration:none;"><div style="background:#0047AB;color:white;padding:12px;text-align:center;border-radius:10px;font-weight:bold;">🏥 VALUED</div></a>', unsafe_allow_html=True)
+    with c_f2:
+        st.markdown(f'<a href="https://wa.me/18296555546?text={msg_f}" target="_blank" style="text-decoration:none;"><div style="background:#E31E24;color:white;padding:12px;text-align:center;border-radius:10px;font-weight:bold;">💊 GBC</div></a>', unsafe_allow_html=True)
+
+    st.divider()
+
+    # 3. GENERADOR DE REPORTE INTEGRAL (PDF)
+    st.subheader("📄 Generación de Expediente Oficial")
+    if st.button("🚀 GENERAR REPORTE COMPLETO (PDF)", use_container_width=True):
+        try:
+            pdf = FPDF()
+            pdf.add_page()
+            
+            # Encabezado
+            pdf.set_font("Arial", 'B', 16)
+            pdf.cell(200, 10, "EXPEDIENTE INTEGRAL - LUIS RAFAEL", ln=True, align='C')
+            pdf.set_font("Arial", '', 10)
+            pdf.cell(200, 10, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align='C')
+            pdf.line(10, 30, 200, 30)
+            pdf.ln(10)
+
+            # SECCIÓN 1: SALUD
+            pdf.set_font("Arial", 'B', 12)
+            pdf.set_fill_color(230, 230, 230)
+            pdf.cell(190, 10, " I. RESUMEN MÉDICO Y BIOMONITOR", ln=True, fill=True)
+            pdf.set_font("Arial", '', 10)
+            
+            # Glucosa (Datos reales)
+            df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 10", conn)
+            pdf.ln(2)
+            pdf.cell(200, 7, "Últimos niveles de Glucosa:", ln=True)
+            for _, r in df_g.iterrows():
+                pdf.cell(200, 7, f" - {r['fecha']}: {r['valor']} mg/dL ({r['estado']})", ln=True)
+            
+            # Citas
+            df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha DESC LIMIT 5", conn)
+            pdf.ln(5)
+            pdf.cell(200, 7, "Historial de Citas Médicas:", ln=True)
+            for _, r in df_c.iterrows():
+                pdf.cell(200, 7, f" - {r['fecha']} con {r['doctor']} en {r['clinica']}", ln=True)
+
+            pdf.ln(10)
+
+            # SECCIÓN 2: FINANZAS
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(190, 10, " II. ESTADO FINANCIERO RECIENTE", ln=True, fill=True)
+            pdf.set_font("Arial", '', 10)
+            df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC LIMIT 10", conn)
+            for _, r in df_f.iterrows():
+                pdf.cell(200, 7, f" - {r['fecha']} | {r['categoria']} | RD$ {r['monto']}", ln=True)
+
+            # Salvar y Descargar
+            nombre_archivo = f"Reporte_Luis_Rafael_{datetime.now().strftime('%d_%m')}.pdf"
+            pdf.output(nombre_archivo)
+            
+            with open(nombre_archivo, "rb") as f:
+                st.download_button("📥 DESCARGAR EXPEDIENTE COMPLETO", f, file_name=nombre_archivo)
+            st.success("✅ PDF Generado con éxito.")
+        except Exception as e:
+            st.error(f"Error al generar PDF: {e}. Asegúrate de tener la librería 'fpdf' instalada.")
+
+    # Cierre de seguridad
+    try: pass
+    except: pass      
 
        
 
@@ -550,110 +653,55 @@ elif menu == "📂 ARCHIVADOR":
 
    
 
-# --- ASISTENTE INTELIGENTE PRO ---
-elif menu == "🤖 ASISTENTE":
-    st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
-    
-    # 1. BUSCADOR DENTRO DEL ASISTENTE
-    st.subheader("🔍 Consulta Rápida al Sistema")
-    q_asist = st.text_input("¿Qué deseas encontrar hoy? (ej: 'cita', 'azucar', 'enero')")
-    
-    if q_asist:
-        query = f"%{q_asist.lower()}%"
-        # Busca en todo simultáneamente
-        res_total = pd.read_sql_query("""
-            SELECT 'Médico' as Tipo, doctor as Detalle, fecha as Fecha FROM citas WHERE lower(doctor) LIKE ?
-            UNION ALL
-            SELECT 'Gasto' as Tipo, categoria as Detalle, monto as Fecha FROM finanzas WHERE lower(categoria) LIKE ?
-            UNION ALL
-            SELECT 'Medicina' as Tipo, nombre as Detalle, frecuencia as Fecha FROM medicinas WHERE lower(nombre) LIKE ?
-        """, conn, params=(query, query, query))
-        
-        if not res_total.empty:
-            st.dataframe(res_total, use_container_width=True)
-        else:
-            st.warning("No encontré registros con ese nombre.")
-
-    st.divider()
-
-    # 2. GENERADOR DE REPORTE INTEGRAL (PDF)
-    st.subheader("📄 Generación de Expediente Oficial")
-    if st.button("🚀 GENERAR REPORTE COMPLETO (PDF)"):
-        pdf = FPDF()
-        pdf.add_page()
-        
-        # Encabezado con Identidad
-        pdf.set_font("Arial", 'B', 16)
-        pdf.cell(200, 10, "EXPEDIENTE INTEGRAL - QUEVEDO PRO", ln=True, align='C')
-        pdf.set_font("Arial", '', 10)
-        pdf.cell(200, 10, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align='C')
-        pdf.line(10, 30, 200, 30)
-        pdf.ln(10)
-
-        # SECCIÓN 1: SALUD (Esto es lo que te faltaba)
-        pdf.set_font("Arial", 'B', 12)
-        pdf.set_fill_color(230, 230, 230)
-        pdf.cell(190, 10, " I. RESUMEN MÉDICO Y BIOMONITOR", ln=True, fill=True)
-        pdf.set_font("Arial", '', 10)
-        
-        # Glucosa
-        df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 5", conn)
-        pdf.cell(200, 7, "Últimos niveles de Glucosa:", ln=True)
-        for _, r in df_g.iterrows():
-            pdf.cell(200, 7, f" - {r['fecha']}: {r['valor']} mg/dL ({r['estado']})", ln=True)
-        
-        # Citas
-        df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha DESC LIMIT 5", conn)
-        pdf.ln(5)
-        pdf.cell(200, 7, "Próximas Citas Médicas:", ln=True)
-        for _, r in df_c.iterrows():
-            pdf.cell(200, 7, f" - {r['fecha']} con {r['doctor']} en {r['centro']}", ln=True)
-
-        pdf.ln(10)
-
-        # SECCIÓN 2: FINANZAS
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(190, 10, " II. ESTADO FINANCIERO", ln=True, fill=True)
-        pdf.set_font("Arial", '', 10)
-        df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC LIMIT 10", conn)
-        for _, r in df_f.iterrows():
-            pdf.cell(200, 7, f" - {r['fecha']} | {r['categoria']} | RD$ {r['monto']}", ln=True)
-
-        # Salvar y Descargar
-        pdf.output("Reporte_Quevedo_Total.pdf")
-        with open("Reporte_Quevedo_Total.pdf", "rb") as f:
-            st.download_button("📥 DESCARGAR EXPEDIENTE COMPLETO", f, file_name=f"Reporte_Quevedo_{datetime.now().strftime('%d_%m')}.pdf")
-
-
-
 # --- PIE DE PÁGINA Y CRÉDITOS ---
+
 st.markdown("---")  # Línea divisoria visual
 
 # Estilo para fijar el pie de página (opcional, se ve más profesional)
-footer_style = """
-    <style>
-    .footer {
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        background-color: #0e1117;
-        color: #4CAF50;
-        text-align: center;
-        padding: 10px;
-        font-size: 14px;
-        border-top: 1px solid #4CAF50;
-        z-index: 999;
-    }
-    </style>
-    <div class="footer">
-        <b>SISTEMA QUEVEDO PRO v3.5</b> | Diseñado por: <b>LUIS RAFAEL QUEVEDO</b> | 
-        📍 Santo Domingo, Rep. Dom. | © 2026 Todos los derechos reservados
-    </div>
-"""
 
+footer_style = """
+
+    <style>
+
+    .footer {
+
+        position: fixed;
+
+        left: 0;
+
+        bottom: 0;
+
+        width: 100%;
+
+        background-color: #0e1117;
+
+        color: #4CAF50;
+
+        text-align: center;
+
+        padding: 10px;
+
+        font-size: 14px;
+
+        border-top: 1px solid #4CAF50;
+
+        z-index: 999;
+
+    }
+
+    </style>
+
+    <div class="footer">
+
+        <b>SISTEMA QUEVEDO PRO v3.5</b> | Diseñado por: <b>LUIS RAFAEL QUEVEDO</b> | 
+
+        📍 Santo Domingo, Rep. Dom. | © 2026 Todos los derechos reservados
+
+    </div>
+
+"""
 # Renderizar el pie de página
 st.markdown(footer_style, unsafe_allow_html=True)
-
 # Si prefieres un pie de página sencillo que ruede con el texto, usa este:
 # st.info("💎 **Diseño y Desarrollo:** Luis Rafael Quevedo | Santo Domingo, R.D. 2026")
+
