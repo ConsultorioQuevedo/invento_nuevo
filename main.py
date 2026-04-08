@@ -452,85 +452,98 @@ elif menu == "📸 ESCÁNER IA":
        
 
 
-
-
-
-# --- ARCHIVADOR INTEGRAL (BÚSQUEDA INTELIGENTE MULTI-MÓDULO) ---
+# --- ARCHIVADOR IA v4.0: MOTOR DE BÚSQUEDA TOTAL ---
 elif menu == "📂 ARCHIVADOR":
-    st.header("📂 Archivador Inteligente v3.0")
+    st.header("📂 Archivador Inteligente v4.0")
     
-    # 1. Entrada de búsqueda flexible
-    q = st.text_input("🔍 Busca lo que sea (ej: 'glucosa', 'Metformina', 'Farmacia', 'doctor')...")
+    # 1. BUSCADOR CON CEREBRO (Traductor de conceptos)
+    q = st.text_input("🔍 ¿Qué estás buscando hoy?", placeholder="Ej: 'glucosa', 'Metformina', 'Valued'...")
     
     if q:
         query = f"%{q.lower()}%"
-        st.markdown(f"### 🔎 Resultados para: **{q}**")
+        st.markdown(f"### 🚀 Analizando toda tu información para: **{q}**")
         
-        # COLUMNAS PARA ORGANIZAR RESULTADOS
+        # --- MOTOR DE INTELIGENCIA (Búsqueda Cruzada) ---
+        # Si buscas glucosa, el sistema sabe que eso es SALUD
+        es_salud = any(p in q.lower() for p in ["glucosa", "azucar", "diabetes", "mg"])
+        
         col_res_izq, col_res_der = st.columns(2)
 
-        # 2. BÚSQUEDA EN SALUD (Agenda y Biomonitor)
         with col_res_izq:
-            # Buscar en Medicamentos y Citas Médicas
-            try:
-                res_salud = pd.read_sql_query("""
-                    SELECT 'Medicamento' as Origen, nombre as Detalle, frecuencia as Info FROM medicinas 
-                    WHERE lower(nombre) LIKE ? 
-                    UNION
-                    SELECT 'Cita Médica' as Origen, doctor as Detalle, clinica as Info FROM citas 
-                    WHERE lower(doctor) LIKE ? OR lower(clinica) LIKE ?
-                """, conn, params=(query, query, query))
-                
-                if not res_salud.empty:
-                    st.success("🩺 Hallazgos en Salud y Agenda")
-                    st.table(res_salud)
-            except:
-                pass
+            st.subheader("📋 Datos y Agenda")
+            
+            # BUSCAR EN MEDICINAS Y CITAS (Agenda)
+            res_agenda = pd.read_sql_query("""
+                SELECT '💊 Medicina' as Origen, nombre as Detalle, frecuencia as Info FROM medicinas 
+                WHERE lower(nombre) LIKE ? 
+                UNION
+                SELECT '📅 Cita Médica' as Origen, doctor as Detalle, clinica as Info FROM citas 
+                WHERE lower(doctor) LIKE ? OR lower(clinica) LIKE ?
+            """, conn, params=(query, query, query))
+            
+            # BUSCAR EN BIOMONITOR (Si es glucosa, forzamos el resultado)
+            if es_salud:
+                res_bio = pd.read_sql_query("SELECT '🩸 Biomonitor' as Origen, valor || ' mg/dL' as Detalle, fecha as Info FROM glucosa ORDER BY id DESC LIMIT 5", conn)
+            else:
+                res_bio = pd.read_sql_query("SELECT '🩸 Biomonitor' as Origen, valor || ' mg/dL' as Detalle, fecha as Info FROM glucosa WHERE fecha LIKE ?", conn, params=(query,))
 
-        # 3. BÚSQUEDA EN DOCUMENTOS Y FINANZAS
+            # Mostrar resultados de salud combinados
+            res_total_salud = pd.concat([res_agenda, res_bio])
+            if not res_total_salud.empty:
+                st.dataframe(res_total_salud, use_container_width=True, hide_index=True)
+            else:
+                st.info("No hay datos médicos que coincidan.")
+
         with col_res_der:
-            # Buscar en el Archivador de Fotos (la tabla 'archivos' que creamos antes)
-            try:
-                res_docs = pd.read_sql_query("""
-                    SELECT 'Documento' as Origen, tipo as Detalle, fecha as Info FROM archivos 
-                    WHERE lower(tipo) LIKE ? OR lower(fecha) LIKE ?
-                """, conn, params=(query, query))
-                
-                if not res_docs.empty:
-                    st.warning("📂 Hallazgos en Documentos")
-                    st.table(res_docs)
-            except:
-                pass
+            st.subheader("📄 Documentos y Fotos")
+            # BUSCAR EN EL ARCHIVADOR (Lo que escaneaste con la cámara)
+            res_docs = pd.read_sql_query("""
+                SELECT '🖼️ Escáner' as Origen, tipo as Detalle, fecha as Info FROM archivos 
+                WHERE lower(tipo) LIKE ? OR lower(fecha) LIKE ?
+            """, conn, params=(query, query))
+            
+            if not res_docs.empty:
+                st.table(res_docs)
+            else:
+                st.info("No hay fotos o escaneos que coincidan.")
 
     st.divider()
 
-    # --- 4. DISEÑO DE CARPETAS VISUALES ---
-    st.subheader("📁 Carpetas del Archivador")
+    # --- 2. EL DISEÑO DE CARPETAS (Visual y Robusto) ---
+    st.subheader("📁 Carpetas de Documentos")
     
-    # Categorías que definimos para tus documentos
-    categorias = ["Receta Médica", "Resultado Lab", "Cotización"]
+    # Creamos las carpetas dinámicamente
+    cats = {
+        "💊 RECETAS": "Receta Médica",
+        "🧪 LABORATORIOS": "Resultado Lab",
+        "💰 COTIZACIONES": "Cotización"
+    }
     
-    for cat in categorias:
-        with st.expander(f"📁 {cat.upper()}"):
-            df_arch = pd.read_sql_query("SELECT * FROM archivos WHERE tipo = ?", conn, params=(cat,))
-            
-            if df_arch.empty:
-                st.info(f"No hay {cat.lower()} guardadas.")
-            else:
-                for idx, row in df_arch.iterrows():
-                    c1, c2, c3 = st.columns([5, 2, 1])
-                    c1.write(f"📄 {row['tipo']}")
-                    c2.caption(f"📅 {row['fecha']}")
-                    # El botón de borrado lateral que tanto nos importa
-                    if c3.button("🗑️", key=f"del_arc_v3_{row['id']}"):
-                        c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
-                        conn.commit()
-                        st.rerun()
+    c_folder = st.columns(3)
+    for i, (nombre_v, nombre_db) in enumerate(cats.items()):
+        with c_folder[i]:
+            with st.expander(nombre_v):
+                df_c = pd.read_sql_query("SELECT * FROM archivos WHERE tipo = ?", conn, params=(nombre_db,))
+                if df_c.empty:
+                    st.caption("Carpeta vacía")
+                else:
+                    for idx, row in df_c.iterrows():
+                        # Diseño lateral: Nombre | Borrado
+                        f1, f2 = st.columns([4, 1])
+                        f1.write(f"📄 {row['fecha']}")
+                        if f2.button("🗑️", key=f"del_v4_{row['id']}"):
+                            c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
+                            conn.commit()
+                            st.rerun()
 
-    # Cierre de seguridad anti-SyntaxError
+    # CIERRE ANTI-ERROR
     try: pass
     except: pass
 
+
+                
+
+   
 
 # --- ASISTENTE INTELIGENTE PRO ---
 elif menu == "🤖 ASISTENTE":
