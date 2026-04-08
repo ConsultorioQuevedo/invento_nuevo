@@ -282,72 +282,88 @@ elif menu == "🩺 BIOMONITOR":
           
 
 
-# --- MÓDULO AGENDA MÉDICA: PERSISTENCIA TOTAL ---
+
+# --- MÓDULO AGENDA MÉDICA: SISTEMA ROBUSTO Y PERSISTENTE ---
 elif menu == "💊 AGENDA MÉDICA":
     st.header("💊 Gestión de Medicamentos")
 
-    # 1. PERSISTENCIA REAL: Crear tabla si no existe
-    c.execute("""CREATE TABLE IF NOT EXISTS medicinas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                nombre TEXT, 
-                dosis TEXT, 
-                frecuencia TEXT, 
-                horario TEXT, 
-                periodo TEXT)""")
+    # 1. AUTO-REPARACIÓN DE BASE DE DATOS (Evita el OperationalError)
+    c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT)")
+    
+    # Lista de columnas necesarias para la nueva versión
+    columnas_agenda = [("dosis", "TEXT"), ("frecuencia", "TEXT"), ("horario", "TEXT"), ("periodo", "TEXT")]
+    for col, tipo_col in columnas_agenda:
+        try:
+            c.execute(f"ALTER TABLE medicinas ADD COLUMN {col} {tipo_col}")
+        except:
+            pass # Si la columna ya existe, SQLite ignora el comando
     conn.commit()
 
-    # 2. FORMULARIO DE REGISTRO ROBUSTO
+    # 2. FORMULARIO DE REGISTRO INTELIGENTE
     with st.expander("➕ REGISTRAR NUEVO MEDICAMENTO", expanded=True):
         col_m1, col_m2 = st.columns(2)
         nombre_med = col_m1.text_input("Nombre del Medicamento", placeholder="Ej: Metformina")
         
-        # Dosis con 'mg' por defecto
+        # Dosis con 'mg' por defecto como pediste
         dosis_med = col_m2.text_input("Dosis", value="500 mg")
         
         col_m3, col_m4, col_m5 = st.columns(3)
-        frecuencia = col_m3.selectbox("Frecuencia", ["Cada 8 horas", "Cada 12 horas", "Una vez al día", "Cada 24 horas", "Según necesidad"])
+        frecuencia = col_m3.selectbox("Frecuencia", [
+            "Cada 8 horas", "Cada 12 horas", "Una vez al día", 
+            "Cada 24 horas", "Cada 6 horas", "Según necesidad"
+        ])
         hora_med = col_m4.selectbox("Hora", [f"{i}:00" for i in range(1, 13)])
         periodo_med = col_m5.selectbox("Periodo", ["AM", "PM"])
 
         if st.button("💾 GUARDAR EN AGENDA"):
             if nombre_med:
-                c.execute("INSERT INTO medicinas (nombre, dosis, frecuencia, horario, periodo) VALUES (?,?,?,?,?)",
+                # Inserción segura con todas las columnas
+                c.execute("""INSERT INTO medicinas (nombre, dosis, frecuencia, horario, periodo) 
+                          VALUES (?,?,?,?,?)""",
                           (nombre_med, dosis_med, frecuencia, hora_med, periodo_med))
                 conn.commit()
-                st.success(f"Registrado: {nombre_med}")
+                st.success(f"✅ {nombre_med} guardado correctamente.")
                 st.rerun()
             else:
-                st.error("El nombre del medicamento es obligatorio.")
+                st.error("⚠️ El nombre del medicamento es obligatorio.")
 
     st.divider()
 
     # 3. LISTADO COMPACTO CON BORRADO LATERAL
-    st.subheader("📋 Medicamentos Programados")
-    df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+    st.subheader("📋 Medicamentos en Uso")
+    try:
+        df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
 
-    if not df_m.empty:
-        # Encabezados
-        h1, h2, h3, h4 = st.columns([3, 2, 2, 0.5])
-        h1.write("**MEDICAMENTO**")
-        h2.write("**DOSIS**")
-        h3.write("**HORARIO**")
-        h4.write("")
-        st.markdown("---")
+        if not df_m.empty:
+            # Diseño de cabecera
+            h1, h2, h3, h4 = st.columns([3, 2, 2, 0.5])
+            h1.write("**MEDICAMENTO**")
+            h2.write("**DOSIS**")
+            h3.write("**HORARIO**")
+            h4.write("")
+            st.markdown("---")
 
-        for idx, row in df_m.iterrows():
-            c1, c2, c3, c4 = st.columns([3, 2, 2, 0.5])
-            
-            c1.write(f"💊 **{row['nombre']}**")
-            c2.write(row['dosis'])
-            c3.write(f"⏰ {row['horario']} {row['periodo']} ({row['frecuencia']})")
-            
-            # Botón de borrado al lado (solo si tú decides quitarlo)
-            if c4.button("🗑️", key=f"del_m_{row['id']}"):
-                c.execute("DELETE FROM medicinas WHERE id = ?", (row['id'],))
-                conn.commit()
-                st.rerun()
+            # Generar filas de datos
+            for idx, row in df_m.iterrows():
+                c1, c2, c3, c4 = st.columns([3, 2, 2, 0.5])
+                
+                # Manejo de datos nulos por si hay basura de versiones viejas
+                m_nom = row['nombre'] if row['nombre'] else "Sin nombre"
+                m_dos = row['dosis'] if row['dosis'] else "---"
+                m_hor = f"{row['horario']} {row['periodo']}" if row['horario'] else "No definido"
+                m_fre = row['frecuencia'] if row['frecuencia'] else ""
 
-        
+                c1.write(f"💊 **{m_nom}**")
+                c2.write(f"`{m_dos}`")
+                c3.write(f"⏰ {m_hor} \n ({m_fre})")
+                
+                # Botón de borrado lateral alineado
+                if c4.button("🗑️", key=f"del_m_{row['id']}"):
+                    c.execute("DELETE FROM medicinas WHERE id = ?", (row['id'],))
+                    conn.commit()
+                    st.rerun()
+         
+  
        
 
 
