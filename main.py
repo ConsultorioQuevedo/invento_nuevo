@@ -346,15 +346,7 @@ elif menu == "💊 AGENDA MÉDICA":
                 c.execute("DELETE FROM medicinas WHERE id = ?", (row['id'],))
                 conn.commit()
                 st.rerun()
-    else:
-        st.info("No hay medicamentos registrados en tu agenda.")
 
-# --- PIE DE PÁGINA (AQUÍ AL FINAL, FUERA DE LOS MÓDULOS) ---
-st.markdown(f"""
-    <div style="position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; color: #4CAF50; background: #0e1117; padding: 10px; border-top: 1px solid #4CAF50; z-index:1000;">
-        <b>SISTEMA QUEVEDO PRO</b> | Diseñador: <b>{NOMBRE_PROPIETARIO}</b> | 📍 Santo Domingo, R.D.
-    </div>
-    """, unsafe_allow_html=True)
         
        
 
