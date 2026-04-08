@@ -282,54 +282,82 @@ elif menu == "🩺 BIOMONITOR":
           
 
 
-
-# --- AGENDA MÉDICA ---
+# --- MÓDULO AGENDA MÉDICA: PERSISTENCIA TOTAL ---
 elif menu == "💊 AGENDA MÉDICA":
-    st.header("📅 Agenda Médica y Control de Fármacos")
-    tab1, tab2 = st.tabs(["📝 CITAS MÉDICAS", "💊 MEDICAMENTOS"])
+    st.header("💊 Gestión de Medicamentos")
 
-    with tab1:
-        with st.form("form_citas", clear_on_submit=True):
-            c_doc = st.text_input("Doctor/Especialidad")
-            c_fec = st.date_input("Fecha")
-            c_hor = st.time_input("Hora")
-            c_cen = st.text_input("Centro Médico")
-            if st.form_submit_button("💾 AGENDAR"):
-                c.execute("INSERT INTO citas (doctor, fecha, hora, centro) VALUES (?,?,?,?)",
-                          (c_doc, str(c_fec), c_hor.strftime("%I:%M %p"), c_cen))
-                conn.commit()
-                st.rerun()
-        
-        df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
-        for idx, row in df_c.iterrows():
-            with st.container():
-                col_c1, col_c2, col_c3 = st.columns([4,4,1])
-                col_c1.write(f"**{row['doctor']}** - {row['fecha']}")
-                col_c2.write(f"{row['centro']} ({row['hora']})")
-                if col_c3.button("🗑️", key=f"del_c_{row['id']}"):
-                    c.execute("DELETE FROM citas WHERE id = ?", (row['id'],))
-                    conn.commit()
-                    st.rerun()
+    # 1. PERSISTENCIA REAL: Crear tabla si no existe
+    c.execute("""CREATE TABLE IF NOT EXISTS medicinas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                nombre TEXT, 
+                dosis TEXT, 
+                frecuencia TEXT, 
+                horario TEXT, 
+                periodo TEXT)""")
+    conn.commit()
 
-    with tab2:
-        with st.form("form_meds", clear_on_submit=True):
-            m_nom = st.text_input("Medicamento")
-            m_dos = st.number_input("Dosis", min_value=0)
-            m_fre = st.selectbox("Frecuencia", ["4h", "6h", "8h", "12h", "1 día"])
-            if st.form_submit_button("💾 GUARDAR"):
-                c.execute("INSERT INTO medicinas (nombre, dosis, frecuencia) VALUES (?,?,?)", (m_nom, m_dos, m_fre))
-                conn.commit()
-                st.rerun()
+    # 2. FORMULARIO DE REGISTRO ROBUSTO
+    with st.expander("➕ REGISTRAR NUEVO MEDICAMENTO", expanded=True):
+        col_m1, col_m2 = st.columns(2)
+        nombre_med = col_m1.text_input("Nombre del Medicamento", placeholder="Ej: Metformina")
         
-        df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+        # Dosis con 'mg' por defecto
+        dosis_med = col_m2.text_input("Dosis", value="500 mg")
+        
+        col_m3, col_m4, col_m5 = st.columns(3)
+        frecuencia = col_m3.selectbox("Frecuencia", ["Cada 8 horas", "Cada 12 horas", "Una vez al día", "Cada 24 horas", "Según necesidad"])
+        hora_med = col_m4.selectbox("Hora", [f"{i}:00" for i in range(1, 13)])
+        periodo_med = col_m5.selectbox("Periodo", ["AM", "PM"])
+
+        if st.button("💾 GUARDAR EN AGENDA"):
+            if nombre_med:
+                c.execute("INSERT INTO medicinas (nombre, dosis, frecuencia, horario, periodo) VALUES (?,?,?,?,?)",
+                          (nombre_med, dosis_med, frecuencia, hora_med, periodo_med))
+                conn.commit()
+                st.success(f"Registrado: {nombre_med}")
+                st.rerun()
+            else:
+                st.error("El nombre del medicamento es obligatorio.")
+
+    st.divider()
+
+    # 3. LISTADO COMPACTO CON BORRADO LATERAL
+    st.subheader("📋 Medicamentos Programados")
+    df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+
+    if not df_m.empty:
+        # Encabezados
+        h1, h2, h3, h4 = st.columns([3, 2, 2, 0.5])
+        h1.write("**MEDICAMENTO**")
+        h2.write("**DOSIS**")
+        h3.write("**HORARIO**")
+        h4.write("")
+        st.markdown("---")
+
         for idx, row in df_m.iterrows():
-            col_m1, col_m2, col_m3 = st.columns([4,4,1])
-            col_m1.write(f"💊 {row['nombre']}")
-            col_m2.write(f"{row['dosis']} mg - {row['frecuencia']}")
-            if col_m3.button("🗑️", key=f"del_m_{row['id']}"):
+            c1, c2, c3, c4 = st.columns([3, 2, 2, 0.5])
+            
+            c1.write(f"💊 **{row['nombre']}**")
+            c2.write(row['dosis'])
+            c3.write(f"⏰ {row['horario']} {row['periodo']} ({row['frecuencia']})")
+            
+            # Botón de borrado al lado (solo si tú decides quitarlo)
+            if c4.button("🗑️", key=f"del_m_{row['id']}"):
                 c.execute("DELETE FROM medicinas WHERE id = ?", (row['id'],))
                 conn.commit()
                 st.rerun()
+    else:
+        st.info("No hay medicamentos registrados en tu agenda.")
+
+# --- PIE DE PÁGINA (AQUÍ AL FINAL, FUERA DE LOS MÓDULOS) ---
+st.markdown(f"""
+    <div style="position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; color: #4CAF50; background: #0e1117; padding: 10px; border-top: 1px solid #4CAF50; z-index:1000;">
+        <b>SISTEMA QUEVEDO PRO</b> | Diseñador: <b>{NOMBRE_PROPIETARIO}</b> | 📍 Santo Domingo, R.D.
+    </div>
+    """, unsafe_allow_html=True)
+        
+       
+
 
 # --- ESCÁNER IA ---
 elif menu == "📸 ESCÁNER IA":
