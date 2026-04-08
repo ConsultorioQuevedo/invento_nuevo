@@ -362,6 +362,17 @@ elif menu == "💊 AGENDA MÉDICA":
                     c.execute("DELETE FROM medicinas WHERE id = ?", (row['id'],))
                     conn.commit()
                     st.rerun()
+
+# --- FINAL DE LA AGENDA MÉDICA (Línea 364 aproximadamente) ---
+                st.rerun()
+
+    # ESTO ES LO QUE TIENES QUE AGREGAR PARA CERRAR EL BLOQUE ANTERIOR:
+    except Exception as e:
+        st.error(f"Error en la agenda: {e}")
+
+
+
+
          
 # --- ESCÁNER IA ---
 elif menu == "📸 ESCÁNER IA":
