@@ -295,15 +295,7 @@ elif menu == "🩺 BIOMONITOR":
                 c.execute("DELETE FROM glucosa WHERE id = ?", (row['id'],))
                 conn.commit()
                 st.rerun()
-    else:
-        st.info("Aún no hay registros de glucosa. Introduzca su primera toma arriba.")
-
-# --- CRÉDITOS ---
-st.markdown(f"""
-    <div style="position: fixed; bottom: 0; width: 100%; text-align: center; color: #4CAF50; background: #0e1117; padding: 10px; border-top: 1px solid #4CAF50; z-index:100;">
-        <b>SISTEMA QUEVEDO PRO</b> | Diseñador: <b>{NOMBRE_PROPIETARIO}</b> | 📍 Santo Domingo, R.D.
-    </div>
-    """, unsafe_allow_html=True)        
+          
 
 
 
