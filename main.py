@@ -535,11 +535,7 @@ elif menu == "📂 ARCHIVADOR":
                     for idx, row in df_c.iterrows():
                         f1, f2 = st.columns([4, 1])
                         f1.write(f"📄 {row['fecha']}")
-                        if f2.button("🗑️", key=f"del_v51_{row['id']}"):
-                            c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
-                            conn.commit()
-                            st.rerun()
-
+                       
     try: pass
     except: pass 
 
