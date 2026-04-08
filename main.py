@@ -544,7 +544,8 @@ elif menu == "📂 ARCHIVADOR":
     
 
        
-# --- ASISTENTE INTELIGENTE PRO v4.1 (Corrección de Emojis en PDF) ---
+  
+# --- ASISTENTE INTELIGENTE PRO v4.2 (Agenda Médica Incluida en PDF) ---
 elif menu == "🤖 ASISTENTE":
     st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
     
@@ -570,15 +571,13 @@ elif menu == "🤖 ASISTENTE":
         
         if not res_total.empty:
             st.dataframe(res_total, use_container_width=True, hide_index=True)
-        else:
-            st.warning("No encontré registros.")
 
     st.divider()
 
     # 2. GESTIÓN DIRECTA CON FARMACIAS
     st.subheader("🏥 Contacto Directo Farmacias")
     c_f1, c_f2 = st.columns(2)
-    msg_f = f"Hola, soy Luis Rafael (Tel: 8092714672). Necesito una cotización."
+    msg_f = f"Hola, soy Luis Rafael (Tel: 8092714672). Necesito una cotizacion."
     
     with c_f1:
         st.markdown(f'<a href="https://wa.me/18495060398?text={msg_f}" target="_blank" style="text-decoration:none;"><div style="background:#0047AB;color:white;padding:12px;text-align:center;border-radius:10px;font-weight:bold;">🏥 VALUED</div></a>', unsafe_allow_html=True)
@@ -587,13 +586,11 @@ elif menu == "🤖 ASISTENTE":
 
     st.divider()
 
-    # 3. GENERADOR DE REPORTE (Limpieza de Emojis)
+    # 3. GENERADOR DE REPORTE (Con Agenda Médica)
     st.subheader("📄 Generación de Expediente Oficial")
     if st.button("🚀 GENERAR REPORTE COMPLETO (PDF)", use_container_width=True):
         try:
-            # FUNCIÓN INTERNA PARA LIMPIAR TEXTO
             def limpiar_texto(t):
-                # Esto elimina cualquier carácter que el PDF no entienda (como emojis)
                 return str(t).encode('ascii', 'ignore').decode('ascii')
 
             pdf = FPDF()
@@ -607,50 +604,55 @@ elif menu == "🤖 ASISTENTE":
             pdf.line(10, 30, 200, 30)
             pdf.ln(10)
 
-            # SECCIÓN SALUD
+            # SECCIÓN I: AGENDA MÉDICA Y CITAS (Añadido)
             pdf.set_font("Arial", 'B', 12)
             pdf.set_fill_color(230, 230, 230)
-            pdf.cell(190, 10, " I. RESUMEN MEDICO Y BIOMONITOR", ln=True, fill=True)
+            pdf.cell(190, 10, " I. AGENDA MEDICA Y CITAS", ln=True, fill=True)
             pdf.set_font("Arial", '', 10)
             
-            df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 10", conn)
-            pdf.ln(2)
-            pdf.cell(200, 7, "Ultimos niveles de Glucosa:", ln=True)
-            for _, r in df_g.iterrows():
-                linea = limpiar_texto(f" - {r['fecha']}: {r['valor']} mg/dL ({r['estado']})")
-                pdf.cell(200, 7, linea, ln=True)
-            
-            df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha DESC LIMIT 5", conn)
+            df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha DESC", conn)
+            if not df_c.empty:
+                for _, r in df_c.iterrows():
+                    linea_c = limpiar_texto(f" - Fecha: {r['fecha']} | Dr: {r['doctor']} | Clinica: {r['clinica']}")
+                    pdf.cell(200, 7, linea_c, ln=True)
+            else:
+                pdf.cell(200, 7, " No hay citas registradas.", ln=True)
             pdf.ln(5)
-            pdf.cell(200, 7, "Historial de Citas Medicas:", ln=True)
-            for _, r in df_c.iterrows():
-                linea_c = limpiar_texto(f" - {r['fecha']} con {r['doctor']} en {r['clinica']}")
-                pdf.cell(200, 7, linea_c, ln=True)
 
-            pdf.ln(10)
-
-            # SECCIÓN FINANZAS
+            # SECCIÓN II: BIOMONITOR (Glucosa)
             pdf.set_font("Arial", 'B', 12)
-            pdf.cell(190, 10, " II. ESTADO FINANCIERO RECIENTE", ln=True, fill=True)
+            pdf.cell(190, 10, " II. NIVELES DE GLUCOSA (BIOMONITOR)", ln=True, fill=True)
             pdf.set_font("Arial", '', 10)
-            df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC LIMIT 10", conn)
-            for _, r in df_f.iterrows():
-                linea_f = limpiar_texto(f" - {r['fecha']} | {r['categoria']} | RD$ {r['monto']}")
-                pdf.cell(200, 7, linea_f, ln=True)
+            
+            df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 15", conn)
+            if not df_g.empty:
+                for _, r in df_g.iterrows():
+                    linea_g = limpiar_texto(f" - {r['fecha']}: {r['valor']} mg/dL ({r['estado']})")
+                    pdf.cell(200, 7, linea_g, ln=True)
+            pdf.ln(5)
 
-            # Salvar y Descargar
-            nombre_archivo = "Reporte_Luis_Rafael.pdf"
+            # SECCIÓN III: TRATAMIENTOS
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(190, 10, " III. MEDICAMENTOS Y TRATAMIENTOS", ln=True, fill=True)
+            pdf.set_font("Arial", '', 10)
+            df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
+            for _, r in df_m.iterrows():
+                linea_m = limpiar_texto(f" - {r['nombre']} | {r['dosis']} | {r['frecuencia']}")
+                pdf.cell(200, 7, linea_m, ln=True)
+
+            # Guardar PDF
+            nombre_archivo = "Reporte_Integral_Quevedo.pdf"
             pdf.output(nombre_archivo)
             
             with open(nombre_archivo, "rb") as f:
-                st.download_button("📥 DESCARGAR EXPEDIENTE COMPLETO", f, file_name=nombre_archivo)
-            st.success("✅ PDF Generado con éxito.")
+                st.download_button("📥 DESCARGAR REPORTE COMPLETO", f, file_name=nombre_archivo)
+            st.success("✅ Reporte con Agenda Médica generado.")
             
         except Exception as e:
-            st.error(f"Error técnico: {e}")
+            st.error(f"Error técnico: {e}")            
 
-    try: pass
-    except: pass        
+            
+            
         
     
    
