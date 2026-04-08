@@ -214,33 +214,103 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)   
  
-        
-
-# --- BIOMONITOR ---
+# --- MÓDULO BIOMONITOR: CONTROL MÉDICO ROBUSTO ---
 elif menu == "🩺 BIOMONITOR":
-    st.header("🩺 Control Biométrico")
-    col_g1, col_g2 = st.columns([1, 2])
-    with col_g1:
-        val_g = st.number_input("Nivel de Glucosa (mg/dL)", min_value=0, step=1)
-        if st.button("💾 GUARDAR MEDICIÓN"):
-            ahora = datetime.now(ZONA_HORARIA)
-            c.execute("INSERT INTO glucosa (valor, fecha, hora, estado) VALUES (?,?,?,?)", 
-                      (val_g, ahora.strftime("%d/%m/%y"), ahora.strftime("%I:%M %p"), "REGISTRADO"))
-            conn.commit()
-            st.rerun()
-    with col_g2:
-        df_hist = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 10", conn)
-        if not df_hist.empty:
-            fig = px.line(df_hist, x="fecha", y="valor", title="Tendencia de Glucosa", markers=True)
-            st.plotly_chart(fig, use_container_width=True)
-            for idx, row in df_hist.iterrows():
-                col_b1, col_b2, col_b3 = st.columns([3,3,1])
-                col_b1.write(f"{row['fecha']} - {row['hora']}")
-                col_b2.write(f"{row['valor']} mg/dL")
-                if col_b3.button("🗑️", key=f"del_g_{row['id']}"):
-                    c.execute("DELETE FROM glucosa WHERE id = ?", (row['id'],))
-                    conn.commit()
-                    st.rerun()
+    st.header("🩺 Control de Glucosa y Biomonitoreo")
+
+    # 1. PERSISTENCIA: Asegurar tabla de salud
+    c.execute("""CREATE TABLE IF NOT EXISTS glucosa (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                valor REAL, 
+                unidad TEXT, 
+                estado TEXT, 
+                fecha TEXT, 
+                hora TEXT)""")
+    conn.commit()
+
+    # 2. ENTRADA DE DATOS CON UNIDAD FIJA
+    with st.container():
+        col_g1, col_g2, col_g3 = st.columns([1, 1, 1])
+        
+        # Campo numérico flexible
+        valor_glucosa = col_g1.number_input("Nivel de Glucosa", min_value=0.0, step=0.1, format="%.1f")
+        col_g2.markdown("<br><b>mg/dL</b> (Miligramos por decilitro)", unsafe_allow_html=True)
+        
+        if col_g3.button("💾 REGISTRAR LECTURA"):
+            if valor_glucosa > 0:
+                # LÓGICA DE SEMÁFORO (IA DE ALERTA)
+                if valor_glucosa > 180:
+                    estado_salud = "CRÍTICO 🔴"
+                elif valor_glucosa > 130:
+                    estado_salud = "ALERTA 🟡"
+                elif valor_glucosa >= 70:
+                    estado_salud = "NORMAL 🟢"
+                else:
+                    estado_salud = "BAJO (HIPOGLICEMIA) 🔵"
+                
+                fecha_actual = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y")
+                hora_actual = datetime.now(ZONA_HORARIA).strftime("%I:%M %p")
+                
+                c.execute("INSERT INTO glucosa (valor, unidad, estado, fecha, hora) VALUES (?,?,?,?,?)",
+                          (valor_glucosa, "mg/dL", estado_salud, fecha_actual, hora_actual))
+                conn.commit()
+                st.rerun()
+
+    st.divider()
+
+    # 3. GRÁFICO DE TENDENCIA CONFIGURADO
+    df_g = pd.read_sql_query("SELECT * FROM glucosa", conn)
+    
+    if not df_g.empty:
+        # Gráfico dinámico
+        fig = px.line(df_g, x="fecha", y="valor", 
+                     title="📈 Evolución de Glucosa en el Tiempo",
+                     labels={"valor": "Glucosa (mg/dL)", "fecha": "Fecha de Toma"},
+                     markers=True)
+        
+        # Añadir franja de seguridad (70-130 mg/dL)
+        fig.add_hrect(y0=70, y1=130, line_width=0, fillcolor="green", opacity=0.1, annotation_text="Zona Ideal")
+        
+        st.plotly_chart(fig, use_container_width=True)
+
+        # 4. HISTORIAL CON DISEÑO COMPACTO Y BORRADO LATERAL
+        st.subheader("📋 Historial de Lecturas")
+        
+        # Encabezados de tabla manual para que sea compacto
+        h1, h2, h3, h4, h5 = st.columns([1.5, 1.5, 1.5, 2, 0.5])
+        h1.write("**FECHA**")
+        h2.write("**HORA**")
+        h3.write("**VALOR**")
+        h4.write("**ESTADO**")
+        h5.write("") # Espacio para el botón
+        st.markdown("---")
+
+        for idx, row in df_g.sort_index(ascending=False).iterrows():
+            c1, c2, c3, c4, c5 = st.columns([1.5, 1.5, 1.5, 2, 0.5])
+            
+            c1.write(row['fecha'])
+            c2.write(row['hora'])
+            c3.write(f"**{row['valor']}** {row['unidad']}")
+            
+            # El estado ya trae su color/emoji de la base de datos
+            c4.write(row['estado'])
+            
+            # Botón de borrado al lado (alineado)
+            if c5.button("🗑️", key=f"del_g_{row['id']}"):
+                c.execute("DELETE FROM glucosa WHERE id = ?", (row['id'],))
+                conn.commit()
+                st.rerun()
+    else:
+        st.info("Aún no hay registros de glucosa. Introduzca su primera toma arriba.")
+
+# --- CRÉDITOS ---
+st.markdown(f"""
+    <div style="position: fixed; bottom: 0; width: 100%; text-align: center; color: #4CAF50; background: #0e1117; padding: 10px; border-top: 1px solid #4CAF50; z-index:100;">
+        <b>SISTEMA QUEVEDO PRO</b> | Diseñador: <b>{NOMBRE_PROPIETARIO}</b> | 📍 Santo Domingo, R.D.
+    </div>
+    """, unsafe_allow_html=True)        
+
+
 
 # --- AGENDA MÉDICA ---
 elif menu == "💊 AGENDA MÉDICA":
