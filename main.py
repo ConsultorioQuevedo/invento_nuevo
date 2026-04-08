@@ -75,12 +75,17 @@ menu = st.sidebar.radio("MODULOS PRINCIPALES",
 # 4. LÓGICA DE MÓDULOS
 # ==========================================
 
-# --- INICIO ---
+# --- INICIO CORREGIDO PARA LUIS RAFAEL ---
 if menu == "🏠 INICIO":
+    # Definimos tu identidad real
+    NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
+    
     st.header(f"📊 Panel de Control: {NOMBRE_PROPIETARIO}")
+    
     c1, c2, c3 = st.columns(3)
     
     try:
+        # Consultas a la base de datos para métricas reales
         df_fin = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
         df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
         
@@ -90,22 +95,35 @@ if menu == "🏠 INICIO":
             st.markdown('</div>', unsafe_allow_html=True)
         with c2:
             st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-            st.metric("🩺 ÚLTIMA GLUCOSA", f"{df_glu['valor'][0] if not df_glu.empty else '0'} mg/dL")
+            # Si no hay glucosa registrada, muestra 0
+            valor_g = df_glu['valor'][0] if not df_glu.empty else 0
+            st.metric("🩺 ÚLTIMA GLUCOSA", f"{valor_g} mg/dL")
             st.markdown('</div>', unsafe_allow_html=True)
         with c3:
             st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
             st.metric("📅 ESTADO", "OPERATIVO")
             st.markdown('</div>', unsafe_allow_html=True)
-    except:
-        st.warning("Inicializando datos...")
+    except Exception as e:
+        st.warning("Inicializando datos o error en base de datos...")
 
     st.divider()
-    st.subheader("📲 Acceso Rápido")
+    
+    # --- SECCIÓN DE ENLACES REALES ---
+    st.subheader("📲 Acceso Rápido y Comunicación")
     col_link1, col_link2, col_link3 = st.columns(3)
-    col_link1.link_button("💬 WHATSAPP", "https://wa.me/tu_numero")
-    col_link2.link_button("📧 GMAIL", "mailto:tu_correo@gmail.com")
-    col_link3.link_button("🏥 CLINICA", "https://referencia.do")
-
+    
+    # WhatsApp Personal (Configurado para República Dominicana +1)
+    # Reemplaza el '8090000000' con tu número real
+    mi_celular = "18090000000" 
+    col_link1.link_button("💬 MI WHATSAPP", f"https://wa.me/{mi_celular}?text=Hola%20Luis%20Rafael,%20revisando%20el%20Invento%20Nuevo")
+    
+    # Gmail Real
+    # Reemplaza 'tu_correo@gmail.com' con tu dirección real
+    mi_correo = "tu_correo@gmail.com"
+    col_link2.link_button("📧 MI GMAIL", f"https://mail.google.com/mail/?view=cm&fs=1&to={mi_correo}&su=Reporte%20Sistema%20Quevedo")
+    
+    # Enlace Directo a Clínica Referencia
+    col_link3.link_button("🏥 CLÍNICA REFERENCIA", "https://www.referencia.do")
 # --- FINANZAS ROBUSTO ---
 elif menu == "💰 FINANZAS":
     st.header("💰 Gestión Financiera Inteligente")
