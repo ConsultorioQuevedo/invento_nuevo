@@ -263,25 +263,57 @@ elif menu == "📸 ESCÁNER IA":
                 conn.commit()
                 st.success("Guardado y indexado.")
 
-# --- ARCHIVADOR ---
+# --- ARCHIVADOR (ARQUITECTURA ORIGINAL POTENCIADA) ---
 elif menu == "📂 ARCHIVADOR":
     st.header("📂 Archivador Inteligente v3.0")
-    q = st.text_input("🔍 Buscar en documentos...")
+    
+    # 1. Buscador Universal (Mismo diseño, más potencia)
+    q = st.text_input("🔍 Buscar en todo el sistema (documentos, gastos, salud)...").lower()
+    
     if q:
-        res = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE texto_ocr LIKE '%{q}%' OR categoria LIKE '%{q}%'", conn)
-        st.write(res)
+        # Buscamos en documentos escaneados (Tu lógica original)
+        res_docs = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE lower(texto_ocr) LIKE '%{q}%' OR lower(categoria) LIKE '%{q}%'", conn)
+        
+        # Buscamos en finanzas (Lo que faltaba para que veas tus "gastos")
+        res_fin = pd.read_sql_query(f"SELECT * FROM finanzas WHERE lower(categoria) LIKE '%{q}%' OR lower(tipo) LIKE '%{q}%'", conn)
+        
+        if not res_docs.empty:
+            st.subheader("📄 Documentos Encontrados")
+            st.dataframe(res_docs, use_container_width=True)
+            
+        if not res_fin.empty:
+            st.subheader("💰 Registros de Gastos/Ingresos Encontrados")
+            st.dataframe(res_fin, use_container_width=True)
+            
+        if res_docs.empty and res_fin.empty:
+            st.info(f"No hay resultados para: '{q}'")
     
     st.divider()
+
+    # 2. Tu Arquitectura de Carpetas (Intacta)
     for cat in ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]:
         with st.expander(f"📁 {cat}"):
+            # Recuperamos los archivos de esta categoría
             df_arch = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE categoria = '{cat}'", conn)
-            for idx, row in df_arch.iterrows():
-                col_a1, col_a2, col_a3 = st.columns([5,2,1])
-                col_a1.write(f"📄 {row['nombre']} ({row['fecha']})")
-                if col_a3.button("🗑️", key=f"del_a_{row['id']}"):
-                    c.execute("DELETE FROM archivador_index WHERE id = ?", (row['id'],))
-                    conn.commit()
-                    st.rerun()
+            
+            if df_arch.empty:
+                st.write("No hay archivos en esta categoría.")
+            else:
+                for idx, row in df_arch.iterrows():
+                    # Mantenemos tus 3 columnas originales
+                    col_a1, col_a2, col_a3 = st.columns([5, 2, 1])
+                    
+                    with col_a1:
+                        st.write(f"📄 **{row['nombre']}**")
+                    with col_a2:
+                        st.caption(f"📅 {row['fecha']}")
+                    with col_a3:
+                        # Botón de borrado con tu lógica de persistencia
+                        if st.button("🗑️", key=f"del_arch_{row['id']}"):
+                            c.execute("DELETE FROM archivador_index WHERE id = ?", (row['id'],))
+                            conn.commit()
+                            st.rerun()
+
 
 # --- ASISTENTE Y PDF ---
 elif menu == "🤖 ASISTENTE":
