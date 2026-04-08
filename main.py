@@ -24,6 +24,20 @@ NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
 
+def borrar_ultimo(tabla):
+    try:
+        cursor.execute(f"SELECT MAX(id) FROM {tabla}")
+        max_id = cursor.fetchone()[0]
+        if max_id:
+            cursor.execute(f"DELETE FROM {tabla} WHERE id = ?", (max_id,))
+            conn.commit()
+            st.success(f"✅ Registro eliminado de {tabla}")
+            st.rerun()
+        else:
+            st.info("No hay nada que borrar.")
+    except Exception as e:
+        st.error(f"Error: {e}")
+
 def limpiar_texto(texto):
     if not texto: return ""
     return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
@@ -212,6 +226,10 @@ elif menu == "💰 FINANZAS":
 # --- MÓDULO BIOMONITOR: RECONSTRUCCIÓN ANTI-ERRORES ---
 elif menu == "🩺 BIOMONITOR":
     st.header("🩺 Control de Glucosa y Biomonitoreo")
+    # --- BOTÓN ÚNICO DE LIMPIEZA ---
+    if st.button("♻️ DESHACER ÚLTIMO REGISTRO", use_container_width=True):
+        borrar_ultimo("glucosa")
+    st.divider()
 
     # 1. REPARACIÓN AUTOMÁTICA DE TABLA
     c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)")
