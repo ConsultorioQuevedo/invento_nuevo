@@ -542,20 +542,20 @@ elif menu == "📂 ARCHIVADOR":
     try: pass
     except: pass    
     
-# --- ASISTENTE INTELIGENTE PRO v4.0 ---
+
+       
+# --- ASISTENTE INTELIGENTE PRO v4.1 (Corrección de Emojis en PDF) ---
 elif menu == "🤖 ASISTENTE":
     st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
     
-    # 1. BUSCADOR INTEGRAL CON TRADUCTOR DE GLUCOSA
+    # 1. BUSCADOR INTEGRAL
     st.subheader("🔍 Consulta Rápida al Sistema")
-    q_asist = st.text_input("¿Qué deseas encontrar hoy? (ej: 'glucosa', 'cita', 'farmacia')")
+    q_asist = st.text_input("¿Qué deseas encontrar hoy? (ej: 'glucosa', 'cita')")
     
     if q_asist:
         query = f"%{q_asist.lower()}%"
-        # IA: Detectar si el usuario busca glucosa aunque no esté la palabra en la tabla
         busca_glucosa = any(t in q_asist.lower() for t in ["glucosa", "azucar", "diabetes", "mg"])
         
-        # Búsqueda unificada
         res_total = pd.read_sql_query("""
             SELECT '📅 Médico' as Tipo, doctor as Detalle, fecha as Info FROM citas WHERE lower(doctor) LIKE ? OR lower(clinica) LIKE ?
             UNION ALL
@@ -564,7 +564,6 @@ elif menu == "🤖 ASISTENTE":
             SELECT '💊 Medicina' as Tipo, nombre as Detalle, frecuencia as Info FROM medicinas WHERE lower(nombre) LIKE ?
         """, conn, params=(query, query, query, query))
         
-        # Si busca glucosa, inyectamos los datos del biomonitor
         if busca_glucosa:
             res_bio = pd.read_sql_query("SELECT '🩸 Glucosa' as Tipo, valor || ' mg/dL' as Detalle, fecha as Info FROM glucosa ORDER BY id DESC LIMIT 5", conn)
             res_total = pd.concat([res_total, res_bio])
@@ -572,7 +571,7 @@ elif menu == "🤖 ASISTENTE":
         if not res_total.empty:
             st.dataframe(res_total, use_container_width=True, hide_index=True)
         else:
-            st.warning("No encontré registros con ese nombre.")
+            st.warning("No encontré registros.")
 
     st.divider()
 
@@ -588,10 +587,15 @@ elif menu == "🤖 ASISTENTE":
 
     st.divider()
 
-    # 3. GENERADOR DE REPORTE INTEGRAL (PDF)
+    # 3. GENERADOR DE REPORTE (Limpieza de Emojis)
     st.subheader("📄 Generación de Expediente Oficial")
     if st.button("🚀 GENERAR REPORTE COMPLETO (PDF)", use_container_width=True):
         try:
+            # FUNCIÓN INTERNA PARA LIMPIAR TEXTO
+            def limpiar_texto(t):
+                # Esto elimina cualquier carácter que el PDF no entienda (como emojis)
+                return str(t).encode('ascii', 'ignore').decode('ascii')
+
             pdf = FPDF()
             pdf.add_page()
             
@@ -603,105 +607,66 @@ elif menu == "🤖 ASISTENTE":
             pdf.line(10, 30, 200, 30)
             pdf.ln(10)
 
-            # SECCIÓN 1: SALUD
+            # SECCIÓN SALUD
             pdf.set_font("Arial", 'B', 12)
             pdf.set_fill_color(230, 230, 230)
-            pdf.cell(190, 10, " I. RESUMEN MÉDICO Y BIOMONITOR", ln=True, fill=True)
+            pdf.cell(190, 10, " I. RESUMEN MEDICO Y BIOMONITOR", ln=True, fill=True)
             pdf.set_font("Arial", '', 10)
             
-            # Glucosa (Datos reales)
             df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 10", conn)
             pdf.ln(2)
-            pdf.cell(200, 7, "Últimos niveles de Glucosa:", ln=True)
+            pdf.cell(200, 7, "Ultimos niveles de Glucosa:", ln=True)
             for _, r in df_g.iterrows():
-                pdf.cell(200, 7, f" - {r['fecha']}: {r['valor']} mg/dL ({r['estado']})", ln=True)
+                linea = limpiar_texto(f" - {r['fecha']}: {r['valor']} mg/dL ({r['estado']})")
+                pdf.cell(200, 7, linea, ln=True)
             
-            # Citas
             df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha DESC LIMIT 5", conn)
             pdf.ln(5)
-            pdf.cell(200, 7, "Historial de Citas Médicas:", ln=True)
+            pdf.cell(200, 7, "Historial de Citas Medicas:", ln=True)
             for _, r in df_c.iterrows():
-                pdf.cell(200, 7, f" - {r['fecha']} con {r['doctor']} en {r['clinica']}", ln=True)
+                linea_c = limpiar_texto(f" - {r['fecha']} con {r['doctor']} en {r['clinica']}")
+                pdf.cell(200, 7, linea_c, ln=True)
 
             pdf.ln(10)
 
-            # SECCIÓN 2: FINANZAS
+            # SECCIÓN FINANZAS
             pdf.set_font("Arial", 'B', 12)
             pdf.cell(190, 10, " II. ESTADO FINANCIERO RECIENTE", ln=True, fill=True)
             pdf.set_font("Arial", '', 10)
             df_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC LIMIT 10", conn)
             for _, r in df_f.iterrows():
-                pdf.cell(200, 7, f" - {r['fecha']} | {r['categoria']} | RD$ {r['monto']}", ln=True)
+                linea_f = limpiar_texto(f" - {r['fecha']} | {r['categoria']} | RD$ {r['monto']}")
+                pdf.cell(200, 7, linea_f, ln=True)
 
             # Salvar y Descargar
-            nombre_archivo = f"Reporte_Luis_Rafael_{datetime.now().strftime('%d_%m')}.pdf"
+            nombre_archivo = "Reporte_Luis_Rafael.pdf"
             pdf.output(nombre_archivo)
             
             with open(nombre_archivo, "rb") as f:
                 st.download_button("📥 DESCARGAR EXPEDIENTE COMPLETO", f, file_name=nombre_archivo)
             st.success("✅ PDF Generado con éxito.")
+            
         except Exception as e:
-            st.error(f"Error al generar PDF: {e}. Asegúrate de tener la librería 'fpdf' instalada.")
+            st.error(f"Error técnico: {e}")
 
-    # Cierre de seguridad
     try: pass
-    except: pass      
-
-       
-
-                
-
+    except: pass        
+        
+    
    
+# --- PIE DE PÁGINA (CRÉDITOS) ---
+st.markdown("---")
+col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
 
-# --- PIE DE PÁGINA Y CRÉDITOS ---
-
-st.markdown("---")  # Línea divisoria visual
-
-# Estilo para fijar el pie de página (opcional, se ve más profesional)
-
-footer_style = """
-
-    <style>
-
-    .footer {
-
-        position: fixed;
-
-        left: 0;
-
-        bottom: 0;
-
-        width: 100%;
-
-        background-color: #0e1117;
-
-        color: #4CAF50;
-
-        text-align: center;
-
-        padding: 10px;
-
-        font-size: 14px;
-
-        border-top: 1px solid #4CAF50;
-
-        z-index: 999;
-
-    }
-
-    </style>
-
-    <div class="footer">
-
-        <b>SISTEMA QUEVEDO PRO v3.5</b> | Diseñado por: <b>LUIS RAFAEL QUEVEDO</b> | 
-
-        📍 Santo Domingo, Rep. Dom. | © 2026 Todos los derechos reservados
-
-    </div>
-
-"""
-# Renderizar el pie de página
-st.markdown(footer_style, unsafe_allow_html=True)
-# Si prefieres un pie de página sencillo que ruede con el texto, usa este:
-# st.info("💎 **Diseño y Desarrollo:** Luis Rafael Quevedo | Santo Domingo, R.D. 2026")
+with col_c2:
+    st.markdown(
+        """
+        <div style="text-align: center; color: #888888; font-size: 12px;">
+            <p style="margin-bottom: 5px;">🚀 <b>INVENTO NUEVO v4.1</b> | Sistema de Gestión Integral</p>
+            <p style="margin-top: 0;">Desarrollado para <b>Luis Rafael Quevedo</b></p>
+            <p style="font-style: italic;">"Haciendo algo que valga la pena."</p>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
 
