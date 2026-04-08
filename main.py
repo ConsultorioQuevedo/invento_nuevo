@@ -432,3 +432,37 @@ elif menu == "🤖 ASISTENTE":
         pdf.output("Reporte_Quevedo_Total.pdf")
         with open("Reporte_Quevedo_Total.pdf", "rb") as f:
             st.download_button("📥 DESCARGAR EXPEDIENTE COMPLETO", f, file_name=f"Reporte_Quevedo_{datetime.now().strftime('%d_%m')}.pdf")
+
+
+
+# --- PIE DE PÁGINA Y CRÉDITOS ---
+st.markdown("---")  # Línea divisoria visual
+
+# Estilo para fijar el pie de página (opcional, se ve más profesional)
+footer_style = """
+    <style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #0e1117;
+        color: #4CAF50;
+        text-align: center;
+        padding: 10px;
+        font-size: 14px;
+        border-top: 1px solid #4CAF50;
+        z-index: 999;
+    }
+    </style>
+    <div class="footer">
+        <b>SISTEMA QUEVEDO PRO v3.5</b> | Diseñado por: <b>LUIS RAFAEL QUEVEDO</b> | 
+        📍 Santo Domingo, Rep. Dom. | © 2026 Todos los derechos reservados
+    </div>
+"""
+
+# Renderizar el pie de página
+st.markdown(footer_style, unsafe_allow_html=True)
+
+# Si prefieres un pie de página sencillo que ruede con el texto, usa este:
+# st.info("💎 **Diseño y Desarrollo:** Luis Rafael Quevedo | Santo Domingo, R.D. 2026")
