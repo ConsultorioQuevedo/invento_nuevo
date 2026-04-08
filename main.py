@@ -282,92 +282,94 @@ elif menu == "🩺 BIOMONITOR":
           
 
 
-# --- MÓDULO AGENDA MÉDICA: LIMPIEZA AUTOMÁTICA Y PERSISTENCIA ---
+
+
+ 
+           
+# --- MÓDULO AGENDA MÉDICA: REPARACIÓN FORZADA Y LIMPIEZA ---
 elif menu == "💊 AGENDA MÉDICA":
     st.header("💊 Gestión Médica Integral")
 
-    # 1. BASE DE DATOS
-    c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis TEXT, frecuencia TEXT, horario TEXT, periodo TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, clinica TEXT, fecha TEXT, hora TEXT, periodo TEXT, motivo TEXT)")
+    # 1. REPARACIÓN DE TABLAS (Medicinas y Citas)
+    c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT)")
+    
+    # Reparar Medicinas
+    for col, tipo in [("dosis","TEXT"), ("frecuencia","TEXT"), ("horario","TEXT"), ("periodo","TEXT")]:
+        try: c.execute(f"ALTER TABLE medicinas ADD COLUMN {col} {tipo}")
+        except: pass
+    
+    # Reparar Citas (Esto quita el OperationalError de la línea 346)
+    for col, tipo in [("clinica","TEXT"), ("fecha","TEXT"), ("hora","TEXT"), ("periodo","TEXT"), ("motivo","TEXT")]:
+        try: c.execute(f"ALTER TABLE citas ADD COLUMN {col} {tipo}")
+        except: pass
     conn.commit()
 
     tab1, tab2 = st.tabs(["💊 Medicamentos", "📅 Citas Médicas"])
 
     # --- SECCIÓN 1: MEDICAMENTOS ---
     with tab1:
-        with st.form("form_medicina", clear_on_submit=True): # clear_on_submit limpia todo al darle a guardar
+        with st.form("form_medicina", clear_on_submit=True):
             st.subheader("➕ Registrar Medicamento")
             m1, m2 = st.columns(2)
-            n_med = m1.text_input("Nombre del Medicamento", placeholder="Ej: Metformina")
+            n_med = m1.text_input("Nombre", placeholder="Ej: Metformina")
             d_med = m2.text_input("Dosis", value="500 mg")
-            
             m3, m4, m5 = st.columns(3)
             f_med = m3.selectbox("Frecuencia", ["Cada 8h", "Cada 12h", "1 vez al día", "Según necesidad"])
-            h_med = m4.selectbox("Hora", [f"{i}:00" for i in range(1, 13)])
-            p_med = m5.selectbox("Periodo", ["AM", "PM"])
-
+            h_med = m4.selectbox("Hora ", [f"{i}:00" for i in range(1, 13)])
+            p_med = m5.selectbox("Periodo ", ["AM", "PM"])
             if st.form_submit_button("💾 GUARDAR MEDICINA"):
                 if n_med:
                     c.execute("INSERT INTO medicinas (nombre, dosis, frecuencia, horario, periodo) VALUES (?,?,?,?,?)",
                               (n_med, d_med, f_med, h_med, p_med))
                     conn.commit()
-                    st.success(f"Registrado: {n_med}")
                     st.rerun()
 
-        st.subheader("📋 Tratamientos Activos")
+        st.subheader("📋 Lista de Tratamientos")
         df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
-        if not df_m.empty:
-            for idx, row in df_m.iterrows():
-                col1, col2, col3 = st.columns([4, 4, 1])
-                col1.write(f"💊 **{row['nombre']}** ({row['dosis']})")
-                col2.write(f"⏰ {row['horario']} {row['periodo']} - {row['frecuencia']}")
-                if col3.button("🗑️", key=f"del_m_{row['id']}"):
-                    c.execute("DELETE FROM medicinas WHERE id = ?", (row['id'],))
-                    conn.commit()
-                    st.rerun()
-        else: st.info("No hay medicinas registradas.")
+        for idx, row in df_m.iterrows():
+            c1, c2, c3 = st.columns([4, 4, 1])
+            c1.write(f"💊 **{row['nombre']}** ({row['dosis']})")
+            c2.write(f"⏰ {row['horario']} {row['periodo']} - {row['frecuencia']}")
+            if c3.button("🗑️", key=f"del_m_{row['id']}"):
+                c.execute("DELETE FROM medicinas WHERE id = ?", (row['id'],))
+                conn.commit()
+                st.rerun()
 
     # --- SECCIÓN 2: DEPARTAMENTO DE CITAS ---
     with tab2:
-        with st.form("form_cita", clear_on_submit=True): # Limpieza automática activada
+        with st.form("form_cita", clear_on_submit=True):
             st.subheader("➕ Agendar Cita")
             c1, c2 = st.columns(2)
-            doc = c1.text_input("Doctor / Especialista")
-            cli = c2.text_input("Clínica / Centro")
-            
+            doc = c1.text_input("Doctor")
+            cli = c2.text_input("Clínica")
             c3, c4, c5 = st.columns(3)
             fec = c3.date_input("Fecha")
             hor = c4.selectbox("Hora", [f"{i}:00" for i in range(1, 13)])
             per = c5.selectbox("Periodo", ["AM", "PM"])
-            mot = st.text_input("Motivo de consulta")
-
+            mot = st.text_input("Motivo")
             if st.form_submit_button("📅 REGISTRAR CITA"):
                 if doc and cli:
                     c.execute("INSERT INTO citas (doctor, clinica, fecha, hora, periodo, motivo) VALUES (?,?,?,?,?,?)",
                               (doc, cli, str(fec), hor, per, mot))
                     conn.commit()
-                    st.success("Cita agendada.")
                     st.rerun()
 
         st.subheader("🗓️ Próximas Visitas")
         df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
-        if not df_c.empty:
-            for idx, row in df_c.iterrows():
-                r1, r2, r3 = st.columns([4, 4, 1])
-                r1.markdown(f"👨‍⚕️ **{row['doctor']}**\n\n📍 {row['clinica']}")
-                r2.write(f"📅 {row['fecha']} a las {row['hora']} {row['periodo']}\n\n📝 {row['motivo']}")
-                if r3.button("🗑️", key=f"del_c_{row['id']}"):
-                    c.execute("DELETE FROM citas WHERE id = ?", (row['id'],))
-                    conn.commit()
-                    st.rerun()
-                st.divider()
+        for idx, row in df_c.iterrows():
+            r1, r2, r3 = st.columns([4, 4, 1])
+            r1.markdown(f"👨‍⚕️ **{row['doctor']}**\n\n📍 {row['clinica']}")
+            r2.write(f"📅 {row['fecha']} - {row['hora']} {row['periodo']}\n\n📝 {row['motivo']}")
+            if r3.button("🗑️", key=f"del_c_{row['id']}"):
+                c.execute("DELETE FROM citas WHERE id = ?", (row['id'],))
+                conn.commit()
+                st.rerun()
+            st.divider()
 
-    # Cierre de bloque para evitar errores en el Escáner
+    # Cierre de seguridad
     try: pass
     except: pass
-
-
-
   
 
    
