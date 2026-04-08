@@ -449,9 +449,10 @@ elif menu == "📸 ESCÁNER IA":
     try: pass
     except: pass
 
-# --- ARCHIVADOR INTEGRAL v5.0: MAPEO INTELIGENTE ---
+
+# --- ARCHIVADOR INTEGRAL v5.1: RECTIFICACIÓN DE VARIABLES ---
 elif menu == "📂 ARCHIVADOR":
-    st.header("📂 Archivador Inteligente v5.0")
+    st.header("📂 Archivador Inteligente v5.1")
     
     # 1. Entrada de búsqueda
     q = st.text_input("🔍 ¿Qué buscas? (ej: 'glucosa', 'doctor', 'receta')", placeholder="Escribe aquí...")
@@ -460,8 +461,7 @@ elif menu == "📂 ARCHIVADOR":
         query = f"%{q.lower()}%"
         st.subheader(f"🔎 Resultados para: {q}")
         
-        # --- LÓGICA DE TRADUCCIÓN IA ---
-        # Si el usuario busca estas palabras, el sistema SABE que debe buscar en la tabla de glucosa
+        # --- TRADUCCIÓN INTELIGENTE PARA GLUCOSA ---
         terminos_glucosa = ["glucosa", "azucar", "diabetes", "mg", "sangre", "medicion"]
         busca_glucosa = any(t in q.lower() for t in terminos_glucosa)
 
@@ -469,50 +469,55 @@ elif menu == "📂 ARCHIVADOR":
 
         with col_izq:
             st.markdown("### 🩺 Salud y Citas")
-            
-            # Buscamos en Medicinas y Citas
-            res_agenda = pd.read_sql_query("""
-                SELECT '💊 Medicina' as Origen, nombre as Detalle, frecuencia as Info FROM medicinas 
-                WHERE lower(nombre) LIKE ? 
-                UNION
-                SELECT '📅 Cita' as Origen, doctor as Detalle, clinica as Info FROM citas 
-                WHERE lower(doctor) LIKE ? OR lower(clinica) LIKE ?
-            """, conn, params=(query, query, query))
+            try:
+                # Buscamos en Medicinas y Citas
+                res_agenda = pd.read_sql_query("""
+                    SELECT '💊 Medicina' as Origen, nombre as Detalle, frecuencia as Info FROM medicinas 
+                    WHERE lower(nombre) LIKE ? 
+                    UNION
+                    SELECT '📅 Cita' as Origen, doctor as Detalle, clinica as Info FROM citas 
+                    WHERE lower(doctor) LIKE ? OR lower(clinica) LIKE ?
+                """, conn, params=(query, query, query))
 
-            # Si la búsqueda es sobre "glucosa", forzamos la salida de esos datos
-            if busca_glucosa:
-                res_bio = pd.read_sql_query("""
-                    SELECT '🩸 Biomonitor' as Origen, valor || ' mg/dL' as Detalle, fecha as Info 
-                    FROM glucosa ORDER BY id DESC LIMIT 10
-                """, conn)
-            else:
-                res_bio = pd.read_sql_query("""
-                    SELECT '🩸 Biomonitor' as Origen, valor || ' mg/dL' as Detalle, fecha as Info 
-                    FROM glucosa WHERE fecha LIKE ?
-                """, conn, params=(query,))
+                # Lógica para Glucosa
+                if busca_glucosa:
+                    res_bio = pd.read_sql_query("""
+                        SELECT '🩸 Biomonitor' as Origen, valor || ' mg/dL' as Detalle, fecha as Info 
+                        FROM glucosa ORDER BY id DESC LIMIT 10
+                    """, conn)
+                else:
+                    res_bio = pd.read_sql_query("""
+                        SELECT '🩸 Biomonitor' as Origen, valor || ' mg/dL' as Detalle, fecha as Info 
+                        FROM glucosa WHERE fecha LIKE ?
+                    """, conn, params=(query,))
 
-            # Unimos y mostramos
-            todo_salud = pd.concat([res_agenda, res_bio])
-            if not todo_salud.empty:
-                st.dataframe(todo_salud, use_container_width=True, hide_index=True)
-            else:
-                st.info("No hay coincidencias en Salud.")
+                # Unión de resultados
+                todo_salud = pd.concat([res_agenda, res_bio])
+                if not todo_salud.empty:
+                    st.dataframe(todo_salud, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No hay coincidencias en Salud.")
+            except:
+                st.warning("Asegúrate de tener registros en Biomonitor y Agenda.")
 
         with col_der:
             st.markdown("### 📄 Documentos")
-            res_docs = pd.read_sql_query("""
-                SELECT '🖼️ Escáner' as Origen, tipo as Detalle, fecha as Info FROM archivos 
-                WHERE lower(tipo) LIKE ? OR lower(fecha) LIKE ?
-            """, conn, params=(query, query))
-            
-            if not res_docs.empty:
-                st.table(res_docs)
-            else:
-                st.info("No hay documentos guardados.")
+            try:
+                res_docs = pd.read_sql_query("""
+                    SELECT '🖼️ Escáner' as Origen, tipo as Detalle, fecha as Info FROM archivos 
+                    WHERE lower(tipo) LIKE ? OR lower(fecha) LIKE ?
+                """, conn, params=(query, query))
+                
+                if not res_docs.empty:
+                    st.table(res_docs)
+                else:
+                    st.info("No hay documentos guardados.")
+            except:
+                pass
 
     st.divider()
 
-    # --- 2. CARPETAS VISUALES ---
+    # --- 2. CARPETAS VISUALES (CORREGIDO EL NAMEERROR) ---
     st.subheader("📁 Carpetas")
     cats = {"💊 RECETAS": "Receta Médica", "🧪 LABS": "Resultado Lab", "💰 COTIZ": "Cotización"}
     
@@ -520,19 +525,26 @@ elif menu == "📂 ARCHIVADOR":
     for i, (label, db_name) in enumerate(cats.items()):
         with cols[i]:
             with st.expander(label):
+                # Aquí estaba el error, ahora usamos df_c correctamente
                 df_c = pd.read_sql_query("SELECT * FROM archivos WHERE tipo = ?", conn, params=(db_name,))
-                if df_arch.empty: st.caption("Vacío")
-                for idx, row in df_c.iterrows():
-                    f1, f2 = st.columns([4, 1])
-                    f1.write(f"📄 {row['fecha']}")
-                    if f2.button("🗑️", key=f"del_v5_{row['id']}"):
-                        c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
-                        conn.commit()
-                        st.rerun()
+                
+                if df_c.empty:
+                    st.caption("Vacío")
+                else:
+                    for idx, row in df_c.iterrows():
+                        f1, f2 = st.columns([4, 1])
+                        f1.write(f"📄 {row['fecha']}")
+                        if f2.button("🗑️", key=f"del_v51_{row['id']}"):
+                            c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
+                            conn.commit()
+                            st.rerun()
 
     try: pass
-    except: pass
-            
+    except: pass    
+    
+      
+
+       
 
                 
 
