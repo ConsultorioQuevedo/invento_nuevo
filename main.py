@@ -263,83 +263,82 @@ elif menu == "📸 ESCÁNER IA":
                 conn.commit()
                 st.success("Guardado y indexado.")
 
-
-# --- ARCHIVADOR INTELIGENTE (BÚSQUEDA FLEXIBLE) ---
+# --- ARCHIVADOR INTEGRAL (BÚSQUEDA MULTI-MÓDULO) ---
 elif menu == "📂 ARCHIVADOR":
     st.header("📂 Archivador Inteligente v3.0")
     
-    # Input de búsqueda
-    q = st.text_input("🔍 Buscar (ej: 'medico', 'receta', 'farmacia')...")
+    # 1. Entrada de búsqueda flexible
+    q = st.text_input("🔍 Busca lo que sea (ej: 'glucosa', 'operación', 'gasto', 'doctor')...")
     
     if q:
-        # Limpiamos la búsqueda para que no importe mayúsculas/minúsculas
         query = f"%{q.lower()}%"
+        st.markdown(f"### 🔎 Resultados de búsqueda para: **{q}**")
         
-        st.markdown(f"### 🔎 Resultados para: '{q}'")
-        
-        # 1. BUSCAR EN DOCUMENTOS ESCANEADOS
-        res_docs = pd.read_sql_query("""
-            SELECT nombre, categoria, fecha, texto_ocr FROM archivador_index 
-            WHERE lower(texto_ocr) LIKE ? OR lower(categoria) LIKE ?
-        """, conn, params=(query, query))
-        
-        # 2. BUSCAR EN FINANZAS (Gastos e Ingresos)
-        res_fin = pd.read_sql_query("""
-            SELECT tipo, categoria, monto, fecha FROM finanzas 
-            WHERE lower(categoria) LIKE ? OR lower(tipo) LIKE ?
-        """, conn, params=(query, query))
-        
-        # 3. BUSCAR EN SALUD (Medicamentos y Citas)
-        res_meds = pd.read_sql_query("""
-            SELECT nombre, dosis, frecuencia FROM medicinas 
-            WHERE lower(nombre) LIKE ?
-        """, conn, params=(query,))
-        
-        res_citas = pd.read_sql_query("""
-            SELECT doctor, centro, fecha FROM citas 
-            WHERE lower(doctor) LIKE ? OR lower(centro) LIKE ?
-        """, conn, params=(query, query))
+        # --- COLUMNAS PARA ORGANIZAR RESULTADOS ---
+        col_res_izq, col_res_der = st.columns(2)
 
-        # --- MOSTRAR RESULTADOS SI EXISTEN ---
-        col_res1, col_res2 = st.columns(2)
-        
-        with col_res1:
-            if not res_docs.empty:
-                st.info("📄 Documentos Encontrados")
-                st.write(res_docs[['nombre', 'categoria', 'fecha']])
+        # 2. BÚSQUEDA EN SALUD (Biomonitor y Agenda)
+        with col_res_izq:
+            # Buscar en Medicamentos y Citas Médicas
+            res_salud = pd.read_sql_query("""
+                SELECT 'Medicamento' as Origen, nombre as Detalle, frecuencia as Info FROM medicinas 
+                WHERE lower(nombre) LIKE ? 
+                UNION
+                SELECT 'Cita Médica' as Origen, doctor as Detalle, centro as Info FROM citas 
+                WHERE lower(doctor) LIKE ? OR lower(centro) LIKE ?
+            """, conn, params=(query, query, query))
             
-            if not res_meds.empty or not res_citas.empty:
-                st.success("🩺 Salud y Citas")
-                if not res_meds.empty: st.write(res_meds)
-                if not res_citas.empty: st.write(res_citas)
+            # Buscar en Biomonitor (Glucosa)
+            res_bio = pd.read_sql_query("""
+                SELECT 'Biomonitor' as Origen, valor || ' mg/dL' as Detalle, fecha as Info FROM glucosa 
+                WHERE lower(estado) LIKE ? OR lower(fecha) LIKE ?
+            """, conn, params=(query, query))
 
-        with col_res2:
-            if not res_fin.empty:
-                st.warning("💰 Registros Financieros")
-                st.write(res_fin)
+            if not res_salud.empty or not res_bio.empty:
+                st.success("🩺 Hallazgos en Salud y Agenda")
+                if not res_salud.empty: st.table(res_salud)
+                if not res_bio.empty: st.table(res_bio)
 
-        if res_docs.empty and res_fin.empty and res_meds.empty and res_citas.empty:
-            st.error(f"No se encontró ninguna coincidencia para '{q}'.")
+        # 3. BÚSQUEDA EN DOCUMENTOS Y FINANZAS
+        with col_res_der:
+            # Buscar en el Archivador de Fotos/Documentos
+            res_docs = pd.read_sql_query("""
+                SELECT 'Documento' as Origen, nombre as Detalle, categoria as Info FROM archivador_index 
+                WHERE lower(texto_ocr) LIKE ? OR lower(categoria) LIKE ?
+            """, conn, params=(query, query))
+            
+            # Buscar en Finanzas
+            res_fin = pd.read_sql_query("""
+                SELECT 'Finanzas' as Origen, categoria as Detalle, 'RD$ ' || monto as Info FROM finanzas 
+                WHERE lower(categoria) LIKE ? OR lower(tipo) LIKE ?
+            """, conn, params=(query, query))
+
+            if not res_docs.empty or not res_fin.empty:
+                st.warning("📂 Hallazgos en Documentos y Gastos")
+                if not res_docs.empty: st.table(res_docs)
+                if not res_fin.empty: st.table(res_fin)
+
+        if res_salud.empty and res_bio.empty and res_docs.empty and res_fin.empty:
+            st.error(f"No se encontró rastro de '{q}' en ningún módulo.")
 
     st.divider()
 
-    # --- TU DISEÑO DE CARPETAS ORIGINAL (INTACTO) ---
+    # --- 4. TU DISEÑO DE CARPETAS (SE MANTIENE IGUAL) ---
+    st.subheader("📁 Carpetas del Archivador")
     for cat in ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]:
         with st.expander(f"📁 {cat}"):
             df_arch = pd.read_sql_query(f"SELECT * FROM archivador_index WHERE categoria = '{cat}'", conn)
             if df_arch.empty:
-                st.write("Carpeta vacía.")
+                st.info("No hay documentos aquí.")
             else:
                 for idx, row in df_arch.iterrows():
-                    col_a1, col_a2, col_a3 = st.columns([5, 2, 1])
-                    col_a1.write(f"📄 {row['nombre']}")
-                    col_a2.write(f"📅 {row['fecha']}")
-                    if col_a3.button("🗑️", key=f"del_arch_v3_{row['id']}"):
+                    c1, c2, c3 = st.columns([5, 2, 1])
+                    c1.write(f"📄 {row['nombre']}")
+                    c2.caption(f"📅 {row['fecha']}")
+                    if c3.button("🗑️", key=f"del_final_{row['id']}"):
                         c.execute("DELETE FROM archivador_index WHERE id = ?", (row['id'],))
                         conn.commit()
-                        st.rerun()      
-
-   
+                        st.rerun()
 
 
 # --- ASISTENTE Y PDF ---
