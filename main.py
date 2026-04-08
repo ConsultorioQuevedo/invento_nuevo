@@ -363,10 +363,6 @@ elif menu == "💊 AGENDA MÉDICA":
                     conn.commit()
                     st.rerun()
          
-  
-       
-
-
 # --- ESCÁNER IA ---
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Estación de Escaneo Profesional")
