@@ -206,11 +206,7 @@ elif menu == "💰 FINANZAS":
             color = "#ff4b4b" if row['monto'] < 0 else "#4CAF50"
             r_col3.markdown(f"<span style='color:{color}; font-weight:bold;'>RD$ {abs(row['monto']):,.2f}</span>", unsafe_allow_html=True)
             
-            # Botón de borrado a la derecha (mismo nivel)
-            if r_col4.button("🗑️", key=f"del_{row['id']}"):
-                c.execute("DELETE FROM finanzas WHERE id = ?", (row['id'],))
-                conn.commit()
-                st.rerun()
+           
     else:
         st.info("No hay movimientos registrados.")
 
