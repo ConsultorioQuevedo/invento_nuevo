@@ -449,10 +449,7 @@ elif menu == "📸 ESCÁNER IA":
     try: pass
     except: pass
 
-# --- AHORA LA LÍNEA 460 YA NO DARÁ ERROR ---
-elif menu == "📂 ARCHIVADOR":
-    st.header("📂 Archivador Central de Documentos")             
-              
+       
 
 
 
