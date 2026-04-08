@@ -307,6 +307,9 @@ elif menu == "🩺 BIOMONITOR":
 # --- MÓDULO AGENDA MÉDICA: REPARACIÓN FORZADA Y LIMPIEZA ---
 elif menu == "💊 AGENDA MÉDICA":
     st.header("💊 Gestión Médica Integral")
+    if st.button("♻️ DESHACER ÚLTIMA CITA", use_container_width=True):
+        borrar_ultimo("citas")
+    st.divider()
 
     # 1. REPARACIÓN DE TABLAS (Medicinas y Citas)
     c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT)")
