@@ -124,11 +124,12 @@ if menu == "🏠 INICIO":
     
     # Enlace Directo a Clínica Referencia
     col_link3.link_button("🏥 CLÍNICA REFERENCIA", "https://www.referencia.do")
-# --- FINANZAS ROBUSTO ---
+
+# --- FINANZAS ROBUSTO (CORREGIDO) ---
 elif menu == "💰 FINANZAS":
     st.header("💰 Gestión Financiera Inteligente")
     
-    # Configuración de Presupuesto
+    # 1. Configuración de Presupuesto (Persistente)
     with st.expander("⚙️ AJUSTAR PRESUPUESTO"):
         p_input = st.number_input("Presupuesto Mensual RD$", min_value=0.0)
         if st.button("Guardar Presupuesto"):
@@ -136,46 +137,72 @@ elif menu == "💰 FINANZAS":
             conn.commit()
             st.success("Presupuesto actualizado.")
 
-    with st.form("form_finanzas", clear_on_submit=True):
-        col_f1, col_f2, col_f3 = st.columns(3)
-        tipo = col_f1.selectbox("Tipo", ["GASTO", "INGRESO"])
-        cat = col_f2.selectbox("Categoría", ["Comida", "Salud", "Hogar", "Transporte", "Negocio", "Otros"])
-        monto = col_f3.number_input("Monto RD$", min_value=0.0)
-        if st.form_submit_button("🚀 REGISTRAR"):
+    # 2. Formulario Inteligente y Dinámico
+    st.subheader("Registrar Movimiento")
+    col_f1, col_f2, col_f3 = st.columns([1, 1, 1])
+    
+    tipo = col_f1.selectbox("Seleccione Tipo", ["GASTO", "INGRESO"])
+    
+    # Lógica de Menú Desplegable Dinámico
+    if tipo == "GASTO":
+        cat = col_f2.selectbox("Categoría de Gasto", ["Farmacia", "Salud", "Supermercado", "Hogar", "Transporte", "Negocio", "Otros"])
+    else:
+        cat = col_f2.text_input("Origen del Ingreso", value="Depósito/Pago")
+        
+    monto = col_f3.number_input("Monto RD$", min_value=0.0)
+
+    if st.button("🚀 REGISTRAR MOVIMIENTO"):
+        if monto > 0:
             monto_final = monto if tipo == "INGRESO" else -monto
             c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?,?,?,?)",
                       (tipo, cat, monto_final, datetime.now(ZONA_HORARIA).strftime("%d/%m/%y")))
             conn.commit()
+            st.success(f"{tipo} registrado correctamente.")
             st.rerun()
+        else:
+            st.error("El monto debe ser mayor a cero.")
 
+    # 3. Cálculos de Presupuesto y Balance
     df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
-    pres_val = pd.read_sql_query("SELECT monto FROM presupuesto WHERE id = 1", conn)['monto'][0]
+    
+    # Manejo de error si la tabla presupuesto está vacía
+    res_pres = pd.read_sql_query("SELECT monto FROM presupuesto WHERE id = 1", conn)
+    pres_val = res_pres['monto'][0] if not res_pres.empty else 0.0
 
     if not df_f.empty:
         ingresos = df_f[df_f['monto'] > 0]['monto'].sum()
         gastos = abs(df_f[df_f['monto'] < 0]['monto'].sum())
         balance = ingresos - gastos
         
+        st.divider()
         m1, m2, m3 = st.columns(3)
         m1.metric("📥 INGRESOS", f"RD$ {ingresos:,.2f}")
         m2.metric("📤 GASTOS", f"RD$ {gastos:,.2f}", delta_color="inverse")
-        m3.metric("💎 BALANCE", f"RD$ {balance:,.2f}")
+        m3.metric("💎 BALANCE ACTUAL", f"RD$ {balance:,.2f}")
 
+        # Alerta de Presupuesto IA
         if pres_val > 0:
             ratio = (gastos / pres_val) * 100
-            if ratio > 80: st.error(f"⚠️ Alerta: Has usado el {ratio:.1f}% de tu presupuesto.")
+            if ratio > 80:
+                st.warning(f"⚠️ ¡Atención Luis Rafael! Has consumido el {ratio:.1f}% de tu presupuesto mensual.")
         
-        # Tabla con BOTÓN DE BORRADO individual
-        st.subheader("Historial de Movimientos")
+        # 4. Historial con Botón de Borrado Lateral
+        st.subheader("📋 Historial de Movimientos")
         for idx, row in df_f.iterrows():
-            col_r1, col_r2, col_r3, col_r4 = st.columns([2,2,2,1])
-            col_r1.write(row['fecha'])
-            col_r2.write(row['categoria'])
-            col_r3.write(f"RD$ {row['monto']:,.2f}")
-            if col_r4.button("🗑️", key=f"del_f_{row['id']}"):
-                c.execute("DELETE FROM finanzas WHERE id = ?", (row['id'],))
-                conn.commit()
-                st.rerun()
+            with st.container():
+                c_1, c_2, c_3, c_4 = st.columns([2, 3, 2, 1])
+                c_1.write(f"📅 {row['fecha']}")
+                c_2.write(f"**{row['categoria']}**")
+                # Color según sea ingreso o gasto
+                color = "green" if row['monto'] > 0 else "red"
+                c_3.markdown(f"<span style='color:{color}'>RD$ {abs(row['monto']):,.2f}</span>", unsafe_allow_html=True)
+                
+                if c_4.button("🗑️", key=f"del_f_{row['id']}"):
+                    c.execute("DELETE FROM finanzas WHERE id = ?", (row['id'],))
+                    conn.commit()
+                    st.rerun()
+                st.markdown("---")
+
 
 # --- BIOMONITOR ---
 elif menu == "🩺 BIOMONITOR":
