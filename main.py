@@ -4,6 +4,7 @@ import sqlite3
 import os
 import plotly.express as px
 from fpdf import FPDF
+import requests
 from datetime import datetime
 import pytz
 import numpy as np
