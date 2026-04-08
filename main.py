@@ -125,84 +125,96 @@ if menu == "🏠 INICIO":
     # Enlace Directo a Clínica Referencia
     col_link3.link_button("🏥 CLÍNICA REFERENCIA", "https://www.referencia.do")
 
-# --- FINANZAS ROBUSTO (CORREGIDO) ---
+
+    
+# --- MÓDULO FINANZAS: INTELIGENTE Y PERSISTENTE ---
 elif menu == "💰 FINANZAS":
     st.header("💰 Gestión Financiera Inteligente")
-    
-    # 1. Configuración de Presupuesto (Persistente)
-    with st.expander("⚙️ AJUSTAR PRESUPUESTO"):
-        p_input = st.number_input("Presupuesto Mensual RD$", min_value=0.0)
-        if st.button("Guardar Presupuesto"):
-            c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (p_input,))
-            conn.commit()
-            st.success("Presupuesto actualizado.")
 
-    # 2. Formulario Inteligente y Dinámico
-    st.subheader("Registrar Movimiento")
-    col_f1, col_f2, col_f3 = st.columns([1, 1, 1])
-    
-    tipo = col_f1.selectbox("Seleccione Tipo", ["GASTO", "INGRESO"])
-    
-    # Lógica de Menú Desplegable Dinámico
-    if tipo == "GASTO":
-        cat = col_f2.selectbox("Categoría de Gasto", ["Farmacia", "Salud", "Supermercado", "Hogar", "Transporte", "Negocio", "Otros"])
-    else:
-        cat = col_f2.text_input("Origen del Ingreso", value="Depósito/Pago")
+    # 1. PERSISTENCIA REAL: Asegurar tablas
+    c.execute("CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY, monto REAL)")
+    c.execute("INSERT OR IGNORE INTO presupuesto (id, monto) VALUES (1, 0.0)")
+    c.execute("CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)")
+    conn.commit()
+
+    # 2. INTERFAZ LIMPIA Y MENÚ INTELIGENTE
+    with st.container():
+        col1, col2, col3 = st.columns([1, 1, 1])
         
-    monto = col_f3.number_input("Monto RD$", min_value=0.0)
-
-    if st.button("🚀 REGISTRAR MOVIMIENTO"):
-        if monto > 0:
-            monto_final = monto if tipo == "INGRESO" else -monto
-            c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?,?,?,?)",
-                      (tipo, cat, monto_final, datetime.now(ZONA_HORARIA).strftime("%d/%m/%y")))
-            conn.commit()
-            st.success(f"{tipo} registrado correctamente.")
-            st.rerun()
+        tipo = col1.selectbox("Tipo", ["GASTO", "INGRESO"])
+        
+        # El menú cambia o desaparece según la elección
+        if tipo == "GASTO":
+            cat = col2.selectbox("Categoría de Gasto", ["Farmacia", "Salud", "Supermercado", "Hogar", "Transporte", "Otros"])
         else:
-            st.error("El monto debe ser mayor a cero.")
+            cat = col2.text_input("Origen del Ingreso", placeholder="Ej: Pago, Depósito")
+            
+        monto = col3.number_input("Monto RD$", min_value=0.0, step=100.0)
 
-    # 3. Cálculos de Presupuesto y Balance
+        if st.button("🚀 REGISTRAR MOVIMIENTO"):
+            if monto > 0:
+                monto_final = -monto if tipo == "GASTO" else monto
+                fecha_hoy = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y")
+                c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?,?,?,?)",
+                          (tipo, cat, monto_final, fecha_hoy))
+                conn.commit()
+                st.rerun()
+
+    st.divider()
+
+    # 3. CÁLCULO DE PRESUPUESTO (SUMA Y RESTA)
     df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
+    pres_base = pd.read_sql_query("SELECT monto FROM presupuesto WHERE id = 1", conn)['monto'][0]
     
-    # Manejo de error si la tabla presupuesto está vacía
-    res_pres = pd.read_sql_query("SELECT monto FROM presupuesto WHERE id = 1", conn)
-    pres_val = res_pres['monto'][0] if not res_pres.empty else 0.0
+    ingresos = df_f[df_f['monto'] > 0]['monto'].sum() if not df_f.empty else 0
+    gastos = abs(df_f[df_f['monto'] < 0]['monto'].sum()) if not df_f.empty else 0
+    balance_total = pres_base + ingresos - gastos
 
+    m1, m2, m3 = st.columns(3)
+    m1.metric("📥 INGRESOS", f"RD$ {ingresos:,.2f}")
+    m2.metric("📤 GASTOS", f"RD$ {gastos:,.2f}", delta_color="inverse")
+    m3.metric("💎 DISPONIBLE", f"RD$ {balance_total:,.2f}")
+
+    st.divider()
+
+    # 4. DISEÑO DE REGISTROS: BOTÓN AL LADO
+    st.subheader("📋 Historial de Movimientos")
     if not df_f.empty:
-        ingresos = df_f[df_f['monto'] > 0]['monto'].sum()
-        gastos = abs(df_f[df_f['monto'] < 0]['monto'].sum())
-        balance = ingresos - gastos
-        
-        st.divider()
-        m1, m2, m3 = st.columns(3)
-        m1.metric("📥 INGRESOS", f"RD$ {ingresos:,.2f}")
-        m2.metric("📤 GASTOS", f"RD$ {gastos:,.2f}", delta_color="inverse")
-        m3.metric("💎 BALANCE ACTUAL", f"RD$ {balance:,.2f}")
+        # Mostramos los últimos primero
+        for idx, row in df_f.sort_index(ascending=False).iterrows():
+            # Una sola fila para todo el registro
+            r_col1, r_col2, r_col3, r_col4 = st.columns([1.5, 2.5, 2, 0.5])
+            
+            r_col1.write(row['fecha'])
+            r_col2.write(f"**{row['categoria']}**")
+            
+            color = "#ff4b4b" if row['monto'] < 0 else "#4CAF50"
+            r_col3.markdown(f"<span style='color:{color}; font-weight:bold;'>RD$ {abs(row['monto']):,.2f}</span>", unsafe_allow_html=True)
+            
+            # Botón de borrado a la derecha (mismo nivel)
+            if r_col4.button("🗑️", key=f"del_{row['id']}"):
+                c.execute("DELETE FROM finanzas WHERE id = ?", (row['id'],))
+                conn.commit()
+                st.rerun()
+    else:
+        st.info("No hay movimientos registrados.")
 
-        # Alerta de Presupuesto IA
-        if pres_val > 0:
-            ratio = (gastos / pres_val) * 100
-            if ratio > 80:
-                st.warning(f"⚠️ ¡Atención Luis Rafael! Has consumido el {ratio:.1f}% de tu presupuesto mensual.")
-        
-        # 4. Historial con Botón de Borrado Lateral
-        st.subheader("📋 Historial de Movimientos")
-        for idx, row in df_f.iterrows():
-            with st.container():
-                c_1, c_2, c_3, c_4 = st.columns([2, 3, 2, 1])
-                c_1.write(f"📅 {row['fecha']}")
-                c_2.write(f"**{row['categoria']}**")
-                # Color según sea ingreso o gasto
-                color = "green" if row['monto'] > 0 else "red"
-                c_3.markdown(f"<span style='color:{color}'>RD$ {abs(row['monto']):,.2f}</span>", unsafe_allow_html=True)
-                
-                if c_4.button("🗑️", key=f"del_f_{row['id']}"):
-                    c.execute("DELETE FROM finanzas WHERE id = ?", (row['id'],))
-                    conn.commit()
-                    st.rerun()
-                st.markdown("---")
+    # Ajuste de base (Para que el presupuesto tenga sentido)
+    with st.expander("⚙️ AJUSTAR CAPITAL INICIAL"):
+        nuevo_p = st.number_input("Capital base en cuenta RD$", value=float(pres_base))
+        if st.button("Actualizar Capital"):
+            c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_p,))
+            conn.commit()
+            st.rerun()
 
+# --- CRÉDITOS ---
+st.markdown(f"""
+    <div style="position: fixed; bottom: 0; width: 100%; text-align: center; color: #4CAF50; background: #0e1117; padding: 10px; border-top: 1px solid #4CAF50; z-index:100;">
+        <b>SISTEMA QUEVEDO PRO</b> | Diseñador: <b>{NOMBRE_PROPIETARIO}</b> | 📍 Santo Domingo, R.D.
+    </div>
+    """, unsafe_allow_html=True)   
+ 
+        
 
 # --- BIOMONITOR ---
 elif menu == "🩺 BIOMONITOR":
