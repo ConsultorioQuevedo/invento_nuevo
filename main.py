@@ -343,11 +343,7 @@ elif menu == "💊 AGENDA MÉDICA":
             c1, c2, c3 = st.columns([4, 4, 1])
             c1.write(f"💊 **{row['nombre']}** ({row['dosis']})")
             c2.write(f"⏰ {row['horario']} {row['periodo']} - {row['frecuencia']}")
-            if c3.button("🗑️", key=f"del_m_{row['id']}"):
-                c.execute("DELETE FROM medicinas WHERE id = ?", (row['id'],))
-                conn.commit()
-                st.rerun()
-
+            
     # --- SECCIÓN 2: DEPARTAMENTO DE CITAS ---
     with tab2:
         with st.form("form_cita", clear_on_submit=True):
