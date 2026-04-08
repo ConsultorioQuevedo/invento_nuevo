@@ -207,7 +207,24 @@ elif menu == "💰 FINANZAS":
             conn.commit()
             st.rerun()
 
-  
+elif menu == "🩺 BIOMONITOR":
+    st.header("🩺 Control de Glucosa y Biomonitoreo")
+
+    # --- REPARACIÓN DE TABLA (Añadir esto para evitar el error) ---
+    c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL)")
+    
+    # Intentar añadir las columnas nuevas una por una por si la tabla es vieja
+    for columna in [("unidad", "TEXT"), ("estado", "TEXT"), ("fecha", "TEXT"), ("hora", "TEXT")]:
+        try:
+            c.execute(f"ALTER TABLE glucosa ADD COLUMN {columna[0]} {columna[1]}")
+        except:
+            pass # Si ya existe, no hace nada y sigue adelante
+    conn.commit()
+    # -----------------------------------------------------------
+
+    # ... Aquí sigue el resto de tu código de Biomonitor
+
+
  
 # --- MÓDULO BIOMONITOR: CONTROL MÉDICO ROBUSTO ---
 elif menu == "🩺 BIOMONITOR":
