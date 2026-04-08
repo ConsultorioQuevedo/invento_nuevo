@@ -369,11 +369,7 @@ elif menu == "💊 AGENDA MÉDICA":
             r1, r2, r3 = st.columns([4, 4, 1])
             r1.markdown(f"👨‍⚕️ **{row['doctor']}**\n\n📍 {row['clinica']}")
             r2.write(f"📅 {row['fecha']} - {row['hora']} {row['periodo']}\n\n📝 {row['motivo']}")
-            if r3.button("🗑️", key=f"del_c_{row['id']}"):
-                c.execute("DELETE FROM citas WHERE id = ?", (row['id'],))
-                conn.commit()
-                st.rerun()
-            st.divider()
+           
 
     # Cierre de seguridad
     try: pass
