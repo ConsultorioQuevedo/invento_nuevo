@@ -286,10 +286,7 @@ elif menu == "🩺 BIOMONITOR":
                 c3.write(f"**{val}** {uni}")
                 c4.write(est_text)
                 
-                if c5.button("🗑️", key=f"del_g_{row['id']}"):
-                    c.execute("DELETE FROM glucosa WHERE id = ?", (row['id'],))
-                    conn.commit()
-                    st.rerun()
+               
         else:
             st.info("Aún no hay registros de glucosa.")
     except Exception as e:
