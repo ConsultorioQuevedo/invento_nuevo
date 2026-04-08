@@ -372,7 +372,82 @@ elif menu == "💊 AGENDA MÉDICA":
     except: pass
   
 
-   
+# --- MÓDULO ESCÁNER IA: INTELIGENCIA Y COMUNICACIÓN DIRECTA ---
+elif menu == "📸 ESCÁNER IA":
+    st.header("📸 Estación de Escaneo IA")
+
+    # 1. CONFIGURACIÓN DE CONTACTOS (Tus datos reales)
+    MI_NUMERO = "18092714672"
+    FARMACIA_VALUED = "18495060398"
+    FARMACIA_GBC = "18296555546"
+
+    # 2. BASE DE DATOS
+    c.execute("CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, fecha TEXT)")
+    conn.commit()
+
+    # 3. INTERFAZ DE ESCANEO (Cámara Trasera)
+    st.subheader("🔍 Lector Inteligente de Documentos")
+    foto = st.camera_input("Enfoca la receta o código", key="escanner_trasero")
+
+    if foto:
+        st.info("💡 IA: Documento detectado. ¿Qué deseas hacer?")
+        
+        col_e1, col_e2 = st.columns(2)
+        tipo_doc = col_e1.selectbox("Clasificar como:", ["Receta Médica", "Cotización", "Resultado Lab", "QR"])
+        
+        if col_e2.button("💾 ARCHIVAR DOCUMENTO"):
+            fecha_esc = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y %H:%M")
+            c.execute("INSERT INTO archivos (tipo, fecha) VALUES (?,?)", (tipo_doc, fecha_esc))
+            conn.commit()
+            st.success("Guardado en el historial.")
+
+        st.divider()
+        
+        # 4. BOTONES DE ACCIÓN REAL (SOLICITAR COTIZACIÓN)
+        st.subheader("🚀 Solicitar Cotización vía WhatsApp")
+        q1, q2 = st.columns(2)
+        
+        mensaje_base = "Hola, soy Luis Rafael. Adjunto mi receta para cotización de medicamentos."
+        
+        with q1:
+            st.markdown(f"""
+                <a href="https://wa.me/{FARMACIA_VALUED}?text={mensaje_base}" target="_blank" style="text-decoration: none;">
+                    <div style="background-color: #0047AB; color: white; padding: 15px; text-align: center; border-radius: 10px; font-weight: bold; border: 2px solid white;">
+                        🏥 FARMACIA VALUED
+                    </div>
+                </a>
+                """, unsafe_allow_html=True)
+                
+        with q2:
+            st.markdown(f"""
+                <a href="https://wa.me/{FARMACIA_GBC}?text={mensaje_base}" target="_blank" style="text-decoration: none;">
+                    <div style="background-color: #E31E24; color: white; padding: 15px; text-align: center; border-radius: 10px; font-weight: bold; border: 2px solid white;">
+                        💊 FARMACIA GBC
+                    </div>
+                </a>
+                """, unsafe_allow_html=True)
+
+    st.divider()
+
+    # 5. HISTORIAL DE ARCHIVOS
+    st.subheader("📋 Historial de Escaneos")
+    df_a = pd.read_sql_query("SELECT * FROM archivos ORDER BY id DESC", conn)
+    
+    if not df_a.empty:
+        for idx, row in df_a.iterrows():
+            r1, r2, r3 = st.columns([3, 4, 1])
+            r1.write(f"📅 {row['fecha']}")
+            r2.write(f"📄 **{row['tipo']}**")
+            if r3.button("🗑️", key=f"del_arc_{row['id']}"):
+                c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
+                conn.commit()
+                st.rerun()
+    else:
+        st.info("No hay documentos en el archivador.")
+
+# Cierre de seguridad para el siguiente módulo
+try: pass
+except: pass   
                 
               
 
@@ -381,36 +456,6 @@ elif menu == "💊 AGENDA MÉDICA":
 
 
          
-# --- ESCÁNER IA ---
-elif menu == "📸 ESCÁNER IA":
-    st.header("📸 Estación de Escaneo Profesional")
-    img_file = st.camera_input("Capturar Documento, QR o Barras")
-    if img_file:
-        img = Image.open(img_file)
-        img_np = np.array(img.convert('RGB'))
-        
-        # 1. QR/BARRAS
-        codigos = decode(img)
-        if codigos:
-            for obj in codigos:
-                st.success(f"Código {obj.type}: {obj.data.decode('utf-8')}")
-        
-        # 2. OCR
-        with st.spinner("🤖 IA Analizando texto..."):
-            gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
-            texto_ocr = pytesseract.image_to_string(gray, lang='spa')
-            st.text_area("Texto Detectado", texto_ocr, height=150)
-            
-            cat_save = st.selectbox("Archivar en:", ["MEDICAL", "GASTOS", "PERSONALES"])
-            if st.button("💾 GUARDAR EN ARCHIVADOR"):
-                fname = f"SCAN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-                path = os.path.join("archivador_quevedo", cat_save, fname)
-                img.save(path)
-                c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)",
-                          (fname, cat_save, texto_ocr, datetime.now().strftime("%d/%m/%y")))
-                conn.commit()
-                st.success("Guardado y indexado.")
-
 # --- ARCHIVADOR INTEGRAL (BÚSQUEDA MULTI-MÓDULO) ---
 elif menu == "📂 ARCHIVADOR":
     st.header("📂 Archivador Inteligente v3.0")
