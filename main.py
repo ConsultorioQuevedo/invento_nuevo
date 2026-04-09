@@ -4,6 +4,7 @@ import sqlite3
 import easyocr
 from streamlit_camera_input_live import camera_input_live
 import os
+from pyzbar import pyzbar
 import plotly.express as px
 from fpdf import FPDF
 import requests
