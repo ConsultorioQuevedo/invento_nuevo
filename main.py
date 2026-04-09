@@ -290,12 +290,9 @@ elif menu == "🩺 BIOMONITOR":
                 uni = row['unidad'] if row['unidad'] else "mg/dL"
                 est_text = row['estado'] if row['estado'] else "Sin estado"
                 
-                c1, c2, c3, c4, c5 = st.columns([1.5, 1.5, 1.5, 2, 0.5])
-                c1.write(row['fecha'])
-                c2.write(row['hora'])
-                c3.write(f"**{val}** {uni}")
-                c4.write(est_text)
-                
+                # Una sola línea con iconos y separadores
+               st.markdown(f"🗓️ **{row['fecha']}** | 🕒 {row['hora']} | 🩸 **{val} {uni}** | {est_text}")
+               st.divider() # Esta línea crea la separación profesional
                
         else:
             st.info("Aún no hay registros de glucosa.")
