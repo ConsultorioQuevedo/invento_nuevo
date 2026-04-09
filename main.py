@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import easyocr
+from streamlit_camera_input_live import camera_input_live
 import os
 import plotly.express as px
 from fpdf import FPDF
