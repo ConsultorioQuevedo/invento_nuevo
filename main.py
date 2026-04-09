@@ -27,6 +27,43 @@ ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
 # 2. BASE DE DATOS (PROTECCIÓN TOTAL)
 # ==========================================
 
+def registrar_en_nube_exacto(datos_dict):
+    try:
+        # 1. Definimos los nombres que tú confirmaste
+        archivo_drive = "Mi_Archivador_Quevedo"
+        pestaña_excel = "DB_QUEVEDO"
+        
+        # 2. Conectamos apuntando directamente a esa pestaña
+        df_nube = conn_google.read(spreadsheet=archivo_drive, worksheet=pestaña_excel)
+        
+        # 3. Creamos la fila con los datos nuevos
+        nueva_fila = pd.DataFrame([datos_dict])
+        
+        # 4. Unimos la información
+        df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
+        
+        # 5. Subimos los datos a esa pestaña específica
+        conn_google.update(spreadsheet=archivo_drive, worksheet=pestaña_excel, data=df_final)
+        
+        st.success(f"✅ Guardado en {archivo_drive} -> Hoja: {pestaña_excel}")
+        
+    except Exception as e:
+        # Si sale este error, revisa que 'DB_QUEVEDO' no tenga espacios extra
+        st.error(f"❌ Error de conexión: {e}")
+
+# --- DENTRO DE TU BOTÓN DE REGISTRO ---
+if st.button("Registrar Producto"):
+    # Preparamos el diccionario con los nombres de tus columnas en Excel
+    datos_a_enviar = {
+        "Producto": nombre_producto, 
+        "Cantidad": cantidad_producto,
+        "Precio": precio_producto,
+        "Fecha": datetime.now().strftime("%d/%m/%Y")
+    }
+    
+    # Ejecutamos la función con los nombres corregidos
+    registrar_en_nube_exacto(datos_a_enviar)
+
 def inicializar_todo():
     # Crear carpetas si no existen
     base = "archivador_quevedo"
