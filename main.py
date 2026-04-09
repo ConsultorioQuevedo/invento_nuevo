@@ -1,20 +1,20 @@
 import streamlit as st
+import cv2
+import numpy as np
+from pyzbar import pyzbar
+from streamlit_camera_input_live import camera_input_live
+from datetime import datetime
 import pandas as pd
 import sqlite3
 import easyocr
-from streamlit_camera_input_live import camera_input_live
 import os
-from pyzbar import pyzbar
 import plotly.express as px
 from fpdf import FPDF
 import requests
-from datetime import datetime
 import pytz
-import numpy as np
 import unicodedata
 from PIL import Image
 import io
-import cv2
 import pytesseract
 from pyzbar.pyzbar import decode
 
