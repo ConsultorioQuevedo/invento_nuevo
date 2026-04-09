@@ -2,7 +2,6 @@ import streamlit as st
 import cv2
 import numpy as np
 from pyzbar import pyzbar # Para códigos de barra
-from streamlit_camera_input_live import camera_input_live
 from datetime import datetime
 import pandas as pd
 import sqlite3
