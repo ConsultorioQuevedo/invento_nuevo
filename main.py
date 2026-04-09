@@ -376,7 +376,8 @@ elif menu == "💊 AGENDA MÉDICA":
         st.subheader("🗓️ Próximas Visitas")
         df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
         for idx, row in df_c.iterrows():
-            r1, r2, r3 = st.columns([4, 4, 1])
+            st.markdown(f"👨‍⚕️ **{row['doctor']}** | 🗓️ {row['fecha']} | 🕒 {row['hora']}")
+            st.divider()
             r1.markdown(f"👨‍⚕️ **{row['doctor']}**\n\n📍 {row['clinica']}")
             r2.write(f"📅 {row['fecha']} - {row['hora']} {row['periodo']}\n\n📝 {row['motivo']}")
            
