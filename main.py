@@ -6,7 +6,6 @@ import numpy as np
 from datetime import datetime
 import streamlit as st
 import pandas as pd
-from streamlit_gsheets import GSheetsConnection  # <--- AÑADE ESTA LÍNEA
 import sqlite3
 import os
 import plotly.express as px
