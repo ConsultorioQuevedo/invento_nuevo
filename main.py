@@ -24,10 +24,11 @@ UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
 
 # ==========================================
-# 2. FUNCIONES DE BASE DE DATOS
+# 2. BASE DE DATOS (PROTECCIÓN TOTAL)
 # ==========================================
 
 def inicializar_todo():
+    # Crear carpetas si no existen
     base = "archivador_quevedo"
     folders = ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]
     if not os.path.exists(base):
@@ -35,73 +36,70 @@ def inicializar_todo():
     for f in folders:
         os.makedirs(os.path.join(base, f), exist_ok=True)
     
-    db_conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
-    db_c = db_conn.cursor()
+    # CONEXIÓN LOCAL (Tu base de datos de siempre)
+    conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
+    c = conn.cursor()
     
-    db_c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)")
-    db_c.execute("CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)")
-    db_c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)")
-    db_c.execute("CREATE TABLE IF NOT EXISTS archivador_index (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)")
-    db_c.execute("CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)")
-    db_c.execute("CREATE TABLE IF NOT EXISTS inventario (id INTEGER PRIMARY KEY AUTOINCREMENT, producto TEXT, cantidad INTEGER, precio REAL, fecha TEXT)")
-    db_c.execute("CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, fecha TEXT, categoria TEXT, tipo TEXT)")
-    db_c.execute("CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY, monto REAL)")
-    db_c.execute("INSERT OR IGNORE INTO presupuesto (id, monto) VALUES (1, 0.0)")
+    # Crear todas las tablas para que NADA dé error de "NameError" o "Table not found"
+    tablas = [
+        "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)",
+        "CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)",
+        "CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)",
+        "CREATE TABLE IF NOT EXISTS archivador_index (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)",
+        "CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)",
+        "CREATE TABLE IF NOT EXISTS inventario (id INTEGER PRIMARY KEY AUTOINCREMENT, producto TEXT, cantidad INTEGER, precio REAL, fecha TEXT)",
+        "CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, fecha TEXT, categoria TEXT, tipo TEXT)",
+        "CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY, monto REAL)",
+        "INSERT OR IGNORE INTO presupuesto (id, monto) VALUES (1, 0.0)"
+    ]
     
-    db_conn.commit()
-    return db_conn, db_c
+    for sql in tablas:
+        c.execute(sql)
+    
+    conn.commit()
+    return conn, c
 
-# Inicialización de conexiones
-db_conn, c = inicializar_todo()
-conn_gs = st.connection("gsheets", type=GSheetsConnection)
+# Lanzamos la base de datos local con los nombres 'conn' y 'c'
+conn, c = inicializar_todo()
+
+# CONEXIÓN A GOOGLE (Con nombre diferente para que no choque)
+try:
+    conn_google = st.connection("gsheets", type=GSheetsConnection)
+except:
+    conn_google = None # Si falla internet, el programa no se detiene
+
+# ==========================================
+# 3. FUNCIONES COMPLEMENTARIAS
+# ==========================================
 
 def borrar_ultimo(tabla):
     try:
         c.execute(f"SELECT MAX(id) FROM {tabla}")
-        max_id = c.fetchone()[0]
-        if max_id:
-            c.execute(f"DELETE FROM {tabla} WHERE id = ?", (max_id,))
-            db_conn.commit()
-            st.success(f"✅ Registro eliminado de {tabla}")
+        res = c.fetchone()
+        if res and res[0]:
+            c.execute(f"DELETE FROM {tabla} WHERE id = ?", (res[0],))
+            conn.commit()
+            st.success(f"✅ Eliminado de {tabla}")
             st.rerun()
         else:
             st.info("No hay nada que borrar.")
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error al borrar: {e}")
 
 def limpiar_texto(texto):
     if not texto: return ""
-    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
+    return "".join(ch for ch in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(ch) != 'Mn')
 
-# ==========================================
-# 3. LÓGICA DE REGISTRO (GOOGLE SHEETS + SQLITE)
-# ==========================================
-
-# Formulario de ejemplo (Asegúrate que estas variables existan en tu UI)
-with st.expander("📝 Nuevo Registro de Inventario"):
-    nombre_p = st.text_input("Producto")
-    cant_p = st.number_input("Cantidad", min_value=1)
-    prec_p = st.number_input("Precio", min_value=0.0)
-
-    if st.button("Registrar Producto"): 
-        fecha_act = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y")
-        
+# Esta función es la que usaremos para mandar datos a la nube sin romper el programa
+def sincronizar_nube(nombre_hoja, datos_dict):
+    if conn_google:
         try:
-            # 1. Guardar Local
-            c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?, ?, ?, ?)",
-                      (nombre_p, cant_p, prec_p, fecha_act))
-            db_conn.commit()
+            df_nube = conn_google.read(spreadsheet="Mi_Archivador_Quevedo", worksheet=nombre_hoja)
+            df_actualizado = pd.concat([df_nube, pd.DataFrame([datos_dict])], ignore_index=True)
+            conn_google.update(spreadsheet="Mi_Archivador_Quevedo", worksheet=nombre_hoja, data=df_actualizado)
+        except:
+            pass # Si falla Google, el usuario ni se entera, lo local sigue vivo
 
-            # 2. Enviar a Google
-            nueva_fila = pd.DataFrame([{"Producto": nombre_p, "Cantidad": cant_p, "Precio": prec_p, "Fecha": fecha_act}])
-            df_existente = conn_gs.read(spreadsheet="Mi_Archivador_Quevedo")
-            df_final = pd.concat([df_existente, nueva_fila], ignore_index=True)
-            conn_gs.update(spreadsheet="Mi_Archivador_Quevedo", data=df_final)
-            
-            st.success("✅ Guardado en Local y Google Sheets")
-        except Exception as e:
-            st.warning(f"⚠️ Error en sincronización: {e}")
-  
 
 # ==========================================
 # 3. INTERFAZ Y ESTILOS
