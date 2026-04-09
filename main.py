@@ -1,10 +1,6 @@
 import streamlit as st
 import cv2
 import numpy as np
-# from pyzbar import pyzbar         <-- COMENTADA (Bloquea el inicio)
-# from streamlit_camera_input_live import camera_input_live
-from datetime import datetime
-import streamlit as st
 import pandas as pd
 import sqlite3
 import os
@@ -15,8 +11,9 @@ import pytz
 import unicodedata
 from PIL import Image
 import io
+from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
-# import pytesseract              <-- COMENTADA (Bloquea el inicio)
+
 # ==========================================
 # 1. CONFIGURACIÓN E IDENTIDAD
 # ==========================================
@@ -26,30 +23,8 @@ NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
 
-def borrar_ultimo(tabla):
-    try:
-        # Usamos la conexión que ya tienes creada en el programa
-        global conn, c 
-        
-        # Buscamos el ID más alto (el último)
-        c.execute(f"SELECT MAX(id) FROM {tabla}")
-        max_id = c.fetchone()[0]
-        
-        if max_id:
-            c.execute(f"DELETE FROM {tabla} WHERE id = ?", (max_id,))
-            conn.commit()
-            st.success(f"✅ Registro eliminado de {tabla}")
-            st.rerun()
-        else:
-            st.info("No hay nada que borrar.")
-    except Exception as e:
-        st.error(f"Error: {e}")
-def limpiar_texto(texto):
-    if not texto: return ""
-    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
-
 # ==========================================
-# 2. BASE DE DATOS Y DIRECTORIOS
+# 2. FUNCIONES DE BASE DE DATOS
 # ==========================================
 
 def inicializar_todo():
@@ -69,43 +44,63 @@ def inicializar_todo():
     db_c.execute("CREATE TABLE IF NOT EXISTS archivador_index (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)")
     db_c.execute("CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)")
     db_c.execute("CREATE TABLE IF NOT EXISTS inventario (id INTEGER PRIMARY KEY AUTOINCREMENT, producto TEXT, cantidad INTEGER, precio REAL, fecha TEXT)")
+    db_c.execute("CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, fecha TEXT, categoria TEXT, tipo TEXT)")
     db_c.execute("CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY, monto REAL)")
     db_c.execute("INSERT OR IGNORE INTO presupuesto (id, monto) VALUES (1, 0.0)")
     
     db_conn.commit()
     return db_conn, db_c
 
-# Ejecución de inicialización
+# Inicialización de conexiones
 db_conn, c = inicializar_todo()
-
-# Conexión a Google Sheets (usando un nombre distinto para evitar errores)
 conn_gs = st.connection("gsheets", type=GSheetsConnection)
 
-if st.button("Registrar Producto"): 
-    # Datos para el registro
-    fecha_actual = datetime.now().strftime("%d/%m/%Y")
-    
-    # 1. Guardar en SQLite (Local)
-    c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?, ?, ?, ?)",
-              (nombre_producto, cantidad_producto, precio_producto, fecha_actual))
-    db_conn.commit()
-
-    # 2. Enviar a Google Sheets (Nube)
-    nueva_fila = pd.DataFrame([{
-        "Producto": nombre_producto,
-        "Cantidad": cantidad_producto,
-        "Precio": precio_producto,
-        "Fecha": fecha_actual
-    }])
-
+def borrar_ultimo(tabla):
     try:
-        df_existente = conn_gs.read(spreadsheet="Mi_Archivador_Quevedo")
-        df_final = pd.concat([df_existente, nueva_fila], ignore_index=True)
-        conn_gs.update(spreadsheet="Mi_Archivador_Quevedo", data=df_final)
-        st.success("✅ Registrado en local y en la nube")
+        c.execute(f"SELECT MAX(id) FROM {tabla}")
+        max_id = c.fetchone()[0]
+        if max_id:
+            c.execute(f"DELETE FROM {tabla} WHERE id = ?", (max_id,))
+            db_conn.commit()
+            st.success(f"✅ Registro eliminado de {tabla}")
+            st.rerun()
+        else:
+            st.info("No hay nada que borrar.")
     except Exception as e:
-        st.warning("⚠️ Guardado solo en local (Error de conexión con Google)")
-  
+        st.error(f"Error: {e}")
+
+def limpiar_texto(texto):
+    if not texto: return ""
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(c) != 'Mn')
+
+# ==========================================
+# 3. LÓGICA DE REGISTRO (GOOGLE SHEETS + SQLITE)
+# ==========================================
+
+# Formulario de ejemplo (Asegúrate que estas variables existan en tu UI)
+with st.expander("📝 Nuevo Registro de Inventario"):
+    nombre_p = st.text_input("Producto")
+    cant_p = st.number_input("Cantidad", min_value=1)
+    prec_p = st.number_input("Precio", min_value=0.0)
+
+    if st.button("Registrar Producto"): 
+        fecha_act = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y")
+        
+        try:
+            # 1. Guardar Local
+            c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?, ?, ?, ?)",
+                      (nombre_p, cant_p, prec_p, fecha_act))
+            db_conn.commit()
+
+            # 2. Enviar a Google
+            nueva_fila = pd.DataFrame([{"Producto": nombre_p, "Cantidad": cant_p, "Precio": prec_p, "Fecha": fecha_act}])
+            df_existente = conn_gs.read(spreadsheet="Mi_Archivador_Quevedo")
+            df_final = pd.concat([df_existente, nueva_fila], ignore_index=True)
+            conn_gs.update(spreadsheet="Mi_Archivador_Quevedo", data=df_final)
+            
+            st.success("✅ Guardado en Local y Google Sheets")
+        except Exception as e:
+            st.warning(f"⚠️ Error en sincronización: {e}")
   
 
 # ==========================================
