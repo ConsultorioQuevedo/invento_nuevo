@@ -2,3 +2,5 @@ libzbar0
 tesseract-ocr
 tesseract-ocr-spa
 libglx0
+libzbar0
+libgl1-mesa-glx
