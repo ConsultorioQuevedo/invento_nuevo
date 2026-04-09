@@ -4,7 +4,9 @@ import numpy as np
 # from pyzbar import pyzbar         <-- COMENTADA (Bloquea el inicio)
 # from streamlit_camera_input_live import camera_input_live
 from datetime import datetime
+import streamlit as st
 import pandas as pd
+from streamlit_gsheets import GSheetsConnection  # <--- AÑADE ESTA LÍNEA
 import sqlite3
 import os
 import plotly.express as px
@@ -73,6 +75,38 @@ def inicializar_todo():
     return db_conn, db_c
 
 conn, c = inicializar_todo()
+
+# 1. Creamos la conexión (Pon esto antes del botón)
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+# 2. El botón que tú ya tienes en tu programa
+if st.button("Registrar Producto"): 
+    
+    # Preparamos la información nueva
+    nueva_fila = pd.DataFrame([{
+        "Producto": nombre_producto, # Asegúrate que estos nombres sean los de tus variables
+        "Cantidad": cantidad_producto,
+        "Precio": precio_producto,
+        "Fecha": datetime.now().strftime("%d/%m/%Y")
+    }])
+
+    try:
+        # LEEMOS lo que hay en la nube
+        df_existente = conn.read(spreadsheet="Mi_Archivador_Quevedo")
+        
+        # UNIMOS lo viejo con lo nuevo
+        df_final = pd.concat([df_existente, nueva_fila], ignore_index=True)
+        
+        # SUBIMOS todo de nuevo a Google
+        conn.update(spreadsheet="Mi_Archivador_Quevedo", data=df_final)
+        
+        st.success("✅ ¡Guardado en la nube de Google!")
+        
+    except Exception as e:
+        st.error(f"Error al conectar con la nube: {e}")
+        # Si falla la nube, que al menos lo guarde en el celular (SQLite)
+        cursor.execute("INSERT INTO productos ...") # Tu código viejo de SQLite
+        conn_sql.commit()
 
 # ==========================================
 # 3. INTERFAZ Y ESTILOS
