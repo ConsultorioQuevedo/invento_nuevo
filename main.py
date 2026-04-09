@@ -291,8 +291,8 @@ elif menu == "🩺 BIOMONITOR":
                 est_text = row['estado'] if row['estado'] else "Sin estado"
                 
                 # Una sola línea con iconos y separadores
-               st.markdown(f"🗓️ **{row['fecha']}** | 🕒 {row['hora']} | 🩸 **{val} {uni}** | {est_text}")
-               st.divider() # Esta línea crea la separación profesional
+            st.markdown(f"🗓️ **{row['fecha']}** | 🕒 {row['hora']} | 🩸 **{val} {uni}** | {est_text}")
+            st.divider() # Esta línea crea la separación profesional
                
         else:
             st.info("Aún no hay registros de glucosa.")
