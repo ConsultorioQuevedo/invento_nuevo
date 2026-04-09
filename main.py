@@ -378,10 +378,9 @@ elif menu == "💊 AGENDA MÉDICA":
         for idx, row in df_c.iterrows():
             st.markdown(f"👨‍⚕️ **{row['doctor']}** | 🗓️ {row['fecha']} | 🕒 {row['hora']}")
             st.divider()
-            r1.markdown(f"👨‍⚕️ **{row['doctor']}**\n\n📍 {row['clinica']}")
-            r2.write(f"📅 {row['fecha']} - {row['hora']} {row['periodo']}\n\n📝 {row['motivo']}")
-           
-
+            # Así es como se ve un código profesional: limpio y directo
+            st.markdown(f"👨‍⚕️ **{row['doctor']}** | 📍 {row['clinica']} | 🗓️ {row['fecha']} | 🕒 {row['hora']}")
+            st.divider()
     # Cierre de seguridad
     try: pass
     except: pass
