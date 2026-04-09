@@ -15,6 +15,7 @@ import pytz
 import unicodedata
 from PIL import Image
 import io
+from streamlit_gsheets import GSheetsConnection
 # import pytesseract              <-- COMENTADA (Bloquea el inicio)
 # ==========================================
 # 1. CONFIGURACIÓN E IDENTIDAD
@@ -50,6 +51,7 @@ def limpiar_texto(texto):
 # ==========================================
 # 2. BASE DE DATOS Y DIRECTORIOS
 # ==========================================
+
 def inicializar_todo():
     base = "archivador_quevedo"
     folders = ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]
@@ -61,34 +63,49 @@ def inicializar_todo():
     db_conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
     db_c = db_conn.cursor()
     
-    # Tablas Integrales
     db_c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)")
     db_c.execute("CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)")
     db_c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)")
     db_c.execute("CREATE TABLE IF NOT EXISTS archivador_index (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)")
     db_c.execute("CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)")
+    db_c.execute("CREATE TABLE IF NOT EXISTS inventario (id INTEGER PRIMARY KEY AUTOINCREMENT, producto TEXT, cantidad INTEGER, precio REAL, fecha TEXT)")
     db_c.execute("CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY, monto REAL)")
     db_c.execute("INSERT OR IGNORE INTO presupuesto (id, monto) VALUES (1, 0.0)")
     
     db_conn.commit()
     return db_conn, db_c
 
-conn, c = inicializar_todo()
+# Ejecución de inicialización
+db_conn, c = inicializar_todo()
 
-# 1. Creamos la conexión (Pon esto antes del botón)
-conn = st.connection("gsheets", type=GSheetsConnection)
+# Conexión a Google Sheets (usando un nombre distinto para evitar errores)
+conn_gs = st.connection("gsheets", type=GSheetsConnection)
 
-# 2. El botón que tú ya tienes en tu programa
 if st.button("Registrar Producto"): 
+    # Datos para el registro
+    fecha_actual = datetime.now().strftime("%d/%m/%Y")
     
-    # Preparamos la información nueva
+    # 1. Guardar en SQLite (Local)
+    c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?, ?, ?, ?)",
+              (nombre_producto, cantidad_producto, precio_producto, fecha_actual))
+    db_conn.commit()
+
+    # 2. Enviar a Google Sheets (Nube)
     nueva_fila = pd.DataFrame([{
-        "Producto": nombre_producto, # Asegúrate que estos nombres sean los de tus variables
+        "Producto": nombre_producto,
         "Cantidad": cantidad_producto,
         "Precio": precio_producto,
-        "Fecha": datetime.now().strftime("%d/%m/%Y")
+        "Fecha": fecha_actual
     }])
 
+    try:
+        df_existente = conn_gs.read(spreadsheet="Mi_Archivador_Quevedo")
+        df_final = pd.concat([df_existente, nueva_fila], ignore_index=True)
+        conn_gs.update(spreadsheet="Mi_Archivador_Quevedo", data=df_final)
+        st.success("✅ Registrado en local y en la nube")
+    except Exception as e:
+        st.warning("⚠️ Guardado solo en local (Error de conexión con Google)")
+  
   
 
 # ==========================================
