@@ -2,7 +2,6 @@ streamlit
 pandas
 plotly
 pytz
-scikit-learn
 numpy
 fpdf
 opencv-python-headless
