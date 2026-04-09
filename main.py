@@ -350,9 +350,9 @@ elif menu == "💊 AGENDA MÉDICA":
         st.subheader("📋 Lista de Tratamientos")
         df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
         for idx, row in df_m.iterrows():
-            c1, c2, c3 = st.columns([4, 4, 1])
-            c1.write(f"💊 **{row['nombre']}** ({row['dosis']})")
-            c2.write(f"⏰ {row['horario']} {row['periodo']} - {row['frecuencia']}")
+            # Una sola línea elegante para cada medicina
+            st.markdown(f"💊 **{row['nombre']}** ({row['dosis']}) | 🕒 {row['horario']} {row['periodo']}")
+            st.divider()
             
     # --- SECCIÓN 2: DEPARTAMENTO DE CITAS ---
     with tab2:
