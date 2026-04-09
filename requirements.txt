@@ -11,3 +11,6 @@ Pillow
 pytesseract
 st-gsheets-connection
 requests
+streamlit
+easyocr
+streamlit-camera-input-live
