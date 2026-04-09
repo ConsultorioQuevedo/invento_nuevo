@@ -385,62 +385,82 @@ elif menu == "💊 AGENDA MÉDICA":
     try: pass
     except: pass
   
-elif menu == "Escanear":
-    st.header("🔍 Escáner Médico Inteligente")
-    st.info("Este escáner detecta Códigos de Barras, QR y Texto en recetas.")
+# --- MÓDULO ESCÁNER IA: LUIS RAFAEL + FARMACIAS + GMAIL ---
+elif menu == "📸 ESCÁNER IA":
+    st.header("📸 Estación de Escaneo IA")
 
-    # 1. Selector de categoría para el archivador
-    tipo_doc = st.selectbox("Clasificar como:", 
-                            ["Receta Médica", "Analítica", "Cita", "Resultado"])
+    # 1. TUS DATOS OFICIALES
+    MI_NUMERO = "18092714672"
+    MI_GMAIL = "tu_correo@gmail.com" # <--- Pon tu correo real aquí
+    
+    # DATOS FARMACIAS
+    F_VALUED = "18495060398"
+    F_GBC = "18296555546"
 
-    # 2. El "Ojo": Cámara trasera forzada y en vivo
-    imagen_capturada = camera_input_live(
-        show_controls=False,
-        facing_mode="environment",
-        key="escanner_pro_medico"
-    )
+    # 2. BASE DE DATOS
+    c.execute("CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, fecha TEXT)")
+    conn.commit()
 
-    if imagen_capturada:
-        # Convertir imagen para procesamiento
-        bytes_data = imagen_capturada.getvalue()
-        cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+    # 3. CÁMARA (Para forzar la trasera, asegúrate de aceptar permisos en el cell)
+    foto = st.camera_input("Enfoca el documento (Cámara Trasera)", key="cam_trasera_final")
+
+    if foto:
+        st.info(f"💡 IA Activa para: {MI_NUMERO}")
         
-        # --- PROCESAMIENTO AGRESIVO ---
-        gris = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
-        # Umbralizado para resaltar letras y barras (blanco y negro puro)
-        procesada = cv2.threshold(gris, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-
-        # 3. INTENTO 1: Buscar Códigos de Barras/QR
-        codigos = pyzbar.decode(procesada)
+        ca, cb = st.columns(2)
+        tipo_d = ca.selectbox("Clasificar:", ["Receta Médica", "Cotización", "Laboratorio"], label_visibility="collapsed")
         
-        if codigos:
-            for codigo in codigos:
-                dato = codigo.data.decode('utf-8')
-                st.success(f"✅ Código {codigo.type} detectado")
-                resultado_final = dato
+        if cb.button("💾 GUARDAR Y ARCHIVAR", use_container_width=True):
+            f_e = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y %H:%M")
+            c.execute("INSERT INTO archivos (tipo, fecha) VALUES (?,?)", (tipo_d, f_e))
+            conn.commit()
+            st.rerun()
+
+        st.divider()
+        
+        # 4. BOTONES DE ACCIÓN (WhatsApp y Gmail)
+        st.subheader("🚀 Solicitar a Farmacias")
+        msg = f"Hola, soy Luis Rafael (Tel: {MI_NUMERO}). Adjunto receta para cotizar."
+        
+        # Tres columnas para que quepan en una sola fila del celular
+        q1, q2, q3 = st.columns(3)
+        
+        with q1: # Farmacia Valued
+            st.markdown(f'<a href="https://wa.me/{F_VALUED}?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#0047AB;color:white;padding:10px;text-align:center;border-radius:8px;font-weight:bold;font-size:11px;">🏥 VALUED</div></a>', unsafe_allow_html=True)
+                
+        with q2: # Farmacia GBC
+            st.markdown(f'<a href="https://wa.me/{F_GBC}?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#E31E24;color:white;padding:10px;text-align:center;border-radius:8px;font-weight:bold;font-size:11px;">💊 GBC</div></a>', unsafe_allow_html=True)
+
+        with q3: # Tu Gmail
+            st.markdown(f'<a href="https://mail.google.com/mail/?view=cm&fs=1&to={MI_GMAIL}&su=Receta+Luis+Rafael&body={msg}" target="_blank" style="text-decoration:none;"><div style="background:#DB4437;color:white;padding:10px;text-align:center;border-radius:8px;font-weight:bold;font-size:11px;">📧 GMAIL</div></a>', unsafe_allow_html=True)
+
+    st.divider()
+
+    # 5. HISTORIAL CON BOTÓN DE BORRADO LATERAL
+    st.subheader("📋 Historial de Escaneos")
+    try:
+        df_a = pd.read_sql_query("SELECT * FROM archivos ORDER BY id DESC", conn)
+        if not df_a.empty:
+            for idx, row in df_a.iterrows():
+                # Diseño de 3 columnas para que el botón de basura quede al lado
+                r1, r2, r3 = st.columns([3, 5, 1])
+                r1.write(f"📅 {row['fecha']}")
+                r2.write(f"📄 **{row['tipo']}**")
+                if r3.button("🗑️", key=f"del_a_{row['id']}"):
+                    c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
+                    conn.commit()
+                    st.rerun()
         else:
-            # 4. INTENTO 2: Si no hay códigos, leer letras (OCR)
-            st.warning("No se detectó código. Leyendo texto de la receta...")
-            with st.spinner("Traduciendo letras..."):
-                reader = easyocr.Reader(['es']) # Configurado para español
-                lectura = reader.readtext(cv2_img)
-                # Unimos todas las palabras encontradas en un solo texto limpio
-                resultado_final = " ".join([res[1] for res in lectura])
+            st.info("No hay documentos guardados.")
+    except:
+        pass
 
-        # 5. RESULTADO Y ARCHIVADO
-        if resultado_final:
-            st.markdown("### 📄 Contenido Extraído:")
-            texto_para_db = st.text_area("Puedes editar el texto si es necesario:", 
-                                         value=resultado_final, height=150)
-            
-            if st.button(f"📥 Archivar en {tipo_doc}"):
-                fecha_registro = datetime.now().strftime("%d/%m/%Y %H:%M")
-                # AQUÍ TU LÓGICA DE SQL (Ejemplo):
-                # cursor.execute("INSERT INTO archivo (categoria, contenido, fecha) VALUES (?, ?, ?)", 
-                #                (tipo_doc, texto_para_db, fecha_registro))
-                st.balloons()
-                st.success(f"¡{tipo_doc} guardada exitosamente!")
+    # Cierre de bloque obligatorio para evitar SyntaxError
+    try: pass
+    except: pass
 
+
+    
 
     
 
