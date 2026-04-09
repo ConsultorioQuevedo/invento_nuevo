@@ -1,14 +1,7 @@
 streamlit
-streamlit-camera-input-live
 pandas
-plotly
-pytz
-scikit-learn
-numpy
-fpdf
 opencv-python-headless
 pyzbar
-Pillow
 pytesseract
-st-gsheets-connection
-requests
+streamlit-camera-input-live
+Pillow
