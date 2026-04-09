@@ -12,4 +12,3 @@ Pillow
 pytesseract
 st-gsheets-connection
 requests
-easyocr
