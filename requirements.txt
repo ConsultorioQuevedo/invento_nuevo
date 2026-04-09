@@ -7,7 +7,6 @@ fpdf
 opencv-python-headless
 pyzbar
 Pillow
-pytesseract
 st-gsheets-connection
 requests
 streamlit-camera-input-live
