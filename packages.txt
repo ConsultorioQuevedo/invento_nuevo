@@ -1,2 +1,7 @@
 libzbar0
+tesseract-ocr
+tesseract-ocr-spa
 libgl1
+libglx0
+libglib2.0-0
+libgl1-mesa-glx
