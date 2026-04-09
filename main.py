@@ -385,65 +385,64 @@ elif menu == "💊 AGENDA MÉDICA":
     try: pass
     except: pass
   
-# --- MÓDULO ESCÁNER IA: INTELIGENCIA Y COMUNICACIÓN DIRECTA ---
-elif menu == "📸 ESCÁNER IA":
-    st.header("📸 Estación de Escaneo IA")
-    if st.button("♻️ DESHACER ÚLTIMO ESCANEO", use_container_width=True):
-        borrar_ultimo("inventario")
-    st.divider()
+elif menu == "Escanear":
+    st.header("🔍 Escáner Médico Inteligente")
+    st.info("Este escáner detecta Códigos de Barras, QR y Texto en recetas.")
 
-    # 1. CONFIGURACIÓN DE CONTACTOS (Tus datos reales)
-    MI_NUMERO = "18092714672"
-    FARMACIA_VALUED = "18495060398"
-    FARMACIA_GBC = "18296555546"
+    # 1. Selector de categoría para el archivador
+    tipo_doc = st.selectbox("Clasificar como:", 
+                            ["Receta Médica", "Analítica", "Cita", "Resultado"])
 
-    # 2. BASE DE DATOS
-    c.execute("CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, fecha TEXT)")
-    conn.commit()
+    # 2. El "Ojo": Cámara trasera forzada y en vivo
+    imagen_capturada = camera_input_live(
+        show_controls=False,
+        facing_mode="environment",
+        key="escanner_pro_medico"
+    )
 
-    # 3. INTERFAZ DE ESCANEO (Cámara Trasera)
-    st.subheader("🔍 Lector Inteligente de Documentos")
-    foto = st.camera_input("Enfoca la receta o código", key="escanner_trasero")
-
-    if foto:
-        st.info("💡 IA: Documento detectado. ¿Qué deseas hacer?")
+    if imagen_capturada:
+        # Convertir imagen para procesamiento
+        bytes_data = imagen_capturada.getvalue()
+        cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
         
-        col_e1, col_e2 = st.columns(2)
-        tipo_doc = col_e1.selectbox("Clasificar como:", ["Receta Médica", "Cotización", "Resultado Lab", "QR"])
-        
-        if col_e2.button("💾 ARCHIVAR DOCUMENTO"):
-            fecha_esc = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y %H:%M")
-            c.execute("INSERT INTO archivos (tipo, fecha) VALUES (?,?)", (tipo_doc, fecha_esc))
-            conn.commit()
-            st.success("Guardado en el historial.")
+        # --- PROCESAMIENTO AGRESIVO ---
+        gris = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
+        # Umbralizado para resaltar letras y barras (blanco y negro puro)
+        procesada = cv2.threshold(gris, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
 
-        st.divider()
+        # 3. INTENTO 1: Buscar Códigos de Barras/QR
+        codigos = pyzbar.decode(procesada)
         
-        # 4. BOTONES DE ACCIÓN REAL (SOLICITAR COTIZACIÓN)
-        st.subheader("🚀 Solicitar Cotización vía WhatsApp")
-        q1, q2 = st.columns(2)
-        
-        mensaje_base = "Hola, soy Luis Rafael. Adjunto mi receta para cotización de medicamentos."
-        
-        with q1:
-            st.markdown(f"""
-                <a href="https://wa.me/{FARMACIA_VALUED}?text={mensaje_base}" target="_blank" style="text-decoration: none;">
-                    <div style="background-color: #0047AB; color: white; padding: 15px; text-align: center; border-radius: 10px; font-weight: bold; border: 2px solid white;">
-                        🏥 FARMACIA VALUED
-                    </div>
-                </a>
-                """, unsafe_allow_html=True)
-                
-        with q2:
-            st.markdown(f"""
-                <a href="https://wa.me/{FARMACIA_GBC}?text={mensaje_base}" target="_blank" style="text-decoration: none;">
-                    <div style="background-color: #E31E24; color: white; padding: 15px; text-align: center; border-radius: 10px; font-weight: bold; border: 2px solid white;">
-                        💊 FARMACIA GBC
-                    </div>
-                </a>
-                """, unsafe_allow_html=True)
+        if codigos:
+            for codigo in codigos:
+                dato = codigo.data.decode('utf-8')
+                st.success(f"✅ Código {codigo.type} detectado")
+                resultado_final = dato
+        else:
+            # 4. INTENTO 2: Si no hay códigos, leer letras (OCR)
+            st.warning("No se detectó código. Leyendo texto de la receta...")
+            with st.spinner("Traduciendo letras..."):
+                reader = easyocr.Reader(['es']) # Configurado para español
+                lectura = reader.readtext(cv2_img)
+                # Unimos todas las palabras encontradas en un solo texto limpio
+                resultado_final = " ".join([res[1] for res in lectura])
 
-    st.divider()
+        # 5. RESULTADO Y ARCHIVADO
+        if resultado_final:
+            st.markdown("### 📄 Contenido Extraído:")
+            texto_para_db = st.text_area("Puedes editar el texto si es necesario:", 
+                                         value=resultado_final, height=150)
+            
+            if st.button(f"📥 Archivar en {tipo_doc}"):
+                fecha_registro = datetime.now().strftime("%d/%m/%Y %H:%M")
+                # AQUÍ TU LÓGICA DE SQL (Ejemplo):
+                # cursor.execute("INSERT INTO archivo (categoria, contenido, fecha) VALUES (?, ?, ?)", 
+                #                (tipo_doc, texto_para_db, fecha_registro))
+                st.balloons()
+                st.success(f"¡{tipo_doc} guardada exitosamente!")
+
+
+    
 
     # 5. HISTORIAL DE ARCHIVOS
     st.subheader("📋 Historial de Escaneos")
