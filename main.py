@@ -1,11 +1,11 @@
 import streamlit as st
 import cv2
 import numpy as np
-from pyzbar import pyzbar # Para códigos de barra
+# from pyzbar import pyzbar         <-- COMENTADA (Bloquea el inicio)
+# from streamlit_camera_input_live import camera_input_live
 from datetime import datetime
 import pandas as pd
 import sqlite3
-# import easyocr  <-- ESTA LÍNEA DABA EL ERROR. La quitamos porque usaremos Pytesseract que es más ligero.
 import os
 import plotly.express as px
 from fpdf import FPDF
@@ -14,8 +14,7 @@ import pytz
 import unicodedata
 from PIL import Image
 import io
-import pytesseract # Este es el que usaremos para las recetas de solo letras
-
+# import pytesseract              <-- COMENTADA (Bloquea el inicio)
 # ==========================================
 # 1. CONFIGURACIÓN E IDENTIDAD
 # ==========================================
