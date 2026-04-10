@@ -224,11 +224,11 @@ elif menu == "💰 FINANZAS":
     st.header("💰 Ingeniería Financiera: Control de Capital")
     st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
 
-    # --- 1. MOTOR DE CÁLCULO DE PRESUPUESTO (EL CEREBRO) ---
+    # --- 1. MOTOR DE CÁLCULO DE PRESUPUESTO ---
     def obtener_presupuesto():
         c.execute("SELECT monto FROM presupuesto WHERE id = 1")
         res = c.fetchone()
-        return res[0] if res else 0.0
+        return float(res[0]) if res else 0.0
 
     def actualizar_presupuesto_maestro(monto_cambio):
         nuevo_total = obtener_presupuesto() + monto_cambio
@@ -244,10 +244,14 @@ elif menu == "💰 FINANZAS":
         with col_m1:
             st.metric("💎 CAPITAL TOTAL", f"RD$ {capital_itinerante:,.2f}")
         with col_m2:
-            # Análisis de flujo del mes actual
-            mes_act = datetime.now().strftime('-%m-')
-            df_mes = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas WHERE fecha LIKE ? AND monto < 0", conn, params=(f"%{mes_act}%",))
-            gastos_mes = abs(df_mes['total'][0]) if df_mes['total'][0] else 0.0
+            # Corrección: Búsqueda de gastos del mes actual de forma más precisa
+            mes_act = datetime.now().strftime('%Y-%m') 
+            df_mes = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas WHERE fecha LIKE ? AND monto < 0", 
+                                       conn, params=(f"{mes_act}%",))
+            
+            # Manejo de valores Nulos en el total
+            valor_gastos = df_mes['total'].iloc[0]
+            gastos_mes = abs(float(valor_gastos)) if valor_gastos is not None else 0.0
             st.metric("📉 GASTOS DEL MES", f"RD$ {gastos_mes:,.2f}", delta_color="inverse")
         with col_m3:
             estado_caja = "🔵 ESTABLE" if capital_itinerante > 10000 else "🔴 CRÍTICO"
@@ -255,34 +259,34 @@ elif menu == "💰 FINANZAS":
 
     st.divider()
 
-    # --- 3. REGISTRO DE TRANSACCIONES CON AFECTACIÓN INMEDIATA ---
+    # --- 3. REGISTRO DE TRANSACCIONES ---
     with st.expander("➕ EJECUTAR NUEVA OPERACIÓN BANCARIA", expanded=True):
         col_f1, col_f2 = st.columns(2)
         with col_f1:
-            tipo_op = st.radio("Naturaleza del Movimiento:", ["GASTO (Resta)", "INGRESO (Suma)"], horizontal=True)
-            monto_op = st.number_input("Monto de la Operación (RD$):", min_value=0.0, step=500.0)
+            tipo_op = st.radio("Naturaleza:", ["GASTO (Resta)", "INGRESO (Suma)"], horizontal=True)
+            monto_op = st.number_input("Monto (RD$):", min_value=0.0, step=500.0)
         
         with col_f2:
-            categoria_op = st.selectbox("Categoría Contable:", 
+            categoria_op = st.selectbox("Categoría:", 
                 ["Supermercado", "Salud/Medicinas", "Combustible", "Servicios (Luz/Agua)", "Cobro/Ingresos", "Otros"])
-            fecha_op = st.date_input("Fecha Contable:", datetime.now(ZONA_HORARIA))
+            # Usar la ZONA_HORARIA definida al inicio
+            fecha_op = st.date_input("Fecha:", datetime.now(ZONA_HORARIA))
 
         if st.button("🔐 VALIDAR Y EJECUTAR TRANSACCIÓN", use_container_width=True):
             if monto_op > 0:
                 try:
-                    # Lógica de Signo Robusta
                     monto_final = -abs(monto_op) if "GASTO" in tipo_op else abs(monto_op)
                     f_str = fecha_op.strftime('%Y-%m-%d')
 
-                    # A. Registro en Libro Diario (Local)
+                    # A. Local
                     c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?, ?, ?, ?)",
                               (tipo_op, categoria_op, monto_final, f_str))
                     
-                    # B. AFECTACIÓN AL PRESUPUESTO MAESTRO (Suma o Resta real)
+                    # B. Presupuesto
                     nuevo_balance = actualizar_presupuesto_maestro(monto_final)
 
-                    # C. Sincronización en Espejo (Google Sheets)
-                    if conn_google:
+                    # C. Nube (Verificando que existe la conexión y la función)
+                    try:
                         paquete_nube = {
                             "FECHA": f_str,
                             "DETALLE": categoria_op,
@@ -292,34 +296,40 @@ elif menu == "💰 FINANZAS":
                             "USUARIO": NOMBRE_PROPIETARIO
                         }
                         registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
+                    except NameError:
+                        st.info("☁️ Sincronización de nube no configurada aún.")
 
-                    st.success(f"✅ Transacción Procesada. Nuevo Capital: RD$ {nuevo_balance:,.2f}")
+                    st.success(f"✅ Procesado. Nuevo Capital: RD$ {nuevo_balance:,.2f}")
                     st.toast("Actualizando bóveda...")
+                    import time
                     time.sleep(1)
                     st.rerun()
 
                 except Exception as e:
-                    st.error(f"🚨 Fallo en el Motor Financiero: {e}")
+                    st.error(f"🚨 Fallo en el Motor: {e}")
             else:
-                st.warning("⚠️ El monto debe ser superior a cero para procesar.")
+                st.warning("⚠️ El monto debe ser superior a cero.")
 
     # --- 4. AUDITORÍA DE MOVIMIENTOS ---
     st.subheader("📋 Libro Mayor (Últimos Movimientos)")
     df_history = pd.read_sql_query("SELECT fecha, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 10", conn)
     
     if not df_history.empty:
-        # Estilo profesional: Rojo para negativos, verde para positivos
         def color_monto(val):
             color = 'red' if val < 0 else 'green'
             return f'color: {color}; font-weight: bold'
         
-        st.dataframe(df_history.style.applymap(color_monto, subset=['monto']).format({'monto': 'RD$ {:,.2f}'}), 
-                     use_container_width=True, hide_index=True)
+        # CORRECCIÓN: .map() en lugar de .applymap() para evitar el AttributeError
+        st.dataframe(
+            df_history.style.map(color_monto, subset=['monto']).format({'monto': 'RD$ {:,.2f}'}), 
+            use_container_width=True, 
+            hide_index=True
+        )
     
-    # --- 5. AJUSTE MANUAL DE PRESUPUESTO (SOLO EMERGENCIA) ---
+    # --- 5. AJUSTE MANUAL ---
     with st.popover("⚙️ Ajuste de Auditoría"):
-        st.write("Use esto solo para corregir el capital inicial o errores de saldo.")
-        nuevo_valor_base = st.number_input("Corregir Capital Total a:", value=capital_itinerante)
+        st.write("Solo para correcciones de saldo inicial.")
+        nuevo_valor_base = st.number_input("Corregir Capital Total a:", value=float(capital_itinerante))
         if st.button("Confirmar Ajuste Maestro"):
             c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_valor_base,))
             conn.commit()
@@ -328,19 +338,6 @@ elif menu == "💰 FINANZAS":
    
 
     
-          
-
-    
-   
-    
-   
-    
-  
-           
-   
-  
-
-
 # --- MÓDULO BIOMONITOR: RECONSTRUCCIÓN ANTI-ERRORES ---
 elif menu == "🩸 BIOMONITOR":
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
