@@ -343,9 +343,9 @@ if st.button("Confirmar Ajuste Maestro"):
 
 # --- BOTÓN DE SEGURIDAD: BORRAR ÚLTIMO MOVIMIENTO ---
 st.divider()
-    with st.expander("🗑️ Corrección de Finanzas"):
-        st.info("Utiliza este botón si registraste mal el último ingreso o gasto.")
-        if st.button("❌ BORRAR ÚLTIMO MOVIMIENTO", use_container_width=True, key="btn_del_fin"):
+       with st.expander("🗑️ Corrección de Finanzas"):
+            st.info("Utiliza este botón si registraste mal el último ingreso o gasto.")
+         if st.button("❌ BORRAR ÚLTIMO MOVIMIENTO", use_container_width=True, key="btn_del_fin"):
             try:
                 # 1. Localizamos el último ID en la tabla finanzas
                 c.execute("SELECT id, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 1")
