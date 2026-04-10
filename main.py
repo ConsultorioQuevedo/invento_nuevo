@@ -335,7 +335,11 @@ elif menu == "💰 FINANZAS":
             conn.commit()
             st.rerun()
 
-   
+if st.button("Confirmar Ajuste Maestro"):
+            # LÍNEA 334 CORRECTA:
+            c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_valor_base,))
+            conn.commit()
+            st.rerun()   
 
     
 # --- MÓDULO BIOMONITOR: RECONSTRUCCIÓN ANTI-ERRORES ---
