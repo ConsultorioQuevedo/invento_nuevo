@@ -553,33 +553,44 @@ elif menu == "🤖 ASISTENTE":
 
     st.divider()
 
-    # --- 2. ANÁLISIS DE DATOS ---
-    st.subheader("📊 Análisis de Situación Actual")
-    col_an1, col_an2, col_an3 = st.columns(3)
+  # --- 2. ANÁLISIS DE DATOS (VISUALIZACIÓN PRO) ---
+    st.subheader("📊 Panel de Control Visual")
+    
+    tab_salud, tab_finanzas = st.tabs(["🩸 Tendencia de Salud", "💰 Flujo de Caja"])
 
-    with col_an1:
-        st.markdown("**Salud (Comparativa)**")
-        df_comp = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 2", conn)
-        if len(df_comp) == 2:
-            actual, anterior = int(df_comp['valor'][0]), int(df_comp['valor'][1])
-            dif = actual - anterior
-            st.metric("Nivel Actual", f"{actual} mg/dL", f"{dif:+.1f}", delta_color="inverse" if dif > 0 else "normal")
+    with tab_salud:
+        # Gráfica de Glucosa (Últimos 15 registros)
+        df_graf_glu = pd.read_sql_query("""
+            SELECT fecha, valor FROM glucosa 
+            ORDER BY id DESC LIMIT 15
+        """, conn)
+        
+        if not df_graf_glu.empty:
+            # Invertimos para que el tiempo corra de izquierda a derecha
+            df_graf_glu = df_graf_glu.iloc[::-1] 
+            st.line_chart(df_graf_glu.set_index('fecha'), color="#0047AB")
+            st.caption("📈 Variación de tus niveles de azúcar en los últimos registros.")
         else:
-            st.write("Faltan datos")
+            st.info("Aún no hay datos de glucosa para graficar.")
 
-    with col_an2:
-        st.markdown("**Finanzas (Mes)**")
-        mes_actual = datetime.now().strftime('-%m-')
-        df_g = pd.read_sql_query("SELECT SUM(monto) FROM finanzas WHERE fecha LIKE ? AND monto < 0", conn, params=(f"%{mes_actual}%",))
-        total_g = abs(df_g.iloc[0,0]) if df_g.iloc[0,0] else 0
-        st.metric("Gasto Mensual", f"RD$ {total_g:,.2f}")
-
-    with col_an3:
-        st.markdown("**Bóveda Digital**")
-        cant_docs = pd.read_sql_query("SELECT COUNT(*) FROM archivos", conn).iloc[0,0]
-        st.write(f"📂 **{cant_docs}** documentos")
+    with tab_finanzas:
+        # Gráfica de Gastos por Categoría
+        df_graf_fin = pd.read_sql_query("""
+            SELECT categoria, SUM(monto) as total FROM finanzas 
+            WHERE monto < 0 GROUP BY categoria
+        """, conn)
+        
+        if not df_graf_fin.empty:
+            # Convertimos gastos a positivo para que la barra se vea bien
+            df_graf_fin['total'] = df_graf_fin['total'].abs()
+            st.bar_chart(df_graf_fin.set_index('categoria'), color="#E31E24")
+            st.caption("🛒 Distribución de tus gastos por categoría.")
+        else:
+            st.info("No hay gastos registrados este mes.")
 
     st.divider()
+
+   
 
     # --- 3. BÚSQUEDA Y FARMACIAS ---
     col_bus, col_far = st.columns([2, 1])
