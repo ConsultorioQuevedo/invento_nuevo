@@ -21,21 +21,26 @@ from streamlit_gsheets import GSheetsConnection
 ## ==========================================
 # 1. CONFIGURACIÓN E IDENTIDAD
 # ==========================================
+
+# Configuración de la página (Debe ser lo primero)
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
 
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 
+# Manejo de Zona Horaria
 try:
     ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
-except:
+    hora_actual = datetime.now(ZONA_HORARIA)
+except Exception:
     ZONA_HORARIA = pytz.utc 
+    hora_actual = datetime.now(ZONA_HORARIA)
     st.warning("⚠️ Zona horaria no encontrada, usando UTC.")
 
 # URL Directa de tu Google Sheet
 URL_NUBE = "https://docs.google.com/spreadsheets/d/18030cQtLcVWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbl/edit"
 
-# ==========================================
+=======
 # 2. BASE DE DATOS (PROTECCIÓN TOTAL)
 # ==========================================
 
