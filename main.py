@@ -23,76 +23,50 @@ NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
 
+# URL Directa de tu Google Sheet (Más segura que el nombre)
+URL_NUBE = "https://docs.google.com/spreadsheets/d/18030cQtLcVWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbl/edit"
+
 # ==========================================
 # 2. BASE DE DATOS (PROTECCIÓN TOTAL)
 # ==========================================
 
-# Muevo la conexión aquí arriba para que la función la encuentre
 try:
     conn_google = st.connection("gsheets", type=GSheetsConnection)
-except:
+except Exception as e:
     conn_google = None
+    st.warning("⚠️ Conexión a la nube en espera (Modo Local activo)")
 
 def registrar_en_nube_exacto(datos_dict):
     try:
-        # 1. Definimos los nombres que tú confirmaste
-        archivo_drive = "Mi_Archivador_Quevedo"
-        pestaña_excel = "DB_QUEVEDO1" # <--- CORREGIDO: DB_QUEVEDO1
-        
-        # 2. Conectamos apuntando directamente a esa pestaña
-        df_nube = conn_google.read(spreadsheet=archivo_drive, worksheet=pestaña_excel)
-        
-        # 3. Creamos la fila con los datos nuevos
+        pestaña_excel = "DB_QUEVEDO1"
+        # Leemos la nube usando la URL directa
+        df_nube = conn_google.read(spreadsheet=URL_NUBE, worksheet=pestaña_excel)
         nueva_fila = pd.DataFrame([datos_dict])
-        
-        # 4. Unimos la información
         df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
-        
-        # 5. Subimos los datos a esa pestaña específica
-        conn_google.update(spreadsheet=archivo_drive, worksheet=pestaña_excel, data=df_final)
-        
-        st.success(f"✅ Guardado en {archivo_drive} -> Hoja: {pestaña_excel}")
-        
+        # Actualizamos
+        conn_google.update(spreadsheet=URL_NUBE, worksheet=pestaña_excel, data=df_final)
+        st.success(f"✅ Sincronizado en la Nube -> {pestaña_excel}")
     except Exception as e:
-        # Si sale este error, revisa que 'DB_QUEVEDO1' no tenga espacios extra
-        st.error(f"❌ Error de conexión: {e}")
-
-# --- DENTRO DE TU BOTÓN DE REGISTRO ---
-# Nota: Asegúrate que las variables nombre_producto, etc., estén definidas en tu código
-if st.button("Registrar Producto"):
-    # Preparamos el diccionario con los nombres de tus columnas en Excel
-    datos_a_enviar = {
-        "Producto": nombre_producto, 
-        "Cantidad": cantidad_producto,
-        "Precio": precio_producto,
-        "Fecha": datetime.now().strftime("%d/%m/%Y")
-    }
-    
-    # Ejecutamos la función con los nombres corregidos
-    registrar_en_nube_exacto(datos_a_enviar)
+        st.error(f"❌ Error de sincronización: {e}")
 
 def inicializar_todo():
-    # Crear carpetas si no existen
+    # Carpetas esenciales
     base = "archivador_quevedo"
-    folders = ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]
+    folders = ["BIOMONITOR", "FINANZAS", "ARCHIVADOR", "ESCANER"]
     if not os.path.exists(base):
         os.makedirs(base)
     for f in folders:
         os.makedirs(os.path.join(base, f), exist_ok=True)
     
-    # CONEXIÓN LOCAL (Tu base de datos de siempre)
     conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
     c = conn.cursor()
     
-    # Crear todas las tablas para que NADA dé error de "NameError" o "Table not found"
+    # TABLAS PURIFICADAS (Sin Citas ni Medicamentos)
     tablas = [
-        "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)",
-        "CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)",
-        "CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, dosis INTEGER, frecuencia TEXT, hora_toma TEXT)",
+        "CREATE TABLE IF NOT EXISTS biomonitor (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)",
         "CREATE TABLE IF NOT EXISTS archivador_index (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)",
         "CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)",
         "CREATE TABLE IF NOT EXISTS inventario (id INTEGER PRIMARY KEY AUTOINCREMENT, producto TEXT, cantidad INTEGER, precio REAL, fecha TEXT)",
-        "CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, fecha TEXT, categoria TEXT, tipo TEXT)",
         "CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY, monto REAL)",
         "INSERT OR IGNORE INTO presupuesto (id, monto) VALUES (1, 0.0)"
     ]
@@ -103,7 +77,6 @@ def inicializar_todo():
     conn.commit()
     return conn, c
 
-# Lanzamos la base de datos local con los nombres 'conn' y 'c'
 conn, c = inicializar_todo()
 
 # ==========================================
@@ -124,35 +97,27 @@ def borrar_ultimo(tabla):
     except Exception as e:
         st.error(f"Error al borrar: {e}")
 
-def limpiar_texto(texto):
-    if not texto: return ""
-    return "".join(ch for ch in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(ch) != 'Mn')
-
-# Esta función es la que usaremos para mandar datos a la nube sin romper el programa
-def sincronizar_nube(nombre_hoja, datos_dict):
-    if conn_google:
-        try:
-            df_nube = conn_google.read(spreadsheet="Mi_Archivador_Quevedo", worksheet=nombre_hoja)
-            df_actualizado = pd.concat([df_nube, pd.DataFrame([datos_dict])], ignore_index=True)
-            conn_google.update(spreadsheet="Mi_Archivador_Quevedo", worksheet=nombre_hoja, data=df_actualizado)
-        except:
-            pass # Si falla Google, el usuario ni se entera, lo local sigue vivo
 # ==========================================
-# 3. INTERFAZ Y ESTILOS
+# 4. INTERFAZ Y ESTILOS
 # ==========================================
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
     .stButton>button { width: 100%; border-radius: 12px; background-color: #1b5e20; color: white; font-weight: bold; height: 3em; }
-    .resumen-card { background: linear-gradient(135deg, #1e2130 0%, #1b5e20 100%); padding: 20px; border-radius: 15px; border: 1px solid #4CAF50; text-align: center; margin-bottom: 10px; }
+    .resumen-card { 
+        background: linear-gradient(135deg, #1e2130 0%, #1b5e20 100%); 
+        padding: 20px; border-radius: 15px; 
+        border: 1px solid #4CAF50; 
+        text-align: center; 
+        margin-bottom: 10px; 
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# Navegación Sidebar
-st.sidebar.title("💎 QUEVEDO INTEGRAL")
-menu = st.sidebar.radio("MODULOS PRINCIPALES", 
-    ["🏠 INICIO", "💰 FINANZAS", "🩺 BIOMONITOR", "💊 AGENDA MÉDICA", "📸 ESCÁNER IA", "📂 ARCHIVADOR", "🤖 ASISTENTE"])
-
+# NAVEGACIÓN LIMPIA (Los 4 Pilares + Inicio y Asistente)
+st.sidebar.title("💎 QUEVEDO PRO")
+menu = st.sidebar.radio("MENÚ PRINCIPAL", 
+    ["🏠 INICIO", "🩺 BIOMONITOR", "💰 FINANZAS", "📂 ARCHIVADOR", "📸 ESCÁNER IA", "🤖 ASISTENTE"])
 # ==========================================
 # 4. LÓGICA DE MÓDULOS
 # ==========================================
@@ -368,85 +333,6 @@ elif menu == "🩺 BIOMONITOR":
 
  
            
-# --- MÓDULO AGENDA MÉDICA: REPARACIÓN FORZADA Y LIMPIEZA ---
-elif menu == "💊 AGENDA MÉDICA":
-    st.header("💊 Gestión Médica Integral")
-    if st.button("♻️ DESHACER ÚLTIMA CITA", use_container_width=True):
-        borrar_ultimo("citas")
-    st.divider()
-
-    # 1. REPARACIÓN DE TABLAS (Medicinas y Citas)
-    c.execute("CREATE TABLE IF NOT EXISTS medicinas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT)")
-    
-    # Reparar Medicinas
-    for col, tipo in [("dosis","TEXT"), ("frecuencia","TEXT"), ("horario","TEXT"), ("periodo","TEXT")]:
-        try: c.execute(f"ALTER TABLE medicinas ADD COLUMN {col} {tipo}")
-        except: pass
-    
-    # Reparar Citas (Esto quita el OperationalError de la línea 346)
-    for col, tipo in [("clinica","TEXT"), ("fecha","TEXT"), ("hora","TEXT"), ("periodo","TEXT"), ("motivo","TEXT")]:
-        try: c.execute(f"ALTER TABLE citas ADD COLUMN {col} {tipo}")
-        except: pass
-    conn.commit()
-
-    tab1, tab2 = st.tabs(["💊 Medicamentos", "📅 Citas Médicas"])
-
-    # --- SECCIÓN 1: MEDICAMENTOS ---
-    with tab1:
-        with st.form("form_medicina", clear_on_submit=True):
-            st.subheader("➕ Registrar Medicamento")
-            m1, m2 = st.columns(2)
-            n_med = m1.text_input("Nombre", placeholder="Ej: Metformina")
-            d_med = m2.text_input("Dosis", value="500 mg")
-            m3, m4, m5 = st.columns(3)
-            f_med = m3.selectbox("Frecuencia", ["Cada 8h", "Cada 12h", "1 vez al día", "Según necesidad"])
-            h_med = m4.selectbox("Hora ", [f"{i}:00" for i in range(1, 13)])
-            p_med = m5.selectbox("Periodo ", ["AM", "PM"])
-            if st.form_submit_button("💾 GUARDAR MEDICINA"):
-                if n_med:
-                    c.execute("INSERT INTO medicinas (nombre, dosis, frecuencia, horario, periodo) VALUES (?,?,?,?,?)",
-                              (n_med, d_med, f_med, h_med, p_med))
-                    conn.commit()
-                    st.rerun()
-
-        st.subheader("📋 Lista de Tratamientos")
-        df_m = pd.read_sql_query("SELECT * FROM medicinas", conn)
-        for idx, row in df_m.iterrows():
-            # Una sola línea elegante para cada medicina
-            st.markdown(f"💊 **{row['nombre']}** ({row['dosis']}) | 🕒 {row['horario']} {row['periodo']}")
-            st.divider()
-            
-    # --- SECCIÓN 2: DEPARTAMENTO DE CITAS ---
-    with tab2:
-        with st.form("form_cita", clear_on_submit=True):
-            st.subheader("➕ Agendar Cita")
-            c1, c2 = st.columns(2)
-            doc = c1.text_input("Doctor")
-            cli = c2.text_input("Clínica")
-            c3, c4, c5 = st.columns(3)
-            fec = c3.date_input("Fecha")
-            hor = c4.selectbox("Hora", [f"{i}:00" for i in range(1, 13)])
-            per = c5.selectbox("Periodo", ["AM", "PM"])
-            mot = st.text_input("Motivo")
-            if st.form_submit_button("📅 REGISTRAR CITA"):
-                if doc and cli:
-                    c.execute("INSERT INTO citas (doctor, clinica, fecha, hora, periodo, motivo) VALUES (?,?,?,?,?,?)",
-                              (doc, cli, str(fec), hor, per, mot))
-                    conn.commit()
-                    st.rerun()
-
-        st.subheader("🗓️ Próximas Visitas")
-        df_c = pd.read_sql_query("SELECT * FROM citas ORDER BY fecha ASC", conn)
-        for idx, row in df_c.iterrows():
-            st.markdown(f"👨‍⚕️ **{row['doctor']}** | 🗓️ {row['fecha']} | 🕒 {row['hora']}")
-            st.divider()
-            # Así es como se ve un código profesional: limpio y directo
-            st.markdown(f"👨‍⚕️ **{row['doctor']}** | 📍 {row['clinica']} | 🗓️ {row['fecha']} | 🕒 {row['hora']}")
-            st.divider()
-    # Cierre de seguridad
-    try: pass
-    except: pass
   
 # --- MÓDULO ESCÁNER IA: LUIS RAFAEL + FARMACIAS + GMAIL ---
 elif menu == "📸 ESCÁNER IA":
