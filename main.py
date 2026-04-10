@@ -441,6 +441,46 @@ elif menu == "📂 ARCHIVADOR":
     if st.button("♻️ DESHACER ÚLTIMO DOCUMENTO", use_container_width=True):
         borrar_ultimo("documentos")
     st.divider()
+
+    # --- 4. ACCIÓN MAESTRA: REPORTE PDF RESTABLECIDO ---
+    if st.button("🚀 GENERAR REPORTE PDF INTEGRAL", use_container_width=True):
+        st.info("Generando expediente... Por favor espere.")
+        try:
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", 'B', 16)
+            pdf.cell(200, 10, f"REPORTE INTEGRAL - {NOMBRE_PROPIETARIO}", ln=True, align='C')
+            
+            # Sección de Salud
+            pdf.ln(10)
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(200, 10, "Historial de Salud (Glucosa):", ln=True)
+            df_pdf_salud = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 20", conn)
+            
+            pdf.set_font("Arial", '', 10)
+            for _, row in df_pdf_salud.iterrows():
+                pdf.cell(200, 8, f"Fecha: {row['fecha']} | Valor: {row['valor']} mg/dL | Estado: {row['estado']}", ln=True)
+
+            # Sección de Finanzas
+            pdf.ln(5)
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(200, 10, "Ultimos Movimientos Financieros:", ln=True)
+            df_pdf_fin = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC LIMIT 20", conn)
+            
+            pdf.set_font("Arial", '', 10)
+            for _, row in df_pdf_fin.iterrows():
+                pdf.cell(200, 8, f"{row['fecha']} | {row['categoria']} | RD$ {row['monto']}", ln=True)
+
+            # Preparar descarga
+            reporte_bin = pdf.output(dest='S').encode('latin-1')
+            st.download_button(
+                label="📥 DESCARGAR REPORTE AHORA",
+                data=reporte_bin,
+                file_name=f"Reporte_{NOMBRE_PROPIETARIO.replace(' ', '_')}.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"Error al crear el PDF: {e}")
     
     # 1. Entrada de búsqueda
     q = st.text_input("🔍 ¿Qué buscas? (ej: 'glucosa', 'doctor', 'receta')", placeholder="Escribe aquí...")
