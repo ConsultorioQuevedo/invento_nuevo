@@ -13,7 +13,6 @@ import requests
 import pytz
 from pyzbar.pyzbar import decode
 import unicodedata
-from PIL import Image
 import io
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
