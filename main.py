@@ -8,6 +8,7 @@ from PIL import Image
 import os
 import plotly.express as px
 from fpdf import FPDF
+import re 
 import requests
 import pytz
 from pyzbar.pyzbar import decode
@@ -332,106 +333,68 @@ elif menu == "🩺 BIOMONITOR":
           
 
 
+
 elif menu == "📸 ESCÁNER IA":
-    st.header("📸 Escáner IA - Control de Inventario Inteligente")
-    st.markdown("---")
-
-    # Truco para el Pixel 8: st.camera_input en móviles modernos suele permitir 
-    # alternar cámaras. Asegúrate de seleccionar la trasera en el icono del navegador.
-    img_file = st.camera_input("📷 Enfoca el código de barras (Usa el lente trasero)")
-
-    if img_file is not None:
-        # 1. PROCESAMIENTO VISUAL (Cambio de CV2 a PyZbar para evitar el error)
-        from pyzbar.pyzbar import decode
-        from PIL import Image
-        
-        # Convertimos la foto a un formato que PyZbar entienda
-        img_pil = Image.open(img_file)
-        decoded_list = decode(img_pil)
-
-        if decoded_list:
-            # Extraemos el código (asumimos el primero que vea)
-            codigo_escaneado = decoded_list[0].data.decode('utf-8')
-            tipo_codigo = decoded_list[0].type
-            st.success(f"✅ Código detectado: **{codigo_escaneado}** (Tipo: {tipo_codigo})")
-            st.divider()
-
-            # 2. INTELIGENCIA DE NEGOCIO (Tu lógica original intacta)
-            c.execute("SELECT * FROM inventario WHERE producto = ?", (codigo_escaneado,))
-            producto_existente = c.fetchone()
-
-            if producto_existente:
-                # --- CASO A: EL PRODUCTO YA EXISTE ---
-                id_prod, nombre_prod, cant_actual, precio_prod, fecha_reg = producto_existente
-                st.subheader(f"📦 Producto Encontrado: {nombre_prod}")
-                
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Cantidad Actual", cant_actual)
-                col2.metric("Precio Unitario", f"RD$ {precio_prod:,.2f}")
-                col3.write(f"🕒 *Registrado: {fecha_reg}*")
-                
-                st.markdown("### ¿Qué deseas hacer?")
-                act_col1, act_col2 = st.columns(2)
-                cant_mov = act_col1.number_input("Cantidad a mover", min_value=1, value=1, step=1)
-                
-                if act_col1.button("➕ SUMAR AL STOCK"):
-                    nueva_cant = cant_actual + cant_mov
-                    c.execute("UPDATE inventario SET cantidad = ? WHERE id = ?", (nueva_cant, id_prod))
-                    ahora = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M:%S")
-                    c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)", 
-                              (nombre_prod, "ESCANER", f"Entrada: +{cant_mov}. Total: {nueva_cant}", ahora))
-                    conn.commit()
-                    st.success(f"📥 Stock actualizado: **{nombre_prod}** (+{cant_mov})")
-                    st.rerun()
-
-                if act_col2.button("➖ RESTAR (VENTA)"):
-                    if cant_actual >= cant_mov:
-                        nueva_cant = cant_actual - cant_mov
-                        c.execute("UPDATE inventario SET cantidad = ? WHERE id = ?", (nueva_cant, id_prod))
-                        ahora = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M:%S")
-                        c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)", 
-                                  (nombre_prod, "ESCANER", f"Salida: -{cant_mov}. Total: {nueva_cant}", ahora))
-                        conn.commit()
-                        st.success(f"📤 Venta registrada: **{nombre_prod}** (-{cant_mov})")
-                        st.rerun()
-                    else:
-                        st.error("❌ No hay suficiente stock.")
-
-            else:
-                # --- CASO B: EL PRODUCTO ES NUEVO ---
-                st.warning(f"🆕 Código **{codigo_escaneado}** no registrado.")
-                with st.form("registro_nuevo_scanned", clear_on_submit=True):
-                    f_col1, f_col2 = st.columns(2)
-                    nuevo_nombre = f_col1.text_input("Nombre del Producto", placeholder="Ej: Arroz Campo 10lb")
-                    nueva_cant_init = f_col2.number_input("Cantidad Inicial", min_value=1, value=1)
-                    nuevo_precio = f_col1.number_input("Precio de Venta (RD$)", min_value=1.0, value=100.0)
-                    
-                    if st.form_submit_button("💾 REGISTRAR EN ARCHIVADOR"):
-                        if nuevo_nombre:
-                            ahora = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M:%S")
-                            c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?,?,?,?)",
-                                      (nuevo_nombre, nueva_cant_init, nuevo_precio, ahora))
-                            c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)", 
-                                      (nuevo_nombre, "NUEVO_ESCANER", f"Registro inicial: {nueva_cant_init}", ahora))
-                            conn.commit()
-                            
-                            # Sincronización Nube
-                            datos_nube = {"Fecha": ahora, "Código": codigo_escaneado, "Producto": nuevo_nombre, "Cantidad": nueva_cant_init}
-                            registrar_en_nube_exacto(datos_nube)
-                            st.success(f"✅ **{nuevo_nombre}** registrado.")
-                            st.rerun()
-        else:
-            st.info("🔍 Buscando código... Asegúrate de que el código de barras esté bien iluminado y plano.")
-
-    # Historial rápido (Logs)
-    st.divider()
-    df_logs = pd.read_sql_query("SELECT nombre, texto_ocr, fecha FROM archivador_index WHERE categoria LIKE '%ESCANER%' ORDER BY id DESC LIMIT 5", conn)
-    if not df_logs.empty:
-        st.subheader("🕒 Últimos Escaneos")
-        st.dataframe(df_logs, use_container_width=True)
-        
+    st.header("📸 Cerebro Visual Quevedo Pro")
     
+    img_file = st.camera_input("📷 Coloca el documento frente al lente trasero")
 
+    if img_file:
+        img = Image.open(img_file)
+        
+        # 1. OCR PROFUNDO
+        texto = pytesseract.image_to_string(img, lang='spa').upper()
+        
+        if texto.strip():
+            # --- MOTOR DE INTELIGENCIA (Análisis de Contenido) ---
+            categoria_detectada = "OTROS"
+            detalles_clave = ""
+
+            # Lógica de Clasificación Automática
+            if any(x in texto for x in ["LABORATORIO", "PACIENTE", "SANGRE", "MG/DL"]):
+                categoria_detectada = "SALUD"
+                # Intenta extraer el valor de la glucosa si lo ve
+                glucosa_match = re.search(r'GLUCOSA[:\s]+(\d+)', texto)
+                if glucosa_match:
+                    detalles_clave = f"Glucosa detectada: {glucosa_match.group(1)} mg/dL"
+            
+            elif any(x in texto for x in ["TOTAL", "RD$", "FACTURA", "COMPROBANTE"]):
+                categoria_detectada = "FINANZAS"
+                # Intenta extraer el monto total
+                monto_match = re.search(r'(?:TOTAL|MONTO|RD\$)\s*[:]*\s*([\d,.]+)', texto)
+                if monto_match:
+                    detalles_clave = f"Monto detectado: RD$ {monto_match.group(1)}"
+
+            # 2. RESPUESTA INTELIGENTE AL USUARIO
+            st.success(f"🧠 Sistema detectó automáticamente: **{categoria_detectada}**")
+            if detalles_clave:
+                st.info(f"🔍 **Datos extraídos:** {detalles_clave}")
+            
+            with st.expander("Ver texto completo extraído"):
+                st.write(texto)
+
+            # 3. GUARDADO AUTOMATIZADO
+            # Crea la carpeta si la IA decidió una nueva categoría
+            ruta = f"archivador_quevedo/{categoria_detectada}"
+            os.makedirs(ruta, exist_ok=True)
+
+            nombre_txt = f"{categoria_detectada}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            
+            with open(os.path.join(ruta, nombre_txt), "w", encoding="utf-8") as f:
+                f.write(f"SISTEMA QUEVEDO PRO - IA SCANNER\n")
+                f.write(f"CATEGORÍA AUTOMÁTICA: {categoria_detectada}\n")
+                f.write(f"HALLAZGOS: {detalles_clave}\n")
+                f.write("-" * 30 + "\n")
+                f.write(texto)
+
+            # 4. REGISTRO EN BASE DE DATOS
+            c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)",
+                      (nombre_txt, categoria_detectada, texto[:1000], datetime.now().strftime("%Y-%m-%d %H:%M")))
+            conn.commit()
+            
+            st.toast("Guardado y Clasificado automáticamente", icon="🤖")
+        else:
+            st.error("No pude entender el documento. Revisa la iluminación.")
     
 
   
