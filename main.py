@@ -331,129 +331,74 @@ elif menu == "🩺 BIOMONITOR":
 
 
 
+
+
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Escáner IA - Control de Inventario Inteligente")
     st.markdown("---")
 
-    # Usamos la cámara para tomar una foto del código
-    img_file = st.camera_input("📷 Enfoca el código de barras del producto")
+    img_file = st.camera_input("📷 Enfoca el código de barras")
 
     if img_file is not None:
-        # 1. PROCESAMIENTO VISUAL (Nivel 1: Lectura)
-        bytes_data = img_file.getvalue()
-        cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+        # 1. PROCESAMIENTO VISUAL REPARADO
+        image = Image.open(img_file)
+        img_array = np.array(image)
         
-        # Detector de códigos de barras de OpenCV (Librería robusta)
-        bd = cv2.BarcodeDetector()
-        retval, decoded_info, decoded_type, straight_qrcode = bd.detectAndDecode(cv2_img)
+        # Usamos pyzbar para detectar códigos de barras o QR
+        detected_codes = decode(img_array)
 
-        if retval and decoded_info[0]:
-            codigo_escaneado = decoded_info[0]
-            st.success(f"✅ Código detectado: **{codigo_escaneado}** (Tipo: {decoded_type[0]})")
+        if detected_codes:
+            # Tomamos el primer código detectado
+            codigo_escaneado = detected_codes[0].data.decode('utf-8')
+            st.success(f"✅ Código detectado: **{codigo_escaneado}**")
             st.divider()
 
-            # 2. INTELIGENCIA DE NEGOCIO (Nivel 2: Decisión)
-            # Buscamos si el producto ya existe en el Archivador
+            # 2. LÓGICA DE INVENTARIO (Búsqueda en el Archivador)
             c.execute("SELECT * FROM inventario WHERE producto = ?", (codigo_escaneado,))
             producto_existente = c.fetchone()
 
             if producto_existente:
-                # --- CASO A: EL PRODUCTO YA EXISTE ---
-                # Estructura de la tabla inventario: (id, producto, cantidad, precio, fecha)
                 id_prod, nombre_prod, cant_actual, precio_prod, fecha_reg = producto_existente
+                st.subheader(f"📦 Producto: {nombre_prod}")
                 
-                st.subheader(f"📦 Producto Encontrado: {nombre_prod}")
+                col1, col2 = st.columns(2)
+                col1.metric("Stock Actual", cant_actual)
+                col2.metric("Precio", f"RD$ {precio_prod:,.2f}")
                 
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Cantidad Actual", cant_actual)
-                col2.metric("Precio Unitario", f"RD$ {precio_prod:,.2f}")
-                col3.write(f"🕒 *Registrado: {fecha_reg}*")
+                # Acciones Rápidas
+                cant_mov = st.number_input("Cantidad", min_value=1, value=1)
+                b1, b2 = st.columns(2)
                 
-                # Acciones Inteligentes de Inventario
-                st.markdown("### ¿Qué deseas hacer?")
-                act_col1, act_col2 = st.columns(2)
-                
-                cant_mov = act_col1.number_input("Cantidad a mover", min_value=1, value=1, step=1)
-                
-                if act_col1.button("➕ SUMAR AL STOCK"):
+                if b1.button("➕ SUMAR"):
                     nueva_cant = cant_actual + cant_mov
                     c.execute("UPDATE inventario SET cantidad = ? WHERE id = ?", (nueva_cant, id_prod))
-                    
-                    # Log de actividad
-                    ahora = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M:%S")
-                    c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)", 
-                              (nombre_prod, "ESCANER", f"Entrada: +{cant_mov}. Total: {nueva_cant}", ahora))
                     conn.commit()
-                    st.success(f"📥 Stock actualizado: **{nombre_prod}** ahora tiene **{nueva_cant}** unidades.")
+                    st.success("¡Stock actualizado!")
                     st.rerun()
 
-                if act_col2.button("➖ RESTAR (VENTA)"):
+                if b2.button("➖ VENTA"):
                     if cant_actual >= cant_mov:
                         nueva_cant = cant_actual - cant_mov
                         c.execute("UPDATE inventario SET cantidad = ? WHERE id = ?", (nueva_cant, id_prod))
-                        
-                        # Log de actividad
-                        ahora = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M:%S")
-                        c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)", 
-                                  (nombre_prod, "ESCANER", f"Salida: -{cant_mov}. Total: {nueva_cant}", ahora))
                         conn.commit()
-                        st.success(f"📤 Venta registrada: **{nombre_prod}** ahora tiene **{nueva_cant}** unidades.")
+                        st.success("¡Venta registrada!")
                         st.rerun()
-                    else:
-                        st.error("❌ No hay suficiente stock para realizar la venta.")
-
             else:
-                # --- CASO B: EL PRODUCTO ES NUEVO ---
-                st.warning(f"🆕 El código **{codigo_escaneado}** no está registrado en el Archivador.")
-                st.subheader("📝 Registrar Nuevo Producto")
-                
-                with st.form("registro_nuevo_scanned", clear_on_submit=True):
-                    f_col1, f_col2 = st.columns(2)
-                    nuevo_nombre = f_col1.text_input("Nombre del Producto", placeholder="Ej: Arroz Campo 10lb")
-                    nueva_cant_init = f_col2.number_input("Cantidad Inicial", min_value=1, value=10)
-                    nuevo_precio = f_col1.number_input("Precio de Venta (RD$)", min_value=1.0, value=100.0, step=10.0)
-                    
-                    if st.form_submit_button("💾 REGISTRAR EN ARCHIVADOR"):
-                        if nuevo_nombre:
-                            ahora = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M:%S")
-                            
-                            # Registro en Inventario Local (Usamos el código como nombre temporal si no ponen uno)
-                            nombre_final = nuevo_nombre if nuevo_nombre else codigo_escaneado
-                            c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?,?,?,?)",
-                                      (nombre_final, nueva_cant_init, nuevo_precio, ahora))
-                            
-                            # Registro en el Índice (Log)
-                            c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)", 
-                                      (nombre_final, "NUEVO_ESCANER", f"Registro inicial: {nueva_cant_init} unid. a RD${nuevo_precio}", ahora))
-                            
-                            conn.commit()
-                            
-                            # Sincronización Nube (Si está activa)
-                            datos_nube = {
-                                "Fecha": ahora, "Código": codigo_escaneado, "Producto": nombre_final, 
-                                "Cantidad": nueva_cant_init, "Precio": nuevo_precio, "Propietario": NOMBRE_PROPIETARIO
-                            }
-                            registrar_en_nube_exacto(datos_nube)
-                            
-                            st.success(f"✅ Producto **{nombre_final}** registrado con éxito.")
-                            st.rerun()
-                        else:
-                            st.error("❌ Por favor, ingresa un nombre para el producto.")
+                # CASO NUEVO PRODUCTO
+                st.warning("🆕 Producto no registrado.")
+                with st.form("nuevo_p"):
+                    nom = st.text_input("Nombre del Producto")
+                    pre = st.number_input("Precio", min_value=1.0)
+                    can = st.number_input("Cantidad Inicial", min_value=1)
+                    if st.form_submit_button("💾 REGISTRAR"):
+                        ahora = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d")
+                        c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?,?,?,?)",
+                                  (nom if nom else codigo_escaneado, can, pre, ahora))
+                        conn.commit()
+                        st.success("Registrado con éxito")
+                        st.rerun()
         else:
-            st.info("No se detectó un código de barras claro. Intenta enfocar mejor o usar más luz.")
-            
-    # Historial rápido de escaneos (Logs)
-    st.divider()
-    st.subheader("🕒 Últimos Movimientos (Escáner)")
-    df_logs = pd.read_sql_query("SELECT nombre, texto_ocr, fecha FROM archivador_index WHERE categoria LIKE '%ESCANER%' ORDER BY id DESC LIMIT 5", conn)
-    if not df_logs.empty:
-        st.dataframe(df_logs, use_container_width=True)
- 
-           
-  
-
-
-        
+            st.warning("🔍 Buscando código... Asegúrate de que se vea claro y plano.")
         
       
         
