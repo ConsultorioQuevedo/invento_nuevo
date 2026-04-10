@@ -64,16 +64,15 @@ def inicializar_todo():
     conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
     c = conn.cursor()
     
-    # TABLAS PURIFICADAS (Sin Citas ni Medicamentos)
+  # TABLAS PURIFICADAS (Corregidas para que coincidan con el resto del código)
     tablas = [
-        "CREATE TABLE IF NOT EXISTS biomonitor (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)",
-        "CREATE TABLE IF NOT EXISTS archivador_index (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, categoria TEXT, texto_ocr TEXT, fecha TEXT)",
+        "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)",
+        "CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, tipo TEXT, fecha TEXT, texto_ocr TEXT)",
         "CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)",
         "CREATE TABLE IF NOT EXISTS inventario (id INTEGER PRIMARY KEY AUTOINCREMENT, producto TEXT, cantidad INTEGER, precio REAL, fecha TEXT)",
         "CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY, monto REAL)",
         "INSERT OR IGNORE INTO presupuesto (id, monto) VALUES (1, 0.0)"
-    ]
-    
+    ] 
     for sql in tablas:
         c.execute(sql)
     
