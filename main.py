@@ -101,7 +101,8 @@ def borrar_ultimo(tabla):
         st.error(f"Error al borrar: {e}")
 
 # ==========================================
-# 4. INTERFAZ Y ESTILOS
+# ==========================================
+# 4. INTERFAZ Y ESTILOS (MANTENIENDO TU DISEÑO)
 # ==========================================
 st.markdown("""
     <style>
@@ -117,64 +118,93 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# NAVEGACIÓN LIMPIA (Los 4 Pilares + Inicio y Asistente)
-st.sidebar.title("💎 QUEVEDO PRO")
+# NAVEGACIÓN (Los 4 Pilares + Gestión)
+st.sidebar.title("💎 LUIS R. QUEVEDO")
 menu = st.sidebar.radio("MENÚ PRINCIPAL", 
     ["🏠 INICIO", "🩺 BIOMONITOR", "💰 FINANZAS", "📂 ARCHIVADOR", "📸 ESCÁNER IA", "🤖 ASISTENTE"])
+
 # ==========================================
-# 4. LÓGICA DE MÓDULOS
+# 5. LÓGICA DE MÓDULOS (INICIO PERPETUO)
 # ==========================================
 
-# --- INICIO CORREGIDO PARA LUIS RAFAEL ---
 if menu == "🏠 INICIO":
-    # Definimos tu identidad real
-    NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
-    
     st.header(f"📊 Panel de Control: {NOMBRE_PROPIETARIO}")
     
-    c1, c2, c3 = st.columns(3)
-    
+    # --- CÁLCULOS HISTÓRICOS (Aquí evitamos que se ponga en 0 a las 12:00) ---
     try:
-        # Consultas a la base de datos para métricas reales
-        df_fin = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
-        df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+        # Sumamos TODO el historial de finanzas acumulado
+        total_ingresos = pd.read_sql_query("SELECT SUM(monto) FROM finanzas WHERE tipo = 'Ingreso'", conn).iloc[0,0] or 0
+        total_gastos = pd.read_sql_query("SELECT SUM(monto) FROM finanzas WHERE tipo = 'Gasto'", conn).iloc[0,0] or 0
+        balance_acumulado = total_ingresos - total_gastos
+
+        # Buscamos la última glucosa registrada sin importar la fecha
+        # Primero intentamos en 'biomonitor', si falla vamos a 'glucosa'
+        try:
+            df_glu = pd.read_sql_query("SELECT valor FROM biomonitor ORDER BY id DESC LIMIT 1", conn)
+        except:
+            df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
         
-        with c1:
-            st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-            st.metric("💰 BALANCE TOTAL", f"RD$ {df_fin['total'][0] or 0:,.2f}")
-            st.markdown('</div>', unsafe_allow_html=True)
-        with c2:
-            st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-            # Si no hay glucosa registrada, muestra 0
-            valor_g = df_glu['valor'][0] if not df_glu.empty else 0
-            st.metric("🩺 ÚLTIMA GLUCOSA", f"{valor_g} mg/dL")
-            st.markdown('</div>', unsafe_allow_html=True)
-        with c3:
-            st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-            st.metric("📅 ESTADO", "OPERATIVO")
-            st.markdown('</div>', unsafe_allow_html=True)
+        valor_g = df_glu['valor'].iloc[0] if not df_glu.empty else 0
     except Exception as e:
-        st.warning("Inicializando datos o error en base de datos...")
+        balance_acumulado, valor_g = 0, 0
+
+    # --- MÉTRICAS EN PANTALLA ---
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
+        st.metric("💰 BALANCE TOTAL", f"RD$ {balance_acumulado:,.2f}")
+        st.write("Historial Acumulado")
+        st.markdown('</div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
+        st.metric("🩺 ÚLTIMA GLUCOSA", f"{valor_g} mg/dL")
+        st.write("Último valor guardado")
+        st.markdown('</div>', unsafe_allow_html=True)
+    with c3:
+        st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
+        st.metric("📅 ESTADO", "OPERATIVO")
+        st.write("Búnker Sincronizado")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.divider()
-    
-    # --- SECCIÓN DE ENLACES REALES ---
-    st.subheader("📲 Acceso Rápido y Comunicación")
-    col_link1, col_link2, col_link3 = st.columns(3)
-    
-    # WhatsApp Personal (Configurado para República Dominicana +1)
-    # Reemplaza el '8090000000' con tu número real
-    mi_celular = "18090000000" 
-    col_link1.link_button("💬 MI WHATSAPP", f"https://wa.me/{mi_celular}?text=Hola%20Luis%20Rafael,%20revisando%20el%20Invento%20Nuevo")
-    
-    # Gmail Real
-    # Reemplaza 'tu_correo@gmail.com' con tu dirección real
-    mi_correo = "tu_correo@gmail.com"
-    col_link2.link_button("📧 MI GMAIL", f"https://mail.google.com/mail/?view=cm&fs=1&to={mi_correo}&su=Reporte%20Sistema%20Quevedo")
-    
-    # Enlace Directo a Clínica Referencia
-    col_link3.link_button("🏥 CLÍNICA REFERENCIA", "https://www.referencia.do")
 
+    # --- REGISTROS EN TIEMPO REAL (TODO EL HISTORIAL) ---
+    st.subheader("📝 Registros en Tiempo Real")
+    df_historial = pd.read_sql_query("SELECT id, tipo, categoria, monto, fecha FROM finanzas ORDER BY id DESC", conn)
+    
+    if not df_historial.empty:
+        # Mostramos la tabla completa para que la veas siempre
+        st.dataframe(df_historial, use_container_width=True, height=250)
+    else:
+        st.info("No hay datos en el historial. Comienza a registrar en el módulo de Finanzas.")
+
+    # --- BOTONES DE FUNCIÓN (Sin quitar ninguno) ---
+    st.subheader("⚙️ Gestión de Datos")
+    col_acc1, col_acc2 = st.columns(2)
+    
+    with col_acc1:
+        # Mantenemos tu función de borrado
+        if st.button("♻️ BORRAR ÚLTIMO REGISTRO"):
+            c.execute("DELETE FROM finanzas WHERE id = (SELECT MAX(id) FROM finanzas)")
+            conn.commit()
+            st.success("Último movimiento eliminado.")
+            st.rerun()
+
+    with col_acc2:
+        if st.button("📊 ACTUALIZAR VISTA"):
+            st.rerun()
+
+    # --- ENLACES DE COMUNICACIÓN ---
+    st.divider()
+    col_l1, col_l2, col_l3 = st.columns(3)
+    
+    # Cambia estos datos por los tuyos reales
+    num_wa = "18090000000" 
+    correo = "luisrafaelquevedo@gmail.com"
+
+    col_l1.link_button("💬 WHATSAPP", f"https://wa.me/{num_wa}")
+    col_l2.link_button("📧 GMAIL", f"mailto:{correo}")
+    col_l3.link_button("🏥 REFERENCIA", "https://www.referencia.do")
 
     
 # --- MÓDULO FINANZAS: INTELIGENTE Y PERSISTENTE ---
