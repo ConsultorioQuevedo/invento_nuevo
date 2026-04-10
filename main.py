@@ -339,20 +339,21 @@ elif menu == "💰 FINANZAS":
 
     
 # --- MÓDULO BIOMONITOR: RECONSTRUCCIÓN ANTI-ERRORES ---
-elif menu == "🩸 BIOMONITOR":
+# --- LÍNEA 342 CORREGIDA ---
+elif "BIOMONITOR" in menu:
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
     st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
 
-    # --- 1. ENTRADA DE DATOS (PROTEGIDA) ---
+    # --- 1. ENTRADA DE DATOS (Mantiene tu lógica original) ---
     with st.container(border=True):
         col1, col2, col3 = st.columns([2, 2, 1])
         with col1:
-            valor_g = st.number_input("Nivel de Glucosa (mg/dL):", min_value=0.0, max_value=600.0, step=1.0, key="gluc_val_input")
-            momento = st.selectbox("Contexto de la Medida:", ["Ayunas", "Post-Prandial (2h)", "Pre-Cena", "Antes de Dormir", "Otro"], key="gluc_mom_input")
+            valor_g = st.number_input("Nivel de Glucosa (mg/dL):", min_value=0.0, max_value=600.0, step=1.0)
+            momento = st.selectbox("Contexto de la Medida:", ["Ayunas", "Post-Prandial (2h)", "Pre-Cena", "Antes de Dormir", "Otro"])
         with col2:
             ahora = datetime.now(ZONA_HORARIA)
-            fecha_g = st.date_input("Fecha de Registro:", ahora.date(), key="gluc_fec_input")
-            hora_g = st.time_input("Hora Exacta:", ahora.time(), key="gluc_hor_input")
+            fecha_g = st.date_input("Fecha de Registro:", ahora.date())
+            hora_g = st.time_input("Hora Exacta:", ahora.time())
         with col3:
             st.markdown("**Estado**")
             if valor_g == 0: st.info("Esperando...")
@@ -370,18 +371,14 @@ elif menu == "🩸 BIOMONITOR":
                               (valor_g, "mg/dL", momento, f_str, h_str))
                     conn.commit()
                     
-                    # Verificación segura de conexión a la nube
-                    try:
-                        if 'conn_google' in globals() and conn_google is not None:
-                            paquete_nube = {
-                                "ID_SISTEMA": "QUEVEDO_PRO_V4", "FECHA": f_str, "HORA": h_str,
-                                "VALOR_MG_DL": valor_g, "ESTADO_MEDICO": momento,
-                                "PROPIETARIO": NOMBRE_PROPIETARIO,
-                                "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
-                            }
-                            registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
-                    except:
-                        pass # Si falla la nube, que no rompa el local
+                    if 'conn_google' in locals() or 'conn_google' in globals():
+                        paquete_nube = {
+                            "ID_SISTEMA": "QUEVEDO_PRO_V4", "FECHA": f_str, "HORA": h_str,
+                            "VALOR_MG_DL": valor_g, "ESTADO_MEDICO": momento,
+                            "PROPIETARIO": NOMBRE_PROPIETARIO,
+                            "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                        registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
                     
                     st.success(f"✅ Registro verificado: {valor_g} mg/dL")
                     import time
@@ -392,43 +389,32 @@ elif menu == "🩸 BIOMONITOR":
 
     st.divider()
 
-    # --- 3. AUDITORÍA Y GRÁFICA (EL BLINDAJE REAL) ---
+    # --- 3. AUDITORÍA Y GRÁFICA DE TENDENCIAS ---
     try:
-        # Cargamos datos crudos
+        # Traemos más datos para la gráfica (últimos 30 registros)
         df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
         
         if not df_full.empty:
-            # LIMPIEZA DE DATOS: Convertimos a string y evitamos nulos que ponen la pantalla blanca
-            df_full['fecha'] = df_full['fecha'].astype(str)
-            df_full['hora'] = df_full['hora'].astype(str)
-            
-            # El secreto: errors='coerce' convierte lo malo en 'NaT' en lugar de romper la app
-            df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'], errors='coerce')
-            
-            # Quitamos filas que no pudieron convertirse
-            df_plot = df_full.dropna(subset=['Fecha_Hora']).copy()
-            df_plot = df_plot.sort_values('Fecha_Hora')
+            # Preparar datos para la gráfica
+            df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'])
+            df_plot = df_full.sort_values('Fecha_Hora') # Orden cronológico para la línea
 
             col_tabla, col_grafica = st.columns([1, 1])
 
             with col_tabla:
                 st.subheader("📋 Últimos Registros")
-                st.dataframe(df_full[['fecha', 'hora', 'valor']].head(10), use_container_width=True, hide_index=True)
+                st.dataframe(df_full.head(10), use_container_width=True, hide_index=True)
 
             with col_grafica:
                 st.subheader("📈 Curva de Glucosa")
-                if not df_plot.empty:
-                    st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
-                else:
-                    st.warning("⚠️ Datos con formato incompatible para gráfica.")
+                st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
+                st.caption("Eje X: Tiempo | Eje Y: mg/dL")
         else:
             st.info("No hay datos suficientes para generar tendencias.")
             
     except Exception as e:
-        # Este catch evita que la pantalla se ponga blanca si la DB tiene basura
-        st.warning("⚡ Sincronizando motor de análisis...")
+        st.warning("⚡ Esperando datos para activar motor de análisis.")
 
-                  
 
 ####-----------------------------
 ##ESCANER
