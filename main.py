@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 import pandas as pd
 import sqlite3
+import pytesseract 
+from PIL import Image
 import os
 import plotly.express as px
 from fpdf import FPDF
