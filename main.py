@@ -602,29 +602,35 @@ elif menu == "🤖 ASISTENTE":
         st.markdown(f'<a href="https://wa.me/18296555546?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#E31E24;color:white;padding:10px;text-align:center;border-radius:10px;">GBC</div></a>', unsafe_allow_html=True)
 
     st.divider()
-
-    # --- 4. ACCIÓN MAESTRA: REPORTE PDF (UNA SOLA VEZ) ---
+    # --- 4. ACCIÓN MAESTRA: REPORTE PDF (CORREGIDO PARA EMOJIS) ---
     if st.button("🚀 GENERAR REPORTE PDF INTEGRAL", use_container_width=True, key="btn_pdf_final"):
         st.info("Generando reporte... Por favor espere.")
         try:
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", 'B', 16)
-            pdf.cell(200, 10, f"REPORTE INTEGRAL - {NOMBRE_PROPIETARIO}", ln=True, align='C')
+            # Limpiamos el nombre por si tiene caracteres raros
+            pdf.cell(200, 10, f"REPORTE INTEGRAL - {NOMBRE_PROPIETARIO}".encode('latin-1', 'ignore').decode('latin-1'), ln=True, align='C')
             
             # Datos Salud
             pdf.ln(10)
             pdf.set_font("Arial", 'B', 12)
             pdf.cell(200, 10, "Historial de Salud (Glucosa):", ln=True)
             df_pdf_s = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 15", conn)
+            
             pdf.set_font("Arial", '', 10)
             for _, r in df_pdf_s.iterrows():
-                pdf.cell(200, 8, f"{r['fecha']} | {r['valor']} mg/dL | {r['estado']}", ln=True)
+                # LA CLAVE: Usamos .encode('latin-1', 'ignore') para borrar emojis antes de escribir
+                linea = f"{r['fecha']} | {r['valor']} mg/dL | {r['estado']}"
+                texto_limpio = linea.encode('latin-1', 'ignore').decode('latin-1')
+                pdf.cell(200, 8, texto_limpio, ln=True)
 
-            reporte_bin = pdf.output(dest='S').encode('latin-1')
+            reporte_bin = pdf.output(dest='S').encode('latin-1', 'ignore')
             st.download_button("📥 DESCARGAR REPORTE AHORA", data=reporte_bin, file_name="Reporte_Quevedo.pdf")
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Error técnico: {e}")
+
+         
 
 
             
