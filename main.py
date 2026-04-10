@@ -18,15 +18,16 @@ from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 
 # ==========================================
+## ==========================================
 # 1. CONFIGURACIÓN E IDENTIDAD
 # ==========================================
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
 
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
-ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
+ZONA_HORARIA = pytz.timezone('America/Santo_Domino')
 
-# URL Directa de tu Google Sheet (Más segura que el nombre)
+# URL Directa de tu Google Sheet
 URL_NUBE = "https://docs.google.com/spreadsheets/d/18030cQtLcVWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbl/edit"
 
 # ==========================================
@@ -39,18 +40,19 @@ except Exception as e:
     conn_google = None
     st.warning("⚠️ Conexión a la nube en espera (Modo Local activo)")
 
-def registrar_en_nube_exacto(datos_dict):
+# CORRECCIÓN: Ahora acepta la pestaña como parámetro para no mezclar Salud con Dinero
+def registrar_en_nube_exacto(datos_dict, pestaña="DB_QUEVEDO1"):
     try:
-        pestaña_excel = "DB_QUEVEDO1"
-        # Leemos la nube usando la URL directa
-        df_nube = conn_google.read(spreadsheet=URL_NUBE, worksheet=pestaña_excel)
+        # Leemos la nube usando la URL directa y la pestaña indicada
+        df_nube = conn_google.read(spreadsheet=URL_NUBE, worksheet=pestaña)
         nueva_fila = pd.DataFrame([datos_dict])
         df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
-        # Actualizamos
-        conn_google.update(spreadsheet=URL_NUBE, worksheet=pestaña_excel, data=df_final)
-        st.success(f"✅ Sincronizado en la Nube -> {pestaña_excel}")
+        
+        # Actualizamos la hoja de Google
+        conn_google.update(spreadsheet=URL_NUBE, worksheet=pestaña, data=df_final)
+        st.success(f"✅ Sincronizado en la Nube -> {pestaña}")
     except Exception as e:
-        st.error(f"❌ Error de sincronización: {e}")
+        st.error(f"❌ Error de sincronización en {pestaña}: {e}")
 
 def inicializar_todo():
     # Carpetas esenciales
@@ -61,10 +63,11 @@ def inicializar_todo():
     for f in folders:
         os.makedirs(os.path.join(base, f), exist_ok=True)
     
+    # Conexión Local SQLite
     conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
     c = conn.cursor()
     
-  # TABLAS PURIFICADAS (Corregidas para que coincidan con el resto del código)
+    # TABLAS PURIFICADAS (Nombres unificados para evitar errores de 'Tabla no encontrada')
     tablas = [
         "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)",
         "CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, tipo TEXT, fecha TEXT, texto_ocr TEXT)",
@@ -79,6 +82,7 @@ def inicializar_todo():
     conn.commit()
     return conn, c
 
+# Ejecutar inicialización
 conn, c = inicializar_todo()
 
 # ==========================================
@@ -87,19 +91,18 @@ conn, c = inicializar_todo()
 
 def borrar_ultimo(tabla):
     try:
+        # Buscamos el ID más alto de la tabla indicada
         c.execute(f"SELECT MAX(id) FROM {tabla}")
         res = c.fetchone()
         if res and res[0]:
             c.execute(f"DELETE FROM {tabla} WHERE id = ?", (res[0],))
             conn.commit()
-            st.success(f"✅ Eliminado de {tabla}")
+            st.success(f"✅ Eliminado el último registro de: {tabla}")
             st.rerun()
         else:
-            st.info("No hay nada que borrar.")
+            st.info(f"No hay datos para borrar en {tabla}.")
     except Exception as e:
-        st.error(f"Error al borrar: {e}")
-
-# ==========================================
+        st.error(f"Error al borrar en {tabla}: {e}")
 # ==========================================
 # 4. INTERFAZ Y ESTILOS (MANTENIENDO TU DISEÑO)
 # ==========================================
@@ -208,157 +211,205 @@ if menu == "🏠 INICIO":
     
 # --- MÓDULO FINANZAS: INTELIGENTE Y PERSISTENTE ---
 elif menu == "💰 FINANZAS":
-    st.header("💰 Gestión Financiera Inteligente")
-    if st.button("♻️ DESHACER ÚLTIMO MOVIMIENTO", use_container_width=True):
-        borrar_ultimo("finanzas")
-    st.divider()
+    st.header("💰 Ingeniería Financiera: Control de Capital")
+    st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
 
-    # 1. PERSISTENCIA REAL: Asegurar tablas
-    c.execute("CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY, monto REAL)")
-    c.execute("INSERT OR IGNORE INTO presupuesto (id, monto) VALUES (1, 0.0)")
-    c.execute("CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)")
-    conn.commit()
+    # --- 1. MOTOR DE CÁLCULO DE PRESUPUESTO (EL CEREBRO) ---
+    def obtener_presupuesto():
+        c.execute("SELECT monto FROM presupuesto WHERE id = 1")
+        res = c.fetchone()
+        return res[0] if res else 0.0
 
-    # 2. INTERFAZ LIMPIA Y MENÚ INTELIGENTE
-    with st.container():
-        col1, col2, col3 = st.columns([1, 1, 1])
-        
-        tipo = col1.selectbox("Tipo", ["GASTO", "INGRESO"])
-        
-        # El menú cambia o desaparece según la elección
-        if tipo == "GASTO":
-            cat = col2.selectbox("Categoría de Gasto", ["Farmacia", "Salud", "Supermercado", "Hogar", "Transporte", "Otros"])
-        else:
-            cat = col2.text_input("Origen del Ingreso", placeholder="Ej: Pago, Depósito")
-            
-        monto = col3.number_input("Monto RD$", min_value=0.0, step=100.0)
+    def actualizar_presupuesto_maestro(monto_cambio):
+        nuevo_total = obtener_presupuesto() + monto_cambio
+        c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_total,))
+        conn.commit()
+        return nuevo_total
 
-        if st.button("🚀 REGISTRAR MOVIMIENTO"):
-            if monto > 0:
-                monto_final = -monto if tipo == "GASTO" else monto
-                fecha_hoy = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y")
-                c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?,?,?,?)",
-                          (tipo, cat, monto_final, fecha_hoy))
-                conn.commit()
-                st.rerun()
+    capital_itinerante = obtener_presupuesto()
+
+    # --- 2. DASHBOARD DE ESTADO FINANCIERO ---
+    with st.container(border=True):
+        col_m1, col_m2, col_m3 = st.columns(3)
+        with col_m1:
+            st.metric("💎 CAPITAL TOTAL", f"RD$ {capital_itinerante:,.2f}")
+        with col_m2:
+            # Análisis de flujo del mes actual
+            mes_act = datetime.now().strftime('-%m-')
+            df_mes = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas WHERE fecha LIKE ? AND monto < 0", conn, params=(f"%{mes_act}%",))
+            gastos_mes = abs(df_mes['total'][0]) if df_mes['total'][0] else 0.0
+            st.metric("📉 GASTOS DEL MES", f"RD$ {gastos_mes:,.2f}", delta_color="inverse")
+        with col_m3:
+            estado_caja = "🔵 ESTABLE" if capital_itinerante > 10000 else "🔴 CRÍTICO"
+            st.subheader(f"Status: {estado_caja}")
 
     st.divider()
 
-    # 3. CÁLCULO DE PRESUPUESTO (SUMA Y RESTA)
-    df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
-    pres_base = pd.read_sql_query("SELECT monto FROM presupuesto WHERE id = 1", conn)['monto'][0]
+    # --- 3. REGISTRO DE TRANSACCIONES CON AFECTACIÓN INMEDIATA ---
+    with st.expander("➕ EJECUTAR NUEVA OPERACIÓN BANCARIA", expanded=True):
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            tipo_op = st.radio("Naturaleza del Movimiento:", ["GASTO (Resta)", "INGRESO (Suma)"], horizontal=True)
+            monto_op = st.number_input("Monto de la Operación (RD$):", min_value=0.0, step=500.0)
+        
+        with col_f2:
+            categoria_op = st.selectbox("Categoría Contable:", 
+                ["Supermercado", "Salud/Medicinas", "Combustible", "Servicios (Luz/Agua)", "Cobro/Ingresos", "Otros"])
+            fecha_op = st.date_input("Fecha Contable:", datetime.now(ZONA_HORARIA))
+
+        if st.button("🔐 VALIDAR Y EJECUTAR TRANSACCIÓN", use_container_width=True):
+            if monto_op > 0:
+                try:
+                    # Lógica de Signo Robusta
+                    monto_final = -abs(monto_op) if "GASTO" in tipo_op else abs(monto_op)
+                    f_str = fecha_op.strftime('%Y-%m-%d')
+
+                    # A. Registro en Libro Diario (Local)
+                    c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?, ?, ?, ?)",
+                              (tipo_op, categoria_op, monto_final, f_str))
+                    
+                    # B. AFECTACIÓN AL PRESUPUESTO MAESTRO (Suma o Resta real)
+                    nuevo_balance = actualizar_presupuesto_maestro(monto_final)
+
+                    # C. Sincronización en Espejo (Google Sheets)
+                    if conn_google:
+                        paquete_nube = {
+                            "FECHA": f_str,
+                            "DETALLE": categoria_op,
+                            "MONTO": monto_final,
+                            "SALDO_RESULTANTE": nuevo_balance,
+                            "TIPO": tipo_op,
+                            "USUARIO": NOMBRE_PROPIETARIO
+                        }
+                        registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
+
+                    st.success(f"✅ Transacción Procesada. Nuevo Capital: RD$ {nuevo_balance:,.2f}")
+                    st.toast("Actualizando bóveda...")
+                    time.sleep(1)
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"🚨 Fallo en el Motor Financiero: {e}")
+            else:
+                st.warning("⚠️ El monto debe ser superior a cero para procesar.")
+
+    # --- 4. AUDITORÍA DE MOVIMIENTOS ---
+    st.subheader("📋 Libro Mayor (Últimos Movimientos)")
+    df_history = pd.read_sql_query("SELECT fecha, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 10", conn)
     
-    ingresos = df_f[df_f['monto'] > 0]['monto'].sum() if not df_f.empty else 0
-    gastos = abs(df_f[df_f['monto'] < 0]['monto'].sum()) if not df_f.empty else 0
-    balance_total = pres_base + ingresos - gastos
-
-    m1, m2, m3 = st.columns(3)
-    m1.metric("📥 INGRESOS", f"RD$ {ingresos:,.2f}")
-    m2.metric("📤 GASTOS", f"RD$ {gastos:,.2f}", delta_color="inverse")
-    m3.metric("💎 DISPONIBLE", f"RD$ {balance_total:,.2f}")
-
-    st.divider()
-
-    # 4. DISEÑO DE REGISTROS: BOTÓN AL LADO
-    st.subheader("📋 Historial de Movimientos")
-    if not df_f.empty:
-        # Mostramos los últimos primero
-        for idx, row in df_f.sort_index(ascending=False).iterrows():
-            # Una sola fila para todo el registro
-            r_col1, r_col2, r_col3, r_col4 = st.columns([1.5, 2.5, 2, 0.5])
-            
-            r_col1.write(row['fecha'])
-            r_col2.write(f"**{row['categoria']}**")
-            
-            color = "#ff4b4b" if row['monto'] < 0 else "#4CAF50"
-            r_col3.markdown(f"<span style='color:{color}; font-weight:bold;'>RD$ {abs(row['monto']):,.2f}</span>", unsafe_allow_html=True)
-            
-           
-    else:
-        st.info("No hay movimientos registrados.")
-
-    # Ajuste de base (Para que el presupuesto tenga sentido)
-    with st.expander("⚙️ AJUSTAR CAPITAL INICIAL"):
-        nuevo_p = st.number_input("Capital base en cuenta RD$", value=float(pres_base))
-        if st.button("Actualizar Capital"):
-            c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_p,))
+    if not df_history.empty:
+        # Estilo profesional: Rojo para negativos, verde para positivos
+        def color_monto(val):
+            color = 'red' if val < 0 else 'green'
+            return f'color: {color}; font-weight: bold'
+        
+        st.dataframe(df_history.style.applymap(color_monto, subset=['monto']).format({'monto': 'RD$ {:,.2f}'}), 
+                     use_container_width=True, hide_index=True)
+    
+    # --- 5. AJUSTE MANUAL DE PRESUPUESTO (SOLO EMERGENCIA) ---
+    with st.popover("⚙️ Ajuste de Auditoría"):
+        st.write("Use esto solo para corregir el capital inicial o errores de saldo.")
+        nuevo_valor_base = st.number_input("Corregir Capital Total a:", value=capital_itinerante)
+        if st.button("Confirmar Ajuste Maestro"):
+            c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_valor_base,))
             conn.commit()
             st.rerun()
 
-
-# --- MÓDULO BIOMONITOR: RECONSTRUCCIÓN ANTI-ERRORES ---
-elif menu == "🩺 BIOMONITOR":
-    st.header("🩺 Control de Glucosa y Biomonitoreo")
-    # --- BOTÓN ÚNICO DE LIMPIEZA ---
-   # Este es el botón que aparecerá arriba de la lista
-    if st.button("♻️ DESHACER ÚLTIMO REGISTRO", use_container_width=True):
-        borrar_ultimo("glucosa")
-    
-    st.divider() # Esto separa el botón de la lista de abajo
    
 
-    # 1. REPARACIÓN AUTOMÁTICA DE TABLA
-    c.execute("CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)")
     
-    # Esto asegura que si la tabla existía pero era vieja, se actualice sin morir
-    columnas_necesarias = ["unidad", "estado", "fecha", "hora"]
-    for col in columnas_necesarias:
-        try:
-            c.execute(f"ALTER TABLE glucosa ADD COLUMN {col} TEXT")
-        except:
-            pass 
-    conn.commit()
+          
 
-    # 2. ENTRADA DE DATOS
-    with st.container():
-        col_g1, col_g2, col_g3 = st.columns([1, 1, 1])
-        valor_glucosa = col_g1.number_input("Nivel de Glucosa", min_value=0.0, step=0.1, format="%.1f")
-        col_g2.markdown("<br><b>mg/dL</b>", unsafe_allow_html=True)
+    
+   
+    
+   
+    
+  
+           
+   
+  
+
+
+# --- MÓDULO BIOMONITOR: RECONSTRUCCIÓN ANTI-ERRORES ---
+elif menu == "🩸 BIOMONITOR":
+    st.header("🩸 Inteligencia Médica: Control de Glucosa")
+    st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
+
+    # --- 1. ENTRADA DE DATOS CON VALIDACIÓN ---
+    with st.container(border=True):
+        col1, col2, col3 = st.columns([2, 2, 1])
         
-        if col_g3.button("💾 REGISTRAR LECTURA"):
-            if valor_glucosa > 0:
-                # Semáforo de salud
-                if valor_glucosa > 180: est = "CRÍTICO 🔴"
-                elif valor_glucosa > 130: est = "ALERTA 🟡"
-                elif valor_glucosa >= 70: est = "NORMAL 🟢"
-                else: est = "BAJO 🔵"
-                
-                f_actual = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y")
-                h_actual = datetime.now(ZONA_HORARIA).strftime("%I:%M %p")
-                
-                c.execute("INSERT INTO glucosa (valor, unidad, estado, fecha, hora) VALUES (?,?,?,?,?)",
-                          (valor_glucosa, "mg/dL", est, f_actual, h_actual))
-                conn.commit()
-                st.rerun()
+        with col1:
+            valor_g = st.number_input("Nivel de Glucosa (mg/dL):", min_value=0.0, max_value=600.0, step=1.0)
+            momento = st.selectbox("Contexto de la Medida:", ["Ayunas", "Post-Prandial (2h)", "Pre-Cena", "Antes de Dormir", "Otro"])
+        
+        with col2:
+            fecha_g = st.date_input("Fecha de Registro:", datetime.now(ZONA_HORARIA))
+            hora_g = st.time_input("Hora Exacta:", datetime.now(ZONA_HORARIA).time())
+            
+        with col3:
+            st.markdown("**Estado**")
+            # LÓGICA INTELIGENTE: Clasificación automática
+            if valor_g == 0: st.info("Esperando...")
+            elif valor_g < 70: st.error("⚠️ HIPOGLUCEMIA")
+            elif valor_g <= 130: st.success("✅ NORMAL")
+            elif valor_g <= 180: st.warning("🟡 ELEVADA")
+            else: st.error("🚨 CRÍTICA")
+
+        # --- 2. MOTOR DE GUARDADO DUAL (LOCAL + NUBE) ---
+        if st.button("🔐 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True):
+            if valor_g > 20: # Validación de seguridad mínima
+                try:
+                    # Preparación de datos normalizados
+                    f_str = fecha_g.strftime('%Y-%m-%d')
+                    h_str = hora_g.strftime('%H:%M')
+                    
+                    # A. Guardado en el "Búnker" Local (SQLite)
+                    c.execute("""
+                        INSERT INTO glucosa (valor, unidad, estado, fecha, hora) 
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (valor_g, "mg/dL", momento, f_str, h_str))
+                    conn.commit()
+                    
+                    # B. Sincronización Reflejada a Google Sheets
+                    if conn_google:
+                        paquete_nube = {
+                            "ID_SISTEMA": "QUEVEDO_PRO_V4",
+                            "FECHA": f_str,
+                            "HORA": h_str,
+                            "VALOR_MG_DL": valor_g,
+                            "ESTADO_MEDICO": momento,
+                            "PROPIETARIO": NOMBRE_PROPIETARIO,
+                            "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                        registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
+                        st.toast("☁️ Sincronización en la nube completada")
+                    
+                    st.success(f"✅ Registro verificado y guardado con éxito: {valor_g} mg/dL")
+                    st.balloons()
+                    time.sleep(1)
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"🚨 Error Crítico en el motor de datos: {e}")
+            else:
+                st.warning("⚠️ Valor fuera de rango lógico para un humano vivo. Verifique el dato.")
 
     st.divider()
 
-    # 3. VISUALIZACIÓN DE DATOS (Con manejo de errores para evitar pantalla en blanco)
-    try:
-        df_g = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC", conn)
-        
-        if not df_g.empty:
-            # Gráfico con manejo de excepciones
-            fig = px.line(df_g, x="fecha", y="valor", title="📈 Evolución de Glucosa", markers=True)
-            st.plotly_chart(fig, use_container_width=True)
-
-            # Historial compacto
-            st.subheader("📋 Historial de Lecturas")
-            for idx, row in df_g.iterrows():
-                # Verificamos que los datos no sean None para que no explote
-                val = row['valor'] if row['valor'] else 0.0
-                uni = row['unidad'] if row['unidad'] else "mg/dL"
-                est_text = row['estado'] if row['estado'] else "Sin estado"
-                
-                # Una sola línea con iconos y separadores
-            st.markdown(f"🗓️ **{row['fecha']}** | 🕒 {row['hora']} | 🩸 **{val} {uni}** | {est_text}")
-            st.divider() # Esta línea crea la separación profesional
+    # --- 3. AUDITORÍA DE REGISTROS (VISTA DE TABLA) ---
+    st.subheader("📋 Auditoría de Últimas Mediciones")
+    df_audit = pd.read_sql_query("""
+        SELECT fecha as 'Fecha', hora as 'Hora', valor as 'Nivel', estado as 'Contexto' 
+        FROM glucosa ORDER BY id DESC LIMIT 10
+    """, conn)
+    
+    if not df_audit.empty:
+        st.dataframe(df_audit, use_container_width=True, hide_index=True)
+    else:
+        st.info("La base de datos local está lista para recibir el primer registro.")
                
-        else:
-            st.info("Aún no hay registros de glucosa.")
-    except Exception as e:
-        st.warning("El sistema está sincronizando la base de datos. Por favor, registre un valor para finalizar la configuración.")             
-          
 
 
 elif menu == "📸 ESCÁNER IA":
