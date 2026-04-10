@@ -343,82 +343,80 @@ elif menu == "🩸 BIOMONITOR":
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
     st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
 
-    # --- 1. ENTRADA DE DATOS CON VALIDACIÓN ---
+    # --- 1. ENTRADA DE DATOS (Mantiene tu lógica original) ---
     with st.container(border=True):
         col1, col2, col3 = st.columns([2, 2, 1])
-        
         with col1:
             valor_g = st.number_input("Nivel de Glucosa (mg/dL):", min_value=0.0, max_value=600.0, step=1.0)
             momento = st.selectbox("Contexto de la Medida:", ["Ayunas", "Post-Prandial (2h)", "Pre-Cena", "Antes de Dormir", "Otro"])
-        
         with col2:
-            fecha_g = st.date_input("Fecha de Registro:", datetime.now(ZONA_HORARIA))
-            hora_g = st.time_input("Hora Exacta:", datetime.now(ZONA_HORARIA).time())
-            
+            ahora = datetime.now(ZONA_HORARIA)
+            fecha_g = st.date_input("Fecha de Registro:", ahora.date())
+            hora_g = st.time_input("Hora Exacta:", ahora.time())
         with col3:
             st.markdown("**Estado**")
-            # LÓGICA INTELIGENTE: Clasificación automática
             if valor_g == 0: st.info("Esperando...")
             elif valor_g < 70: st.error("⚠️ HIPOGLUCEMIA")
             elif valor_g <= 130: st.success("✅ NORMAL")
             elif valor_g <= 180: st.warning("🟡 ELEVADA")
             else: st.error("🚨 CRÍTICA")
 
-        # --- 2. MOTOR DE GUARDADO DUAL (LOCAL + NUBE) ---
         if st.button("🔐 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True):
-            if valor_g > 20: # Validación de seguridad mínima
+            if valor_g > 20: 
                 try:
-                    # Preparación de datos normalizados
                     f_str = fecha_g.strftime('%Y-%m-%d')
                     h_str = hora_g.strftime('%H:%M')
-                    
-                    # A. Guardado en el "Búnker" Local (SQLite)
-                    c.execute("""
-                        INSERT INTO glucosa (valor, unidad, estado, fecha, hora) 
-                        VALUES (?, ?, ?, ?, ?)
-                    """, (valor_g, "mg/dL", momento, f_str, h_str))
+                    c.execute("INSERT INTO glucosa (valor, unidad, estado, fecha, hora) VALUES (?, ?, ?, ?, ?)", 
+                              (valor_g, "mg/dL", momento, f_str, h_str))
                     conn.commit()
                     
-                    # B. Sincronización Reflejada a Google Sheets
-                    if conn_google:
+                    if 'conn_google' in locals() or 'conn_google' in globals():
                         paquete_nube = {
-                            "ID_SISTEMA": "QUEVEDO_PRO_V4",
-                            "FECHA": f_str,
-                            "HORA": h_str,
-                            "VALOR_MG_DL": valor_g,
-                            "ESTADO_MEDICO": momento,
+                            "ID_SISTEMA": "QUEVEDO_PRO_V4", "FECHA": f_str, "HORA": h_str,
+                            "VALOR_MG_DL": valor_g, "ESTADO_MEDICO": momento,
                             "PROPIETARIO": NOMBRE_PROPIETARIO,
                             "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                         }
                         registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
-                        st.toast("☁️ Sincronización en la nube completada")
                     
-                    st.success(f"✅ Registro verificado y guardado con éxito: {valor_g} mg/dL")
-                    st.balloons()
+                    st.success(f"✅ Registro verificado: {valor_g} mg/dL")
+                    import time
                     time.sleep(1)
                     st.rerun()
-
                 except Exception as e:
-                    st.error(f"🚨 Error Crítico en el motor de datos: {e}")
-            else:
-                st.warning("⚠️ Valor fuera de rango lógico para un humano vivo. Verifique el dato.")
+                    st.error(f"🚨 Error: {e}")
 
     st.divider()
 
-    # --- 3. AUDITORÍA DE REGISTROS (VISTA DE TABLA) ---
-    st.subheader("📋 Auditoría de Últimas Mediciones")
-    df_audit = pd.read_sql_query("""
-        SELECT fecha as 'Fecha', hora as 'Hora', valor as 'Nivel', estado as 'Contexto' 
-        FROM glucosa ORDER BY id DESC LIMIT 10
-    """, conn)
-    
-    if not df_audit.empty:
-        st.dataframe(df_audit, use_container_width=True, hide_index=True)
-    else:
-        st.info("La base de datos local está lista para recibir el primer registro.")
-               
+    # --- 3. AUDITORÍA Y GRÁFICA DE TENDENCIAS ---
+    try:
+        # Traemos más datos para la gráfica (últimos 30 registros)
+        df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
+        
+        if not df_full.empty:
+            # Preparar datos para la gráfica
+            df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'])
+            df_plot = df_full.sort_values('Fecha_Hora') # Orden cronológico para la línea
 
+            col_tabla, col_grafica = st.columns([1, 1])
 
+            with col_tabla:
+                st.subheader("📋 Últimos Registros")
+                st.dataframe(df_full.head(10), use_container_width=True, hide_index=True)
+
+            with col_grafica:
+                st.subheader("📈 Curva de Glucosa")
+                st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
+                st.caption("Eje X: Tiempo | Eje Y: mg/dL")
+        else:
+            st.info("No hay datos suficientes para generar tendencias.")
+            
+    except Exception as e:
+        st.warning("⚡ Esperando datos para activar motor de análisis.")
+
+####-----------------------------
+##ESCANER
+###-------------------------------
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Escáner IA - Gestión de Inventario")
     st.markdown("---")
