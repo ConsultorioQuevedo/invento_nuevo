@@ -335,38 +335,9 @@ elif menu == "💰 FINANZAS":
             conn.commit()
             st.rerun()
 
-if st.button("Confirmar Ajuste Maestro"):
-            # LÍNEA 334 CORRECTA:
-            c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_valor_base,))
-            conn.commit()
-            st.rerun() 
 
-# --- BOTÓN DE SEGURIDAD: BORRAR ÚLTIMO MOVIMIENTO ---
-st.divider()
-       with st.expander("🗑️ Corrección de Finanzas"):
-            st.info("Utiliza este botón si registraste mal el último ingreso o gasto.")
-         if st.button("❌ BORRAR ÚLTIMO MOVIMIENTO", use_container_width=True, key="btn_del_fin"):
-            try:
-                # 1. Localizamos el último ID en la tabla finanzas
-                c.execute("SELECT id, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 1")
-                ultimo_mov = c.fetchone()
-                
-                if ultimo_mov:
-                    id_f, cat_f, mon_f = ultimo_mov
-                    # 2. Ejecutamos el borrado
-                    c.execute("DELETE FROM finanzas WHERE id = ?", (id_f,))
-                    conn.commit()
-                    
-                    st.success(f"✅ Eliminado: {cat_f} (RD$ {mon_f:,.2f})")
-                    
-                    # 3. Refrescar para actualizar el Balance Total en el Inicio
-                    import time
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.warning("No hay movimientos financieros para eliminar.")
-            except Exception as e:
-                st.error(f"Error al limpiar finanzas: {e}")
+       
+
 
     
 # --- MÓDULO BIOMONITOR: RECONSTRUCCIÓN ANTI-ERRORES ---
