@@ -25,7 +25,12 @@ st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="�
 
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
-ZONA_HORARIA = pytz.timezone('America/Santo_Domino')
+
+try:
+    ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
+except:
+    ZONA_HORARIA = pytz.utc 
+    st.warning("⚠️ Zona horaria no encontrada, usando UTC.")
 
 # URL Directa de tu Google Sheet
 URL_NUBE = "https://docs.google.com/spreadsheets/d/18030cQtLcVWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbl/edit"
