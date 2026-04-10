@@ -333,69 +333,76 @@ elif menu == "🩺 BIOMONITOR":
           
 
 
-
 elif menu == "📸 ESCÁNER IA":
-    st.header("📸 Cerebro Visual Quevedo Pro")
+    st.header("📸 Escáner IA - Gestión de Inventario")
+    st.markdown("---")
     
-    img_file = st.camera_input("📷 Coloca el documento frente al lente trasero")
+    # 1. ENTRADA DE CÁMARA
+    # Nota: En tu Pixel 8, dale al icono de "girar cámara" para usar el lente trasero
+    img_file = st.camera_input("📷 Enfoca el código de barras del producto")
 
-    if img_file:
-        img = Image.open(img_file)
-        
-        # 1. OCR PROFUNDO
-        texto = pytesseract.image_to_string(img, lang='spa').upper()
-        
-        if texto.strip():
-            # --- MOTOR DE INTELIGENCIA (Análisis de Contenido) ---
-            categoria_detectada = "OTROS"
-            detalles_clave = ""
+    if img_file is not None:
+        # 2. PROCESAMIENTO CON PYZBAR (Adiós al error de Tesseract)
+        img_pil = Image.open(img_file)
+        # Convertimos a escala de grises para que sea ultra rápido
+        img_gray = img_pil.convert('L') 
+        objetos = decode(img_gray)
 
-            # Lógica de Clasificación Automática
-            if any(x in texto for x in ["LABORATORIO", "PACIENTE", "SANGRE", "MG/DL"]):
-                categoria_detectada = "SALUD"
-                # Intenta extraer el valor de la glucosa si lo ve
-                glucosa_match = re.search(r'GLUCOSA[:\s]+(\d+)', texto)
-                if glucosa_match:
-                    detalles_clave = f"Glucosa detectada: {glucosa_match.group(1)} mg/dL"
-            
-            elif any(x in texto for x in ["TOTAL", "RD$", "FACTURA", "COMPROBANTE"]):
-                categoria_detectada = "FINANZAS"
-                # Intenta extraer el monto total
-                monto_match = re.search(r'(?:TOTAL|MONTO|RD\$)\s*[:]*\s*([\d,.]+)', texto)
-                if monto_match:
-                    detalles_clave = f"Monto detectado: RD$ {monto_match.group(1)}"
+        if objetos:
+            # Tomamos el primer código que encuentre
+            codigo_leido = objetos[0].data.decode('utf-8')
+            st.success(f"✅ CÓDIGO DETECTADO: **{codigo_leido}**")
+            st.divider()
 
-            # 2. RESPUESTA INTELIGENTE AL USUARIO
-            st.success(f"🧠 Sistema detectó automáticamente: **{categoria_detectada}**")
-            if detalles_clave:
-                st.info(f"🔍 **Datos extraídos:** {detalles_clave}")
-            
-            with st.expander("Ver texto completo extraído"):
-                st.write(texto)
+            # 3. INTELIGENCIA DE BÚSQUEDA EN TU BASE DE DATOS
+            c.execute("SELECT id, producto, cantidad, precio FROM inventario WHERE producto = ?", (codigo_leido,))
+            producto_db = c.fetchone()
 
-            # 3. GUARDADO AUTOMATIZADO
-            # Crea la carpeta si la IA decidió una nueva categoría
-            ruta = f"archivador_quevedo/{categoria_detectada}"
-            os.makedirs(ruta, exist_ok=True)
+            if producto_db:
+                # --- CASO: EL PRODUCTO YA EXISTE ---
+                pid, p_nombre, p_cant, p_precio = producto_db
+                st.subheader(f"📦 Producto: {p_nombre}")
+                
+                c1, c2 = st.columns(2)
+                c1.metric("Stock Actual", p_cant)
+                c2.metric("Precio Venta", f"RD$ {p_precio:,.2f}")
 
-            nombre_txt = f"{categoria_detectada}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-            
-            with open(os.path.join(ruta, nombre_txt), "w", encoding="utf-8") as f:
-                f.write(f"SISTEMA QUEVEDO PRO - IA SCANNER\n")
-                f.write(f"CATEGORÍA AUTOMÁTICA: {categoria_detectada}\n")
-                f.write(f"HALLAZGOS: {detalles_clave}\n")
-                f.write("-" * 30 + "\n")
-                f.write(texto)
-
-            # 4. REGISTRO EN BASE DE DATOS
-            c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)",
-                      (nombre_txt, categoria_detectada, texto[:1000], datetime.now().strftime("%Y-%m-%d %H:%M")))
-            conn.commit()
-            
-            st.toast("Guardado y Clasificado automáticamente", icon="🤖")
+                # Botones de Acción Rápida
+                mov = st.number_input("Cantidad a mover", min_value=1, value=1, step=1)
+                col_btn1, col_btn2 = st.columns(2)
+                
+                if col_btn1.button("➕ SUMAR AL STOCK"):
+                    c.execute("UPDATE inventario SET cantidad = cantidad + ? WHERE id = ?", (mov, pid))
+                    conn.commit()
+                    st.success(f"Añadidas {mov} unidades a {p_nombre}")
+                    st.rerun()
+                    
+                if col_btn2.button("➖ REGISTRAR VENTA"):
+                    if p_cant >= mov:
+                        c.execute("UPDATE inventario SET cantidad = cantidad - ? WHERE id = ?", (mov, pid))
+                        conn.commit()
+                        st.success(f"Venta de {mov} unidades registrada")
+                        st.rerun()
+                    else:
+                        st.error("No hay suficiente stock")
+            else:
+                # --- CASO: PRODUCTO NUEVO ---
+                st.warning("🆕 Producto no encontrado en el Archivador.")
+                with st.form("registro_rapido"):
+                    st.write("Registrar como nuevo:")
+                    nuevo_nom = st.text_input("Nombre del Producto", value=codigo_leido)
+                    nuevo_pre = st.number_input("Precio de Venta", min_value=1.0, step=5.0)
+                    nuevo_can = st.number_input("Cantidad Inicial", min_value=1, value=1)
+                    
+                    if st.form_submit_button("💾 GUARDAR EN ARCHIVADOR"):
+                        fecha_hoy = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d")
+                        c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?,?,?,?)",
+                                 (nuevo_nom, nuevo_can, nuevo_pre, fecha_hoy))
+                        conn.commit()
+                        st.success("¡Producto guardado exitosamente!")
+                        st.rerun()
         else:
-            st.error("No pude entender el documento. Revisa la iluminación.")
-    
+            st.warning("🔍 Buscando código... Mantén el celular firme y asegúrate de que el código esté plano.")
 
   
 
