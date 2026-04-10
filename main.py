@@ -342,7 +342,7 @@ if st.button("Confirmar Ajuste Maestro"):
             st.rerun() 
 
 # --- BOTÓN DE SEGURIDAD: BORRAR ÚLTIMO MOVIMIENTO ---
-    st.divider()
+st.divider()
     with st.expander("🗑️ Corrección de Finanzas"):
         st.info("Utiliza este botón si registraste mal el último ingreso o gasto.")
         if st.button("❌ BORRAR ÚLTIMO MOVIMIENTO", use_container_width=True, key="btn_del_fin"):
