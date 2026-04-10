@@ -330,106 +330,137 @@ elif menu == "🩺 BIOMONITOR":
 
 
 
+elif menu == "📸 ESCÁNER IA":
+    st.header("📸 Escáner IA - Control de Inventario Inteligente")
+    st.markdown("---")
 
+    # Usamos la cámara para tomar una foto del código
+    img_file = st.camera_input("📷 Enfoca el código de barras del producto")
+
+    if img_file is not None:
+        # 1. PROCESAMIENTO VISUAL (Nivel 1: Lectura)
+        bytes_data = img_file.getvalue()
+        cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+        
+        # Detector de códigos de barras de OpenCV (Librería robusta)
+        bd = cv2.BarcodeDetector()
+        retval, decoded_info, decoded_type, straight_qrcode = bd.detectAndDecode(cv2_img)
+
+        if retval and decoded_info[0]:
+            codigo_escaneado = decoded_info[0]
+            st.success(f"✅ Código detectado: **{codigo_escaneado}** (Tipo: {decoded_type[0]})")
+            st.divider()
+
+            # 2. INTELIGENCIA DE NEGOCIO (Nivel 2: Decisión)
+            # Buscamos si el producto ya existe en el Archivador
+            c.execute("SELECT * FROM inventario WHERE producto = ?", (codigo_escaneado,))
+            producto_existente = c.fetchone()
+
+            if producto_existente:
+                # --- CASO A: EL PRODUCTO YA EXISTE ---
+                # Estructura de la tabla inventario: (id, producto, cantidad, precio, fecha)
+                id_prod, nombre_prod, cant_actual, precio_prod, fecha_reg = producto_existente
+                
+                st.subheader(f"📦 Producto Encontrado: {nombre_prod}")
+                
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Cantidad Actual", cant_actual)
+                col2.metric("Precio Unitario", f"RD$ {precio_prod:,.2f}")
+                col3.write(f"🕒 *Registrado: {fecha_reg}*")
+                
+                # Acciones Inteligentes de Inventario
+                st.markdown("### ¿Qué deseas hacer?")
+                act_col1, act_col2 = st.columns(2)
+                
+                cant_mov = act_col1.number_input("Cantidad a mover", min_value=1, value=1, step=1)
+                
+                if act_col1.button("➕ SUMAR AL STOCK"):
+                    nueva_cant = cant_actual + cant_mov
+                    c.execute("UPDATE inventario SET cantidad = ? WHERE id = ?", (nueva_cant, id_prod))
+                    
+                    # Log de actividad
+                    ahora = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M:%S")
+                    c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)", 
+                              (nombre_prod, "ESCANER", f"Entrada: +{cant_mov}. Total: {nueva_cant}", ahora))
+                    conn.commit()
+                    st.success(f"📥 Stock actualizado: **{nombre_prod}** ahora tiene **{nueva_cant}** unidades.")
+                    st.rerun()
+
+                if act_col2.button("➖ RESTAR (VENTA)"):
+                    if cant_actual >= cant_mov:
+                        nueva_cant = cant_actual - cant_mov
+                        c.execute("UPDATE inventario SET cantidad = ? WHERE id = ?", (nueva_cant, id_prod))
+                        
+                        # Log de actividad
+                        ahora = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M:%S")
+                        c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)", 
+                                  (nombre_prod, "ESCANER", f"Salida: -{cant_mov}. Total: {nueva_cant}", ahora))
+                        conn.commit()
+                        st.success(f"📤 Venta registrada: **{nombre_prod}** ahora tiene **{nueva_cant}** unidades.")
+                        st.rerun()
+                    else:
+                        st.error("❌ No hay suficiente stock para realizar la venta.")
+
+            else:
+                # --- CASO B: EL PRODUCTO ES NUEVO ---
+                st.warning(f"🆕 El código **{codigo_escaneado}** no está registrado en el Archivador.")
+                st.subheader("📝 Registrar Nuevo Producto")
+                
+                with st.form("registro_nuevo_scanned", clear_on_submit=True):
+                    f_col1, f_col2 = st.columns(2)
+                    nuevo_nombre = f_col1.text_input("Nombre del Producto", placeholder="Ej: Arroz Campo 10lb")
+                    nueva_cant_init = f_col2.number_input("Cantidad Inicial", min_value=1, value=10)
+                    nuevo_precio = f_col1.number_input("Precio de Venta (RD$)", min_value=1.0, value=100.0, step=10.0)
+                    
+                    if st.form_submit_button("💾 REGISTRAR EN ARCHIVADOR"):
+                        if nuevo_nombre:
+                            ahora = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M:%S")
+                            
+                            # Registro en Inventario Local (Usamos el código como nombre temporal si no ponen uno)
+                            nombre_final = nuevo_nombre if nuevo_nombre else codigo_escaneado
+                            c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?,?,?,?)",
+                                      (nombre_final, nueva_cant_init, nuevo_precio, ahora))
+                            
+                            # Registro en el Índice (Log)
+                            c.execute("INSERT INTO archivador_index (nombre, categoria, texto_ocr, fecha) VALUES (?,?,?,?)", 
+                                      (nombre_final, "NUEVO_ESCANER", f"Registro inicial: {nueva_cant_init} unid. a RD${nuevo_precio}", ahora))
+                            
+                            conn.commit()
+                            
+                            # Sincronización Nube (Si está activa)
+                            datos_nube = {
+                                "Fecha": ahora, "Código": codigo_escaneado, "Producto": nombre_final, 
+                                "Cantidad": nueva_cant_init, "Precio": nuevo_precio, "Propietario": NOMBRE_PROPIETARIO
+                            }
+                            registrar_en_nube_exacto(datos_nube)
+                            
+                            st.success(f"✅ Producto **{nombre_final}** registrado con éxito.")
+                            st.rerun()
+                        else:
+                            st.error("❌ Por favor, ingresa un nombre para el producto.")
+        else:
+            st.info("No se detectó un código de barras claro. Intenta enfocar mejor o usar más luz.")
+            
+    # Historial rápido de escaneos (Logs)
+    st.divider()
+    st.subheader("🕒 Últimos Movimientos (Escáner)")
+    df_logs = pd.read_sql_query("SELECT nombre, texto_ocr, fecha FROM archivador_index WHERE categoria LIKE '%ESCANER%' ORDER BY id DESC LIMIT 5", conn)
+    if not df_logs.empty:
+        st.dataframe(df_logs, use_container_width=True)
  
            
   
-# --- MÓDULO ESCÁNER IA: LUIS RAFAEL + FARMACIAS + GMAIL ---
-elif menu == "📸 ESCÁNER IA":
-    st.header("📸 Estación de Escaneo IA")
 
-    # 1. TUS DATOS OFICIALES
-    MI_NUMERO = "18092714672"
-    MI_GMAIL = "tu_correo@gmail.com" # <--- Pon tu correo real aquí
-    
-    # DATOS FARMACIAS
-    F_VALUED = "18495060398"
-    F_GBC = "18296555546"
 
-    # 2. BASE DE DATOS
-    c.execute("CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, fecha TEXT)")
-    conn.commit()
-
-    # 3. CÁMARA (Para forzar la trasera, asegúrate de aceptar permisos en el cell)
-    foto = st.camera_input("Enfoca el documento (Cámara Trasera)", key="cam_trasera_final")
-
-    if foto:
-        st.info(f"💡 IA Activa para: {MI_NUMERO}")
         
-        ca, cb = st.columns(2)
-        tipo_d = ca.selectbox("Clasificar:", ["Receta Médica", "Cotización", "Laboratorio"], label_visibility="collapsed")
         
-        if cb.button("💾 GUARDAR Y ARCHIVAR", use_container_width=True):
-            f_e = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y %H:%M")
-            c.execute("INSERT INTO archivos (tipo, fecha) VALUES (?,?)", (tipo_d, f_e))
-            conn.commit()
-            st.rerun()
-
-        st.divider()
+      
         
-        # 4. BOTONES DE ACCIÓN (WhatsApp y Gmail)
-        st.subheader("🚀 Solicitar a Farmacias")
-        msg = f"Hola, soy Luis Rafael (Tel: {MI_NUMERO}). Adjunto receta para cotizar."
-        
-        # Tres columnas para que quepan en una sola fila del celular
-        q1, q2, q3 = st.columns(3)
-        
-        with q1: # Farmacia Valued
-            st.markdown(f'<a href="https://wa.me/{F_VALUED}?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#0047AB;color:white;padding:10px;text-align:center;border-radius:8px;font-weight:bold;font-size:11px;">🏥 VALUED</div></a>', unsafe_allow_html=True)
-                
-        with q2: # Farmacia GBC
-            st.markdown(f'<a href="https://wa.me/{F_GBC}?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#E31E24;color:white;padding:10px;text-align:center;border-radius:8px;font-weight:bold;font-size:11px;">💊 GBC</div></a>', unsafe_allow_html=True)
-
-        with q3: # Tu Gmail
-            st.markdown(f'<a href="https://mail.google.com/mail/?view=cm&fs=1&to={MI_GMAIL}&su=Receta+Luis+Rafael&body={msg}" target="_blank" style="text-decoration:none;"><div style="background:#DB4437;color:white;padding:10px;text-align:center;border-radius:8px;font-weight:bold;font-size:11px;">📧 GMAIL</div></a>', unsafe_allow_html=True)
-
-    st.divider()
-
-    # 5. HISTORIAL CON BOTÓN DE BORRADO LATERAL
-    st.subheader("📋 Historial de Escaneos")
-    try:
-        df_a = pd.read_sql_query("SELECT * FROM archivos ORDER BY id DESC", conn)
-        if not df_a.empty:
-            for idx, row in df_a.iterrows():
-                # Diseño de 3 columnas para que el botón de basura quede al lado
-                r1, r2, r3 = st.columns([3, 5, 1])
-                r1.write(f"📅 {row['fecha']}")
-                r2.write(f"📄 **{row['tipo']}**")
-                if r3.button("🗑️", key=f"del_a_{row['id']}"):
-                    c.execute("DELETE FROM archivos WHERE id = ?", (row['id'],))
-                    conn.commit()
-                    st.rerun()
-        else:
-            st.info("No hay documentos guardados.")
-    except:
-        pass
-
-    # Cierre de bloque obligatorio para evitar SyntaxError
-    try: pass
-    except: pass
-
-
     
 
     
 
-    # 5. HISTORIAL DE ARCHIVOS
-    st.subheader("📋 Historial de Escaneos")
-    df_a = pd.read_sql_query("SELECT * FROM archivos ORDER BY id DESC", conn)
-    
-    if not df_a.empty:
-        for idx, row in df_a.iterrows():
-            r1, r2, r3 = st.columns([3, 4, 1])
-            r1.write(f"📅 {row['fecha']}")
-            r2.write(f"📄 **{row['tipo']}**")
-          
-# --- FINAL DEL ESCÁNER IA (Cierre del historial) ---
-    else:
-        st.info("No hay documentos en el archivador.")
-
-    # ESTO ES LO QUE ESTÁ FALTANDO Y CAUSA EL ERROR:
-    try: pass
-    except: pass
+  
 
 
 # --- ARCHIVADOR INTEGRAL v5.1: RECTIFICACIÓN DE VARIABLES ---
