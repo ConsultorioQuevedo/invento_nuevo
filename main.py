@@ -8,6 +8,7 @@ import plotly.express as px
 from fpdf import FPDF
 import requests
 import pytz
+from pyzbar.pyzbar import decode
 import unicodedata
 from PIL import Image
 import io
