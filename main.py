@@ -602,33 +602,98 @@ elif menu == "🤖 ASISTENTE":
         st.markdown(f'<a href="https://wa.me/18296555546?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#E31E24;color:white;padding:10px;text-align:center;border-radius:10px;">GBC</div></a>', unsafe_allow_html=True)
 
     st.divider()
-    # --- 4. ACCIÓN MAESTRA: REPORTE PDF (CORREGIDO PARA EMOJIS) ---
-    if st.button("🚀 GENERAR REPORTE PDF INTEGRAL", use_container_width=True, key="btn_pdf_final"):
-        st.info("Generando reporte... Por favor espere.")
+    
+            
+
+     # --- 4. ACCIÓN MAESTRA: REPORTE PDF PROFESIONAL v2.0 ---
+    if st.button("🚀 GENERAR EXPEDIENTE EJECUTIVO", use_container_width=True, key="btn_pdf_pro"):
+        st.info("Diseñando reporte de alta calidad...")
         try:
             pdf = FPDF()
             pdf.add_page()
-            pdf.set_font("Arial", 'B', 16)
-            # Limpiamos el nombre por si tiene caracteres raros
-            pdf.cell(200, 10, f"REPORTE INTEGRAL - {NOMBRE_PROPIETARIO}".encode('latin-1', 'ignore').decode('latin-1'), ln=True, align='C')
             
-            # Datos Salud
-            pdf.ln(10)
-            pdf.set_font("Arial", 'B', 12)
-            pdf.cell(200, 10, "Historial de Salud (Glucosa):", ln=True)
+            # --- ENCABEZADO ---
+            pdf.set_fill_color(0, 71, 171) # Azul Profesional
+            pdf.rect(0, 0, 210, 40, 'F')
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Arial", 'B', 20)
+            pdf.cell(190, 15, f"SISTEMA QUEVEDO PRO", ln=True, align='C')
+            pdf.set_font("Arial", '', 12)
+            pdf.cell(190, 10, f"Expediente Privado de: {NOMBRE_PROPIETARIO}", ln=True, align='C')
+            
+            pdf.set_text_color(0, 0, 0)
+            pdf.ln(20)
+            
+            # --- SECCIÓN SALUD (TABLA DE GLUCOSA) ---
+            pdf.set_font("Arial", 'B', 14)
+            pdf.cell(0, 10, "1. RESUMEN DE SALUD (GLUCOSA)", ln=True)
+            pdf.set_draw_color(0, 71, 171)
+            pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+            pdf.ln(5)
+            
+            # Encabezado de Tabla
+            pdf.set_fill_color(230, 230, 230)
+            pdf.set_font("Arial", 'B', 10)
+            pdf.cell(40, 8, "FECHA", 1, 0, 'C', True)
+            pdf.cell(30, 8, "VALOR", 1, 0, 'C', True)
+            pdf.cell(60, 8, "ESTADO", 1, 0, 'C', True)
+            pdf.cell(60, 8, "HORA", 1, 1, 'C', True)
+            
+            # Datos de Tabla
+            pdf.set_font("Arial", '', 10)
             df_pdf_s = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 15", conn)
+            for _, r in df_pdf_s.iterrows():
+                # Limpieza de caracteres para evitar errores de codificación
+                f = str(r['fecha']).encode('latin-1', 'ignore').decode('latin-1')
+                v = f"{r['valor']} mg/dL"
+                e = str(r['estado']).encode('latin-1', 'ignore').decode('latin-1')
+                h = str(r['hora']).encode('latin-1', 'ignore').decode('latin-1')
+                
+                pdf.cell(40, 8, f, 1)
+                pdf.cell(30, 8, v, 1, 0, 'C')
+                pdf.cell(60, 8, e, 1)
+                pdf.cell(60, 8, h, 1, 1)
+
+            pdf.ln(10)
+
+            # --- SECCIÓN FINANZAS (TABLA DE GASTOS) ---
+            pdf.set_font("Arial", 'B', 14)
+            pdf.cell(0, 10, "2. RESUMEN FINANCIERO", ln=True)
+            pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+            pdf.ln(5)
+            
+            # Encabezado de Tabla Finanzas
+            pdf.set_fill_color(230, 230, 230)
+            pdf.cell(40, 8, "FECHA", 1, 0, 'C', True)
+            pdf.cell(100, 8, "CONCEPTO / CATEGORIA", 1, 0, 'C', True)
+            pdf.cell(50, 8, "MONTO", 1, 1, 'C', True)
             
             pdf.set_font("Arial", '', 10)
-            for _, r in df_pdf_s.iterrows():
-                # LA CLAVE: Usamos .encode('latin-1', 'ignore') para borrar emojis antes de escribir
-                linea = f"{r['fecha']} | {r['valor']} mg/dL | {r['estado']}"
-                texto_limpio = linea.encode('latin-1', 'ignore').decode('latin-1')
-                pdf.cell(200, 8, texto_limpio, ln=True)
+            df_pdf_f = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC LIMIT 15", conn)
+            for _, r in df_pdf_f.iterrows():
+                f = str(r['fecha'])
+                c = str(r['categoria']).encode('latin-1', 'ignore').decode('latin-1')
+                m = f"RD$ {r['monto']:,.2f}"
+                
+                pdf.cell(40, 8, f, 1)
+                pdf.cell(100, 8, c, 1)
+                pdf.cell(50, 8, m, 1, 1, 'R')
+
+            # --- PIE DE PÁGINA ---
+            pdf.set_y(-30)
+            pdf.set_font("Arial", 'I', 8)
+            pdf.set_text_color(150, 150, 150)
+            pdf.cell(0, 10, f"Reporte generado por Quevedo Pro AI - {datetime.now().strftime('%Y-%m-%d %H:%M')}", 0, 0, 'C')
 
             reporte_bin = pdf.output(dest='S').encode('latin-1', 'ignore')
-            st.download_button("📥 DESCARGAR REPORTE AHORA", data=reporte_bin, file_name="Reporte_Quevedo.pdf")
+            st.download_button(
+                label="📥 DESCARGAR EXPEDIENTE PROFESIONAL", 
+                data=reporte_bin, 
+                file_name=f"Expediente_{NOMBRE_PROPIETARIO}.pdf",
+                mime="application/pdf"
+            )
         except Exception as e:
-            st.error(f"Error técnico: {e}")
+            st.error(f"Error en diseño: {e}")    
 
          
 
