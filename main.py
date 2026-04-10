@@ -339,22 +339,20 @@ elif menu == "💰 FINANZAS":
 
     
 # --- MÓDULO BIOMONITOR: RECONSTRUCCIÓN ANTI-ERRORES ---
-
-# --- MÓDULO BIOMONITOR: VERSIÓN PROTEGIDA ANTI-PANTALLA BLANCA ---
 elif menu == "🩸 BIOMONITOR":
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
     st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
 
-    # --- 1. ENTRADA DE DATOS ---
+    # --- 1. ENTRADA DE DATOS (PROTEGIDA) ---
     with st.container(border=True):
         col1, col2, col3 = st.columns([2, 2, 1])
         with col1:
-            valor_g = st.number_input("Nivel de Glucosa (mg/dL):", min_value=0.0, max_value=600.0, step=1.0)
-            momento = st.selectbox("Contexto de la Medida:", ["Ayunas", "Post-Prandial (2h)", "Pre-Cena", "Antes de Dormir", "Otro"])
+            valor_g = st.number_input("Nivel de Glucosa (mg/dL):", min_value=0.0, max_value=600.0, step=1.0, key="gluc_val_input")
+            momento = st.selectbox("Contexto de la Medida:", ["Ayunas", "Post-Prandial (2h)", "Pre-Cena", "Antes de Dormir", "Otro"], key="gluc_mom_input")
         with col2:
             ahora = datetime.now(ZONA_HORARIA)
-            fecha_g = st.date_input("Fecha de Registro:", ahora.date())
-            hora_g = st.time_input("Hora Exacta:", ahora.time())
+            fecha_g = st.date_input("Fecha de Registro:", ahora.date(), key="gluc_fec_input")
+            hora_g = st.time_input("Hora Exacta:", ahora.time(), key="gluc_hor_input")
         with col3:
             st.markdown("**Estado**")
             if valor_g == 0: st.info("Esperando...")
@@ -372,59 +370,65 @@ elif menu == "🩸 BIOMONITOR":
                               (valor_g, "mg/dL", momento, f_str, h_str))
                     conn.commit()
                     
-                    if conn_google is not None:
-                        paquete_nube = {
-                            "ID_SISTEMA": "QUEVEDO_PRO_V4", "FECHA": f_str, "HORA": h_str,
-                            "VALOR_MG_DL": valor_g, "ESTADO_MEDICO": momento,
-                            "PROPIETARIO": NOMBRE_PROPIETARIO,
-                            "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
-                        }
-                        registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
+                    # Verificación segura de conexión a la nube
+                    try:
+                        if 'conn_google' in globals() and conn_google is not None:
+                            paquete_nube = {
+                                "ID_SISTEMA": "QUEVEDO_PRO_V4", "FECHA": f_str, "HORA": h_str,
+                                "VALOR_MG_DL": valor_g, "ESTADO_MEDICO": momento,
+                                "PROPIETARIO": NOMBRE_PROPIETARIO,
+                                "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
+                            }
+                            registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
+                    except:
+                        pass # Si falla la nube, que no rompa el local
                     
                     st.success(f"✅ Registro verificado: {valor_g} mg/dL")
                     import time
                     time.sleep(1)
                     st.rerun()
                 except Exception as e:
-                    st.error(f"🚨 Error al guardar: {e}")
+                    st.error(f"🚨 Error: {e}")
 
     st.divider()
 
-    # --- 2. AUDITORÍA Y GRÁFICA (EL "ESCUDO" ANTI-ERROR) ---
-    st.subheader("📈 Análisis de Tendencias")
+    # --- 3. AUDITORÍA Y GRÁFICA (EL BLINDAJE REAL) ---
     try:
-        # Extraemos datos para análisis
+        # Cargamos datos crudos
         df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
         
         if not df_full.empty:
-            # PROTECCIÓN: Si hay basura en los datos, esto evita que la pantalla se ponga blanca
-            # Combinamos fecha y hora con errors='coerce' para ignorar registros corruptos
+            # LIMPIEZA DE DATOS: Convertimos a string y evitamos nulos que ponen la pantalla blanca
+            df_full['fecha'] = df_full['fecha'].astype(str)
+            df_full['hora'] = df_full['hora'].astype(str)
+            
+            # El secreto: errors='coerce' convierte lo malo en 'NaT' en lugar de romper la app
             df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'], errors='coerce')
             
-            # Limpiamos: Solo filas con tiempo válido y valores numéricos
+            # Quitamos filas que no pudieron convertirse
             df_plot = df_full.dropna(subset=['Fecha_Hora']).copy()
-            df_plot['valor'] = pd.to_numeric(df_plot['valor'], errors='coerce')
             df_plot = df_plot.sort_values('Fecha_Hora')
 
             col_tabla, col_grafica = st.columns([1, 1])
 
             with col_tabla:
-                st.markdown("**Registros Recientes**")
-                st.dataframe(df_full.head(10), use_container_width=True, hide_index=True)
+                st.subheader("📋 Últimos Registros")
+                st.dataframe(df_full[['fecha', 'hora', 'valor']].head(10), use_container_width=True, hide_index=True)
 
             with col_grafica:
+                st.subheader("📈 Curva de Glucosa")
                 if not df_plot.empty:
                     st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
-                    st.caption("Eje X: Tiempo | Eje Y: mg/dL")
                 else:
-                    st.warning("⚠️ Los datos en el Búnker no tienen el formato correcto para graficar.")
+                    st.warning("⚠️ Datos con formato incompatible para gráfica.")
         else:
-            st.info("Bóveda vacía. Registra tu primera medición para activar las gráficas.")
+            st.info("No hay datos suficientes para generar tendencias.")
             
     except Exception as e:
-        # Si algo falla aquí, verás este mensaje en lugar de la pantalla blanca
-        st.warning(f"⚡ El motor gráfico está en mantenimiento o hay un dato mal formado: {e}")
+        # Este catch evita que la pantalla se ponga blanca si la DB tiene basura
+        st.warning("⚡ Sincronizando motor de análisis...")
 
+                  
 
 ####-----------------------------
 ##ESCANER
