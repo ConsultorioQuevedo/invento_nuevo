@@ -40,7 +40,7 @@ except Exception:
 # URL Directa de tu Google Sheet
 URL_NUBE = "https://docs.google.com/spreadsheets/d/18030cQtLcVWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbl/edit"
 
-=======
+#=======
 # 2. BASE DE DATOS (PROTECCIÓN TOTAL)
 # ==========================================
 
