@@ -419,6 +419,31 @@ elif "BIOMONITOR" in menu:
     except Exception as e:
         st.warning("⚡ Esperando datos para activar motor de análisis.")
 
+# --- BOTÓN DE SEGURIDAD: BORRAR ÚLTIMO REGISTRO ---
+    st.divider()
+    with st.expander("🗑️ Zona de Corrección (Peligro)"):
+        st.warning("Esta acción eliminará la última medición registrada en la base de datos local.")
+        if st.button("❌ BORRAR ÚLTIMO REGISTRO", use_container_width=True):
+            try:
+                # 1. Buscamos el ID del último registro
+                c.execute("SELECT id FROM glucosa ORDER BY id DESC LIMIT 1")
+                ultimo = c.fetchone()
+                
+                if ultimo:
+                    id_a_borrar = ultimo[0]
+                    # 2. Lo eliminamos
+                    c.execute("DELETE FROM glucosa WHERE id = ?", (id_a_borrar,))
+                    conn.commit()
+                    st.success(f"✅ Registro #{id_a_borrar} eliminado correctamente.")
+                    
+                    # 3. Pausa y reinicio para actualizar la tabla/gráfica
+                    import time
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.info("No hay registros para borrar.")
+            except Exception as e:
+                st.error(f"Error al intentar borrar: {e}")
 
 ####-----------------------------
 ##ESCANER
