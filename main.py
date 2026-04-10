@@ -24,11 +24,55 @@ UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
 
 # ==========================================
-# 2. MOTOR DE BASE DE DATOS Y CARPETAS
+# 2. BASE DE DATOS (PROTECCIÓN TOTAL)
 # ==========================================
 
+# Muevo la conexión aquí arriba para que la función la encuentre
+try:
+    conn_google = st.connection("gsheets", type=GSheetsConnection)
+except:
+    conn_google = None
+
+def registrar_en_nube_exacto(datos_dict):
+    try:
+        # 1. Definimos los nombres que tú confirmaste
+        archivo_drive = "Mi_Archivador_Quevedo"
+        pestaña_excel = "DB_QUEVEDO1" # <--- CORREGIDO: DB_QUEVEDO1
+        
+        # 2. Conectamos apuntando directamente a esa pestaña
+        df_nube = conn_google.read(spreadsheet=archivo_drive, worksheet=pestaña_excel)
+        
+        # 3. Creamos la fila con los datos nuevos
+        nueva_fila = pd.DataFrame([datos_dict])
+        
+        # 4. Unimos la información
+        df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
+        
+        # 5. Subimos los datos a esa pestaña específica
+        conn_google.update(spreadsheet=archivo_drive, worksheet=pestaña_excel, data=df_final)
+        
+        st.success(f"✅ Guardado en {archivo_drive} -> Hoja: {pestaña_excel}")
+        
+    except Exception as e:
+        # Si sale este error, revisa que 'DB_QUEVEDO1' no tenga espacios extra
+        st.error(f"❌ Error de conexión: {e}")
+
+# --- DENTRO DE TU BOTÓN DE REGISTRO ---
+# Nota: Asegúrate que las variables nombre_producto, etc., estén definidas en tu código
+if st.button("Registrar Producto"):
+    # Preparamos el diccionario con los nombres de tus columnas en Excel
+    datos_a_enviar = {
+        "Producto": nombre_producto, 
+        "Cantidad": cantidad_producto,
+        "Precio": precio_producto,
+        "Fecha": datetime.now().strftime("%d/%m/%Y")
+    }
+    
+    # Ejecutamos la función con los nombres corregidos
+    registrar_en_nube_exacto(datos_a_enviar)
+
 def inicializar_todo():
-    # Crear carpetas de archivos
+    # Crear carpetas si no existen
     base = "archivador_quevedo"
     folders = ["MEDICAL", "GASTOS", "PERSONALES", "RECETAS_COCINA"]
     if not os.path.exists(base):
@@ -36,11 +80,11 @@ def inicializar_todo():
     for f in folders:
         os.makedirs(os.path.join(base, f), exist_ok=True)
     
-    # Conexión Local SQLite
+    # CONEXIÓN LOCAL (Tu base de datos de siempre)
     conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
     c = conn.cursor()
     
-    # TODAS LAS TABLAS QUE NECESITA TU PROGRAMA
+    # Crear todas las tablas para que NADA dé error de "NameError" o "Table not found"
     tablas = [
         "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor INTEGER, fecha TEXT, hora TEXT, estado TEXT)",
         "CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, doctor TEXT, fecha TEXT, hora TEXT, centro TEXT)",
@@ -59,39 +103,12 @@ def inicializar_todo():
     conn.commit()
     return conn, c
 
-# Lanzamos la base de datos local (Variables globales conn y c)
+# Lanzamos la base de datos local con los nombres 'conn' y 'c'
 conn, c = inicializar_todo()
 
-# Conexión a Google Sheets (Se inicializa después para que las funciones la vean)
-try:
-    conn_google = st.connection("gsheets", type=GSheetsConnection)
-except Exception as e:
-    conn_google = None
-    st.sidebar.error(f"Error de conexión nube: {e}")
-
 # ==========================================
-# 3. FUNCIONES TÉCNICAS DE APOYO
+# 3. FUNCIONES COMPLEMENTARIAS
 # ==========================================
-
-def registrar_en_nube_exacto(datos_dict):
-    """Sincroniza datos con el Excel de Google"""
-    if conn_google is not None:
-        try:
-            archivo_drive = "Mi_Archivador_Quevedo"
-            pestaña_excel = "DB_QUEVEDO"
-            
-            # Leer datos actuales
-            df_nube = conn_google.read(spreadsheet=archivo_drive, worksheet=pestaña_excel)
-            
-            # Añadir fila nueva
-            nueva_fila = pd.DataFrame([datos_dict])
-            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
-            
-            # Actualizar nube
-            conn_google.update(spreadsheet=archivo_drive, worksheet=pestaña_excel, data=df_final)
-            st.success(f"☁️ Sincronizado con Google Drive (Hoja: {pestaña_excel})")
-        except Exception as e:
-            st.warning(f"⚠️ Solo guardado local. Error nube: {e}")
 
 def borrar_ultimo(tabla):
     try:
@@ -103,61 +120,23 @@ def borrar_ultimo(tabla):
             st.success(f"✅ Eliminado de {tabla}")
             st.rerun()
         else:
-            st.info("No hay registros para borrar.")
+            st.info("No hay nada que borrar.")
     except Exception as e:
-        st.error(f"Error técnico al borrar: {e}")
+        st.error(f"Error al borrar: {e}")
 
 def limpiar_texto(texto):
     if not texto: return ""
     return "".join(ch for ch in unicodedata.normalize('NFD', str(texto)) if unicodedata.category(ch) != 'Mn')
 
-# ==========================================
-# 4. INTERFAZ DE USUARIO (REVISADA)
-# ==========================================
-
-st.title("💎 SISTEMA INTEGRAL QUEVEDO PRO")
-st.write(f"Bienvenido, **{NOMBRE_PROPIETARIO}** | {UBICACION_SISTEMA}")
-
-# --- SECCIÓN DE INVENTARIO ---
-with st.expander("📦 Registro de Inventario / Escáner", expanded=True):
-    col1, col2 = st.columns(2)
-    with col1:
-        prod_nombre = st.text_input("Nombre del Producto")
-        prod_cant = st.number_input("Cantidad", min_value=1, step=1)
-    with col2:
-        prod_precio = st.number_input("Precio Unitario", min_value=0.0, step=0.01)
-        fecha_registro = datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y")
-
-    if st.button("🚀 Registrar y Sincronizar"):
-        if prod_nombre:
-            # 1. Guardar Localmente
-            c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?, ?, ?, ?)",
-                      (prod_nombre, prod_cant, prod_precio, fecha_registro))
-            conn.commit()
-            st.success(f"✅ Guardado en base de datos local")
-            
-            # 2. Sincronizar con Google Sheets
-            datos_nube = {
-                "Producto": prod_nombre,
-                "Cantidad": prod_cant,
-                "Precio": prod_precio,
-                "Fecha": fecha_registro
-            }
-            registrar_en_nube_exacto(datos_nube)
-        else:
-            st.error("Debes ingresar el nombre del producto.")
-
-# --- MUESTRA DE DATOS (Para verificar que funciona) ---
-st.subheader("📊 Vista de Inventario Local")
-try:
-    df_local = pd.read_sql_query("SELECT * FROM inventario ORDER BY id DESC LIMIT 5", conn)
-    st.table(df_local)
-except:
-    st.info("Aún no hay datos registrados.")
-
-# --- TU LÍNEA 599 (Mantenida por compatibilidad) ---
-# df_c = pd.read_sql_query("SELECT * FROM archivos WHERE tipo = ?", conn, params=(db_name,))
-
+# Esta función es la que usaremos para mandar datos a la nube sin romper el programa
+def sincronizar_nube(nombre_hoja, datos_dict):
+    if conn_google:
+        try:
+            df_nube = conn_google.read(spreadsheet="Mi_Archivador_Quevedo", worksheet=nombre_hoja)
+            df_actualizado = pd.concat([df_nube, pd.DataFrame([datos_dict])], ignore_index=True)
+            conn_google.update(spreadsheet="Mi_Archivador_Quevedo", worksheet=nombre_hoja, data=df_actualizado)
+        except:
+            pass # Si falla Google, el usuario ni se entera, lo local sigue vivo
 # ==========================================
 # 3. INTERFAZ Y ESTILOS
 # ==========================================
