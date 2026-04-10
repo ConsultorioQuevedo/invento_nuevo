@@ -140,7 +140,7 @@ if menu == "🏠 INICIO":
         # Buscamos la última glucosa registrada sin importar la fecha
         # Primero intentamos en 'biomonitor', si falla vamos a 'glucosa'
         try:
-            df_glu = pd.read_sql_query("SELECT valor FROM biomonitor ORDER BY id DESC LIMIT 1", conn)
+            df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
         except:
             df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
         
