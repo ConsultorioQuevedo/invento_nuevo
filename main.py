@@ -529,155 +529,108 @@ elif menu == "📂 ARCHIVADOR":
     except: pass 
 
 
- # --- ASISTENTE ANALÍTICO v5.0: EL CEREBRO DE QUEVEDO PRO ---
+# --- ASISTENTE ANALÍTICO v5.0 ---
 elif menu == "🤖 ASISTENTE":
     st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
     st.caption(f"📅 Análisis actualizado al: {datetime.now().strftime('%d de %B, %Y')}")
 
-    # --- 1. MONITOR DE ALERTAS PROACTIVAS ---
-    fecha_hoy = datetime.now().strftime('%Y-%m-%d')
-    
+    # --- 1. MONITOR DE ALERTAS ---
     with st.container():
         c_alert1, c_alert2 = st.columns(2)
         with c_alert1:
-            # Alerta de Citas
-            df_hoy = pd.read_sql_query("SELECT * FROM citas WHERE fecha = ?", conn, params=(fecha_hoy,))
-            if not df_hoy.empty:
-                st.error(f"🚨 **CITA HOY:** {df_hoy['doctor'][0]} en {df_hoy['clinica'][0]}")
-            else:
-                st.info("✅ Sin citas para hoy")
+            # Estado Financiero
+            df_fin_asist = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
+            balance = df_fin_asist['total'][0] or 0
+            st.info(f"💰 **Balance Total:** RD$ {balance:,.2f}")
         
         with c_alert2:
-            # Alerta de Glucosa
-            df_glu_hoy = pd.read_sql_query("SELECT * FROM glucosa WHERE fecha = ?", conn, params=(fecha_hoy,))
-            if df_glu_hoy.empty:
-                st.warning("⚠️ **PENDIENTE:** Medición de azúcar de hoy")
+            # Glucosa (Sin filtro de medianoche para que siempre se vea la última)
+            df_glu_ult = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+            if not df_glu_ult.empty:
+                st.success(f"✅ Última glucosa: {df_glu_ult['valor'][0]} mg/dL")
             else:
-                st.success("✅ Glucosa de hoy registrada")
+                st.warning("⚠️ Pendiente registrar glucosa")
 
     st.divider()
 
-    # --- 2. ANÁLISIS DE DATOS (MÚSCULO ANALÍTICO) ---
+    # --- 2. ANÁLISIS DE DATOS ---
     st.subheader("📊 Análisis de Situación Actual")
     col_an1, col_an2, col_an3 = st.columns(3)
 
-    # Análisis de Salud: Comparativa
     with col_an1:
-        st.markdown("**Salud (Glucosa)**")
+        st.markdown("**Salud (Comparativa)**")
         df_comp = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 2", conn)
         if len(df_comp) == 2:
-            actual = int(df_comp['valor'][0])
-            anterior = int(df_comp['valor'][1])
+            actual, anterior = int(df_comp['valor'][0]), int(df_comp['valor'][1])
             dif = actual - anterior
-            if dif > 0:
-                st.metric("Nivel Actual", f"{actual} mg/dL", f"+{dif} (Subió)", delta_color="inverse")
-            else:
-                st.metric("Nivel Actual", f"{actual} mg/dL", f"{dif} (Bajó)")
+            st.metric("Nivel Actual", f"{actual} mg/dL", f"{dif:+.1f}", delta_color="inverse" if dif > 0 else "normal")
         else:
-            st.write("Faltan datos para comparar")
-            # --- 4. ACCIÓN MAESTRA: REPORTE PDF RESTABLECIDO ---
-    if st.button("🚀 GENERAR REPORTE PDF INTEGRAL", use_container_width=True):
-        st.info("Generando expediente... Por favor espere.")
+            st.write("Faltan datos")
+
+    with col_an2:
+        st.markdown("**Finanzas (Mes)**")
+        mes_actual = datetime.now().strftime('-%m-')
+        df_g = pd.read_sql_query("SELECT SUM(monto) FROM finanzas WHERE fecha LIKE ? AND monto < 0", conn, params=(f"%{mes_actual}%",))
+        total_g = abs(df_g.iloc[0,0]) if df_g.iloc[0,0] else 0
+        st.metric("Gasto Mensual", f"RD$ {total_g:,.2f}")
+
+    with col_an3:
+        st.markdown("**Bóveda Digital**")
+        cant_docs = pd.read_sql_query("SELECT COUNT(*) FROM archivos", conn).iloc[0,0]
+        st.write(f"📂 **{cant_docs}** documentos")
+
+    st.divider()
+
+    # --- 3. BÚSQUEDA Y FARMACIAS ---
+    col_bus, col_far = st.columns([2, 1])
+    with col_bus:
+        st.subheader("🔍 Buscador")
+        q_asist = st.text_input("¿Qué buscas hoy?", placeholder="Ej: farmacia, mg...")
+        if q_asist:
+            query = f"%{q_asist.lower()}%"
+            res = pd.read_sql_query("""
+                SELECT '💰 Gasto' as T, categoria as D, monto as I FROM finanzas WHERE lower(categoria) LIKE ?
+                UNION ALL
+                SELECT '🩸 Salud' as T, valor || ' mg/dL' as D, fecha as I FROM glucosa WHERE valor LIKE ?
+            """, conn, params=(query, query))
+            st.dataframe(res, use_container_width=True, hide_index=True)
+
+    with col_far:
+        st.subheader("🏥 Farmacias")
+        msg = "Hola, soy Luis Rafael. Necesito consultar algo."
+        st.markdown(f'<a href="https://wa.me/18495060398?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#0047AB;color:white;padding:10px;text-align:center;border-radius:10px;margin-bottom:5px;">VALUED</div></a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="https://wa.me/18296555546?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#E31E24;color:white;padding:10px;text-align:center;border-radius:10px;">GBC</div></a>', unsafe_allow_html=True)
+
+    st.divider()
+
+    # --- 4. ACCIÓN MAESTRA: REPORTE PDF (UNA SOLA VEZ) ---
+    if st.button("🚀 GENERAR REPORTE PDF INTEGRAL", use_container_width=True, key="btn_pdf_final"):
+        st.info("Generando reporte... Por favor espere.")
         try:
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", 'B', 16)
             pdf.cell(200, 10, f"REPORTE INTEGRAL - {NOMBRE_PROPIETARIO}", ln=True, align='C')
             
-            # Sección de Salud
+            # Datos Salud
             pdf.ln(10)
             pdf.set_font("Arial", 'B', 12)
             pdf.cell(200, 10, "Historial de Salud (Glucosa):", ln=True)
-            df_pdf_salud = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 20", conn)
-            
+            df_pdf_s = pd.read_sql_query("SELECT * FROM glucosa ORDER BY id DESC LIMIT 15", conn)
             pdf.set_font("Arial", '', 10)
-            for _, row in df_pdf_salud.iterrows():
-                pdf.cell(200, 8, f"Fecha: {row['fecha']} | Valor: {row['valor']} mg/dL | Estado: {row['estado']}", ln=True)
+            for _, r in df_pdf_s.iterrows():
+                pdf.cell(200, 8, f"{r['fecha']} | {r['valor']} mg/dL | {r['estado']}", ln=True)
 
-            # Sección de Finanzas
-            pdf.ln(5)
-            pdf.set_font("Arial", 'B', 12)
-            pdf.cell(200, 10, "Ultimos Movimientos Financieros:", ln=True)
-            df_pdf_fin = pd.read_sql_query("SELECT * FROM finanzas ORDER BY id DESC LIMIT 20", conn)
-            
-            pdf.set_font("Arial", '', 10)
-            for _, row in df_pdf_fin.iterrows():
-                pdf.cell(200, 8, f"{row['fecha']} | {row['categoria']} | RD$ {row['monto']}", ln=True)
-
-            # Preparar descarga
             reporte_bin = pdf.output(dest='S').encode('latin-1')
-            st.download_button(
-                label="📥 DESCARGAR REPORTE AHORA",
-                data=reporte_bin,
-                file_name=f"Reporte_{NOMBRE_PROPIETARIO.replace(' ', '_')}.pdf",
-                mime="application/pdf"
-            )
+            st.download_button("📥 DESCARGAR REPORTE AHORA", data=reporte_bin, file_name="Reporte_Quevedo.pdf")
         except Exception as e:
-            st.error(f"Error al crear el PDF: {e}")
+            st.error(f"Error: {e}")
 
 
+            
     
 
-    # Análisis de Finanzas: Gasto Mensual
-    with col_an2:
-        st.markdown("**Finanzas (Gastos)**")
-        try:
-            mes_actual = datetime.now().strftime('-%m-')
-            df_gastos = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas WHERE fecha LIKE ?", conn, params=(f"%{mes_actual}%",))
-            total_g = df_gastos['total'][0] if df_gastos['total'][0] else 0
-            st.metric("Gasto del Mes", f"RD$ {total_g:,.2f}")
-        except: st.write("Sin datos de gastos")
-
-    # Análisis de Archivador: Inventario
-    with col_an3:
-        st.markdown("**Bóveda Digital**")
-        cant_docs = pd.read_sql_query("SELECT COUNT(*) as total FROM archivos", conn)['total'][0]
-        cant_med = pd.read_sql_query("SELECT COUNT(*) as total FROM medicinas", conn)['total'][0]
-        st.write(f"📂 **{cant_docs}** documentos")
-        st.write(f"💊 **{cant_med}** medicinas activas")
-
-    st.divider()
-
-    # --- 3. BÚSQUEDA Y FARMACIAS ---
-    col_bus, col_far = st.columns([2, 1])
-    
-    with col_bus:
-        st.subheader("🔍 Buscador de Asistente")
-        q_asist = st.text_input("¿Qué buscas hoy?", placeholder="Ej: glucosa, receta, dr...")
-        if q_asist:
-            # Lógica de búsqueda que ya tenemos...
-            query = f"%{q_asist.lower()}%"
-            res = pd.read_sql_query("""
-                SELECT '📅 Cita' as T, doctor as D, fecha as I FROM citas WHERE lower(doctor) LIKE ?
-                UNION ALL
-                SELECT '💰 Gasto' as T, categoria as D, monto as I FROM finanzas WHERE lower(categoria) LIKE ?
-                UNION ALL
-                SELECT '💊 Med' as T, nombre as D, frecuencia as I FROM medicinas WHERE lower(nombre) LIKE ?
-            """, conn, params=(query, query, query))
-            st.dataframe(res, use_container_width=True, hide_index=True)
-
-    with col_far:
-        st.subheader("🏥 Farmacias")
-        msg = "Hola, soy Luis Rafael (8092714672). Necesito consultar algo."
-        st.markdown(f'<a href="https://wa.me/18495060398?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#0047AB;color:white;padding:10px;text-align:center;border-radius:10px;margin-bottom:5px;">VALUED</div></a>', unsafe_allow_html=True)
-        st.markdown(f'<a href="https://wa.me/18296555546?text={msg}" target="_blank" style="text-decoration:none;"><div style="background:#E31E24;color:white;padding:10px;text-align:center;border-radius:10px;">GBC</div></a>', unsafe_allow_html=True)
-
-    st.divider()
-
-    # --- 4. ACCIÓN MAESTRA: REPORTE ---
-    if st.button("🚀 GENERAR REPORTE PDF INTEGRAL", use_container_width=True):
-        # (Aquí va el código del PDF que ya tenemos pulido)
-        st.info("Procesando expediente completo...")
-        # ... (Cierre de función PDF)
-
-    try: pass
-    except: pass   
-
-      
    
-    
-        
-       
   
 # --- PIE DE PÁGINA (CRÉDITOS) ---
 st.markdown("---")
