@@ -457,7 +457,7 @@ elif menu == "📂 ARCHIVADOR":
         col_izq, col_der = st.columns(2)
 
         with col_izq:
-            st.markdown("### 🩺 Salud y Citas")
+           ### st.markdown("### 🩺 Salud y Citas")
             try:
                 # Buscamos en Medicinas y Citas
                 res_agenda = pd.read_sql_query("""
@@ -477,9 +477,8 @@ elif menu == "📂 ARCHIVADOR":
                 else:
                     res_bio = pd.read_sql_query("""
                         SELECT '🩸 Biomonitor' as Origen, valor || ' mg/dL' as Detalle, fecha as Info 
-                        FROM glucosa WHERE fecha LIKE ?
-                    """, conn, params=(query,))
-
+                        FROM glucosa ORDER BY id DESC LIMIT 10
+                    """, conn)
                 # Unión de resultados
                 todo_salud = pd.concat([res_agenda, res_bio])
                 if not todo_salud.empty:
