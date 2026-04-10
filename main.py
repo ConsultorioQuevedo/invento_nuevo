@@ -339,11 +339,13 @@ elif menu == "💰 FINANZAS":
 
     
 # --- MÓDULO BIOMONITOR: RECONSTRUCCIÓN ANTI-ERRORES ---
+
+# --- MÓDULO BIOMONITOR: VERSIÓN PROTEGIDA ANTI-PANTALLA BLANCA ---
 elif menu == "🩸 BIOMONITOR":
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
     st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
 
-    # --- 1. ENTRADA DE DATOS (Mantiene tu lógica original) ---
+    # --- 1. ENTRADA DE DATOS ---
     with st.container(border=True):
         col1, col2, col3 = st.columns([2, 2, 1])
         with col1:
@@ -370,7 +372,7 @@ elif menu == "🩸 BIOMONITOR":
                               (valor_g, "mg/dL", momento, f_str, h_str))
                     conn.commit()
                     
-                    if 'conn_google' in locals() or 'conn_google' in globals():
+                    if conn_google is not None:
                         paquete_nube = {
                             "ID_SISTEMA": "QUEVEDO_PRO_V4", "FECHA": f_str, "HORA": h_str,
                             "VALOR_MG_DL": valor_g, "ESTADO_MEDICO": momento,
@@ -384,35 +386,45 @@ elif menu == "🩸 BIOMONITOR":
                     time.sleep(1)
                     st.rerun()
                 except Exception as e:
-                    st.error(f"🚨 Error: {e}")
+                    st.error(f"🚨 Error al guardar: {e}")
 
     st.divider()
 
-    # --- 3. AUDITORÍA Y GRÁFICA DE TENDENCIAS ---
+    # --- 2. AUDITORÍA Y GRÁFICA (EL "ESCUDO" ANTI-ERROR) ---
+    st.subheader("📈 Análisis de Tendencias")
     try:
-        # Traemos más datos para la gráfica (últimos 30 registros)
+        # Extraemos datos para análisis
         df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
         
         if not df_full.empty:
-            # Preparar datos para la gráfica
-            df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'])
-            df_plot = df_full.sort_values('Fecha_Hora') # Orden cronológico para la línea
+            # PROTECCIÓN: Si hay basura en los datos, esto evita que la pantalla se ponga blanca
+            # Combinamos fecha y hora con errors='coerce' para ignorar registros corruptos
+            df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'], errors='coerce')
+            
+            # Limpiamos: Solo filas con tiempo válido y valores numéricos
+            df_plot = df_full.dropna(subset=['Fecha_Hora']).copy()
+            df_plot['valor'] = pd.to_numeric(df_plot['valor'], errors='coerce')
+            df_plot = df_plot.sort_values('Fecha_Hora')
 
             col_tabla, col_grafica = st.columns([1, 1])
 
             with col_tabla:
-                st.subheader("📋 Últimos Registros")
+                st.markdown("**Registros Recientes**")
                 st.dataframe(df_full.head(10), use_container_width=True, hide_index=True)
 
             with col_grafica:
-                st.subheader("📈 Curva de Glucosa")
-                st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
-                st.caption("Eje X: Tiempo | Eje Y: mg/dL")
+                if not df_plot.empty:
+                    st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
+                    st.caption("Eje X: Tiempo | Eje Y: mg/dL")
+                else:
+                    st.warning("⚠️ Los datos en el Búnker no tienen el formato correcto para graficar.")
         else:
-            st.info("No hay datos suficientes para generar tendencias.")
+            st.info("Bóveda vacía. Registra tu primera medición para activar las gráficas.")
             
     except Exception as e:
-        st.warning("⚡ Esperando datos para activar motor de análisis.")
+        # Si algo falla aquí, verás este mensaje en lugar de la pantalla blanca
+        st.warning(f"⚡ El motor gráfico está en mantenimiento o hay un dato mal formado: {e}")
+
 
 ####-----------------------------
 ##ESCANER
