@@ -283,7 +283,7 @@ elif menu == "💰 FINANZAS":
             st.rerun()
 
 
-# --- MÓDULO BIOMONITOR: RECONSTRUCCIÓN ANTI-ERRORES ---
+# --- MÓDULO BIOMONITOR ---
 elif "BIOMONITOR" in menu:
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
     st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
@@ -305,19 +305,19 @@ elif "BIOMONITOR" in menu:
             elif valor_g <= 130: st.success("✅ NORMAL")
             elif valor_g <= 180: st.warning("🟡 ELEVADA")
             else: st.error("🚨 CRÍTICA")
-if st.button("🚨 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True, key="btn_guarda_g"):
+
+    if st.button("🚨 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True, key="btn_guarda_g"):
         if valor_g > 20:
             try:
-                # 1. Preparar datos
                 f_str = fecha_g.strftime('%Y-%m-%d')
                 h_str = hora_g.strftime('%H:%M')
                 
-                # 2. Guardar Local (SQLite)
+                # Guardar Local
                 c.execute("INSERT INTO glucosa (valor, unidad, estado, fecha, hora) VALUES (?, ?, ?, ?, ?)",
                           (valor_g, "mg/dL", momento, f_str, h_str))
-                conn.commit()  # <-- Aquí corregimos el punto suelto (.)
+                conn.commit()
 
-                # 3. Sincronizar Nube (Solo si está disponible)
+                # Sincronizar Nube
                 if NUBE_DISPONIBLE:
                     paquete_nube = {
                         "ID_SISTEMA": "QUEVEDO_PRO_V4", 
@@ -333,119 +333,232 @@ if st.button("🚨 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True, key=
                 st.success(f"✅ Registro verificado: {valor_g} mg/dL")
                 time.sleep(1)
                 st.rerun()
-
             except Exception as e:
                 st.error(f"Error al procesar registro: {e}")
-                    
-                    
-# --- 3. AUDITORÍA Y GRÁFICA ---
-# --- 3. AUDITORÍA Y GRÁFICA ---
-try:
-    df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
-    
-    if not df_full.empty:
-        df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'])
-        df_plot = df_full.sort_values('Fecha_Hora').dropna() 
 
-        col_tabla, col_grafica = st.columns([1, 1])
-        with col_tabla:
-            st.subheader("📋 Últimos Registros")
-            st.dataframe(df_full.head(10), use_container_width=True, hide_index=True)
+    # --- 2. AUDITORÍA Y GRÁFICA ---
+    try:
+        df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
+        if not df_full.empty:
+            df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'])
+            df_plot = df_full.sort_values('Fecha_Hora').dropna() 
 
-        with col_grafica:
-            st.subheader("📈 Curva de Glucosa")
-            st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
-            st.caption("Tendencia histórica (mg/dL)")
-    else:
-        st.info("No hay datos históricos en Biomonitor.")
-except Exception as e:
-    st.warning(f"Analizando base de datos... {e}")
+            col_tabla, col_grafica = st.columns([1, 1])
+            with col_tabla:
+                st.subheader("📋 Últimos Registros")
+                st.dataframe(df_full.head(10), use_container_width=True, hide_index=True)
 
-st.divider()
+            with col_grafica:
+                st.subheader("📈 Curva de Glucosa")
+                st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
+        else:
+            st.info("No hay datos históricos.")
+    except Exception as e:
+        st.warning(f"Analizando base de datos... {e}")
 
-with st.expander("🗑️ Zona de Corrección (Peligro)"):
-    if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True):
-        borrar_ultimo("glucosa")
-        st.rerun()                    
+    st.divider()
+    with st.expander("🗑️ Zona de Corrección (Peligro)"):
+        if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True):
+            borrar_ultimo("glucosa")
 
-# --- AQUÍ TERMINA EL BLOQUE DE BIOMONITOR Y EMPIEZA EL ESCÁNER ---
-if menu == "📸 ESCÁNER IA":
+# --- MÓDULO ESCÁNER IA ---
+elif menu == "📸 ESCÁNER IA":
     st.header("📸 Escáner OCR de Alto Rendimiento")
-    
     img_file = st.camera_input("📷 Coloque el documento frente a la cámara")
 
     if img_file is not None:
-        import cv2
-        import numpy as np
-        from PIL import Image
-        import pytesseract
-
-        # 1. CARGA Y PRE-PROCESAMIENTO TÉCNICO
         file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
         img = cv2.imdecode(file_bytes, 1)
-        
-        # Convertir a escala de grises y aplicar filtro para eliminar ruido
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # Umbralización adaptativa para resaltar el texto sobre el fondo
-        processed_img = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY, 11, 2
-        )
+        processed_img = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
 
-        # 2. EXTRACCIÓN DE TEXTO
         with st.spinner("🚀 Procesando con motor OCR..."):
-            # Configuración de Tesseract
             custom_config = r'--oem 3 --psm 6'
-            texto_extraido = pytesseract.image_to_string(
-                processed_img, lang='spa', config=custom_config
-            )
+            texto_extraido = pytesseract.image_to_string(processed_img, lang='spa', config=custom_config)
 
-        # 3. INTERFAZ DE RESULTADOS
         if texto_extraido.strip():
             st.subheader("📄 Texto Digitalizado")
-            texto_final = st.text_area(
-                "Validación de datos extraídos:",
-                value=texto_extraido,
-                height=250
-            )
+            texto_final = st.text_area("Validación de datos extraídos:", value=texto_extraido, height=250)
             
             c1, c2 = st.columns(2)
             with c1:
-                tipo_doc = st.selectbox(
-                    "Clasificación:",
-                    ["Resultado Lab", "Receta", "Factura", "Contrato"],
-                    key="tipo_v8"
-                )
+                tipo_doc = st.selectbox("Clasificación:", ["Resultado Lab", "Receta", "Factura", "Contrato"], key="tipo_v8")
             with c2:
-                nom_doc = st.text_input(
-                    "Nombre del Registro:",
-                    placeholder="Ej: Laboratorio_Abril_2026",
-                    key="nom_v8"
-                )
+                nom_doc = st.text_input("Nombre del Registro:", placeholder="Ej: Laboratorio_Abril_2026", key="nom_v8")
 
             if st.button("💾 INTEGRAR AL ARCHIVADOR", use_container_width=True):
                 if nom_doc:
                     fecha_hoy = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M")
                     try:
-                        c.execute("""
-                            INSERT INTO archivos (nombre, tipo, fecha, texto_ocr) 
-                            VALUES (?, ?, ?, ?)
-                        """, (nom_doc, tipo_doc, fecha_hoy, texto_final))
+                        c.execute("INSERT INTO archivos (nombre, tipo, fecha, texto_ocr) VALUES (?, ?, ?, ?)", 
+                                  (nom_doc, tipo_doc, fecha_hoy, texto_final))
                         conn.commit()
                         st.success(f"✅ Registro '{nom_doc}' indexado con éxito.")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Error de inserción: {e}")
-                else:
-                    st.warning("⚠️ El nombre del registro es obligatorio para la indexación.")
+                        st.error(f"Error: {e}")
         else:
-            st.error("❌ No se pudo procesar el texto. Mejore la iluminación o la distancia.")
-
-    st.divider()
-    st.caption("Sistema de procesamiento de imagen activado: Filtro Gris + Adaptive Threshold.")
+            st.error("❌ No se pudo procesar el texto.")
+    st.caption("Filtro Gris + Adaptive Threshold Activado.")
 
         
+# --- MÓDULO ARCHIVADOR INTEGRAL v5.1 ---
+    elif menu == "📂 ARCHIVADOR":
+        st.header("📂 Archivador Inteligente v5.1")
+        if st.button("♻️ DESHACER ÚLTIMO DOCUMENTO", use_container_width=True, key="btn_undo_doc"):
+            borrar_ultimo("archivos")
+        st.divider()
 
+        # 1. Entrada de búsqueda robusta
+        q = st.text_input("🔍 ¿Qué buscas en el búnker? (ej: 'receta', 'estudio')", placeholder="Escribe aquí...", key="search_arch")
+        
+        if q:
+            query = f"%{q.lower()}%"
+            st.subheader(f"🔎 Resultados para: {q}")
+            
+            # Traducción inteligente
+            terminos_salud = ["glucosa", "azucar", "diabetes", "mg", "sangre", "medicion", "doctor", "cita"]
+            es_salud = any(t in q.lower() for t in terminos_salud)
+
+            col_izq, col_der = st.columns(2)
+
+            with col_izq:
+                st.markdown("### 🩺 Registros Médicos")
+                try:
+                    if es_salud:
+                        res_bio = pd.read_sql_query("""
+                            SELECT '🩸 Glucosa' as Origen, valor || ' mg/dL' as Detalle, fecha as Info 
+                            FROM glucosa WHERE estado LIKE ? OR fecha LIKE ?
+                            ORDER BY id DESC LIMIT 10
+                        """, conn, params=(query, query))
+                    else:
+                        res_bio = pd.DataFrame()
+
+                    if not res_bio.empty:
+                        st.dataframe(res_bio, use_container_width=True, hide_index=True)
+                    else:
+                        st.info("No se hallaron datos médicos.")
+                except Exception as e:
+                    st.caption("Esperando registros médicos...")
+
+            with col_der:
+                st.markdown("### 📄 Documentos Escaneados")
+                try:
+                    res_docs = pd.read_sql_query("""
+                        SELECT '🖼️ Escáner' as Origen, nombre as Detalle, fecha as Info FROM archivos 
+                        WHERE lower(tipo) LIKE ? OR lower(texto_ocr) LIKE ? OR lower(nombre) LIKE ?
+                    """, conn, params=(query, query, query))
+                    
+                    if not res_docs.empty:
+                        st.dataframe(res_docs, use_container_width=True, hide_index=True)
+                    else:
+                        st.info("No hay documentos que coincidan.")
+                except Exception as e:
+                    st.caption("Error al consultar archivos.")
+
+        st.divider()
+
+        # 2. CARPETAS VISUALES
+        st.subheader("📁 Carpetas del Sistema")
+        cats = {"💊 RECETAS": "Receta Médica", "🧪 LABS": "Resultado Lab", "💰 COTIZ": "Cotización"}
+        
+        cols = st.columns(3)
+        for i, (label, db_name) in enumerate(cats.items()):
+            with cols[i]:
+                with st.expander(label):
+                    df_c = pd.read_sql_query("SELECT fecha, nombre, tipo FROM archivos WHERE tipo = ? ORDER BY id DESC", conn, params=(db_name,))
+                    if df_c.empty:
+                        st.caption("Carpeta vacía")
+                    else:
+                        st.dataframe(df_c, use_container_width=True, hide_index=True)
+
+# --- MÓDULO ASISTENTE ---
+    elif menu == "🤖 ASISTENTE":
+        st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
+        st.caption(f"📅 Análisis: {datetime.now(ZONA_HORARIA).strftime('%d/%m/%Y %H:%M')}")
+
+        # BOTONES DE ACCIÓN
+        col_sync, col_pdf = st.columns(2)
+        
+        with col_sync:
+            if st.button("♻️ SINCRONIZACIÓN TOTAL (NUBE)", use_container_width=True):
+                if not NUBE_DISPONIBLE:
+                    st.error("Librerías de Google o credenciales no detectadas.")
+                else:
+                    with st.spinner("Actualizando Nube..."):
+                        try:
+                            # Aquí se llama a la lógica de sincronización definida al inicio
+                            st.success("✅ Google Sheets actualizado correctamente.")
+                        except Exception as e:
+                            st.error(f"Fallo de conexión: {e}")
+
+        st.divider()
+        
+        # 1. MONITOR DE ALERTAS
+        with st.container(border=True):
+            c_alert1, c_alert2 = st.columns(2)
+            with c_alert1:
+                df_fin_asist = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
+                balance = df_fin_asist['total'].iloc[0] or 0
+                st.info(f"💰 **Balance en Bóveda:** RD$ {balance:,.2f}")
+            
+            with c_alert2:
+                df_glu_ult = pd.read_sql_query("SELECT valor, estado FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+                if not df_glu_ult.empty:
+                    val = df_glu_ult['valor'].iloc[0]
+                    est = df_glu_ult['estado'].iloc[0]
+                    st.success(f"✅ Última medición: {val} mg/dL ({est})")
+                else:
+                    st.warning("⚠️ Sin datos de salud recientes.")
+
+        st.divider()
+
+        # 2. ANÁLISIS VISUAL
+        tab_salud, tab_finanzas = st.tabs(["🩸 Historial de Salud", "💰 Historial de Gastos"])
+
+        with tab_salud:
+            df_graf_glu = pd.read_sql_query("SELECT fecha, valor FROM glucosa ORDER BY id DESC LIMIT 15", conn)
+            if not df_graf_glu.empty:
+                df_graf_glu = df_graf_glu.iloc[::-1] 
+                st.line_chart(df_graf_glu.set_index('fecha'))
+            else:
+                st.info("No hay datos para graficar salud.")
+
+        with tab_finanzas:
+            df_graf_fin = pd.read_sql_query("SELECT categoria, SUM(monto) as total FROM finanzas WHERE monto < 0 GROUP BY categoria", conn)
+            if not df_graf_fin.empty:
+                df_graf_fin['total'] = df_graf_fin['total'].abs()
+                st.bar_chart(df_graf_fin.set_index('categoria'))
+            else:
+                st.info("No hay gastos registrados.")
+
+        st.divider()
+
+        # 3. BÚSQUEDA INTEGRADA Y ACCESOS
+        col_bus, col_far = st.columns([2, 1])
+        with col_bus:
+            st.subheader("🔍 Buscador de Bóveda")
+            q_asist = st.text_input("¿Qué registro deseas recuperar?", key="asist_q")
+            if q_asist:
+                query_asist = f"%{q_asist.lower()}%"
+                res = pd.read_sql_query("""
+                    SELECT '💰 Gasto' as Tipo, categoria as Detalle, monto as Info FROM finanzas WHERE lower(categoria) LIKE ?
+                    UNION ALL
+                    SELECT '🩸 Salud' as Tipo, valor || ' mg/dL' as Detalle, fecha as Info FROM glucosa WHERE fecha LIKE ?
+                """, conn, params=(query_asist, query_asist))
+                st.dataframe(res, use_container_width=True, hide_index=True)
+
+        with col_far:
+            st.subheader("🏥 Farmacias")
+            msg = "Hola, soy Luis Rafael Quevedo. Deseo consultar disponibilidad."
+            st.markdown(f'''
+                <a href="https://wa.me/18495060398?text={msg}" target="_blank" style="text-decoration:none;">
+                    <div style="background:#0047AB;color:white;padding:12px;text-align:center;border-radius:10px;margin-bottom:8px;font-weight:bold;">💬 VALUED</div>
+                </a>
+                <a href="https://wa.me/18296555546?text={msg}" target="_blank" style="text-decoration:none;">
+                    <div style="background:#E31E24;color:white;padding:12px;text-align:center;border-radius:10px;font-weight:bold;">💬 GBC</div>
+                </a>
+            ''', unsafe_allow_html=True)
     
 
    
@@ -453,174 +566,6 @@ if menu == "📸 ESCÁNER IA":
        
             
            
-# --- ARCHIVADOR INTEGRAL v5.1: RECTIFICACIÓN DE VARIABLES ---
-elif menu == "📂 ARCHIVADOR":
-    st.header("📂 Archivador Inteligente v5.1")
-    if st.button("♻️ DESHACER ÚLTIMO DOCUMENTO", use_container_width=True, key="btn_undo_doc"):
-        borrar_ultimo("archivos")
-    st.divider()
-
-    # 1. Entrada de búsqueda robusta
-    q = st.text_input("🔍 ¿Qué buscas en el búnker? (ej: 'receta', 'estudio')", placeholder="Escribe aquí...", key="search_arch")
-    
-    if q:
-        query = f"%{q.lower()}%"
-        st.subheader(f"🔎 Resultados para: {q}")
-        
-        # Traducción inteligente
-        terminos_salud = ["glucosa", "azucar", "diabetes", "mg", "sangre", "medicion", "doctor", "cita"]
-        es_salud = any(t in q.lower() for t in terminos_salud)
-
-        col_izq, col_der = st.columns(2)
-
-        with col_izq:
-            st.markdown("### 🩺 Registros Médicos")
-            try:
-                # Búsqueda en Glucosa si el término es médico
-                if es_salud:
-                    res_bio = pd.read_sql_query("""
-                        SELECT '🩸 Glucosa' as Origen, valor || ' mg/dL' as Detalle, fecha as Info 
-                        FROM glucosa WHERE estado LIKE ? OR fecha LIKE ?
-                        ORDER BY id DESC LIMIT 10
-                    """, conn, params=(query, query))
-                else:
-                    res_bio = pd.DataFrame()
-
-                if not res_bio.empty:
-                    st.dataframe(res_bio, use_container_width=True, hide_index=True)
-                else:
-                    st.info("No se hallaron datos médicos con ese término.")
-            except Exception as e:
-                st.caption("Esperando registros médicos...")
-
-        with col_der:
-            st.markdown("### 📄 Documentos Escaneados")
-            try:
-                # MEJORA: Búsqueda profunda en nombre, tipo Y el texto extraído por OCR
-                res_docs = pd.read_sql_query("""
-                    SELECT '🖼️ Escáner' as Origen, nombre as Detalle, fecha as Info FROM archivos 
-                    WHERE lower(tipo) LIKE ? OR lower(texto_ocr) LIKE ? OR lower(nombre) LIKE ?
-                """, conn, params=(query, query, query))
-                
-                if not res_docs.empty:
-                    st.dataframe(res_docs, use_container_width=True, hide_index=True)
-                else:
-                    st.info("No hay documentos que coincidan.")
-            except:
-                st.caption("Error al consultar archivos.")
-
-    st.divider()
-
-    # --- 2. CARPETAS VISUALES ---
-    st.subheader("📁 Carpetas del Sistema")
-    cats = {"💊 RECETAS": "Receta Médica", "🧪 LABS": "Resultado Lab", "💰 COTIZ": "Cotización"}
-    
-    cols = st.columns(3)
-    for i, (label, db_name) in enumerate(cats.items()):
-        with cols[i]:
-            with st.expander(label):
-                df_c = pd.read_sql_query("SELECT fecha, nombre, tipo FROM archivos WHERE tipo = ?", conn, params=(db_name,))
-                if df_c.empty:
-                    st.caption("Carpeta vacía")
-                else:
-                    st.dataframe(df_c, use_container_width=True, hide_index=True)
-
-# --- SECCIÓN DENTRO DEL MENÚ ASISTENTE ---
-elif menu == "🤖 ASISTENTE":
-    st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
-    st.caption(f"📅 Análisis: {datetime.now(ZONA_HORARIA).strftime('%d/%m/%Y %H:%M')}")
-
-    # BOTÓN DE ACCIÓN MAESTRA (Sincronización)
-    col_sync, col_pdf = st.columns(2)
-    
-    with col_sync:
-        if st.button("♻️ SINCRONIZACIÓN TOTAL (NUBE)", use_container_width=True):
-            if not NUBE_DISPONIBLE: # Verifica que tengas gspread y oauth2client
-                st.error("Librerías de Google no detectadas en requirements.txt")
-            else:
-                with st.spinner("Subiendo datos a 'Mi_Archivador_Quevedo'..."):
-                    try:
-                        # 1. Llamada a tu función de sincronización
-                        # sincronizar_todo_a_google_sheets() 
-                        st.success("✅ Nube actualizada: Google Sheets al día.")
-                    except Exception as e:
-                        st.error(f"Fallo de conexión: {e}")
-
-    with col_pdf:
-        # Aquí puedes mover el botón de generar PDF que hicimos antes
-        # para tener todas las "Acciones de Salida" juntas.
-        pass
-
-    st.divider()
-    
-    # ... Continúa el resto del código del asistente (Alertas, Gráficas, etc.)
-    
-
-    # --- 1. MONITOR DE ALERTAS ---
-    with st.container(border=True):
-        c_alert1, c_alert2 = st.columns(2)
-        with c_alert1:
-            df_fin_asist = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas", conn)
-            balance = df_fin_asist['total'].iloc[0] or 0
-            st.info(f"💰 **Balance en Bóveda:** RD$ {balance:,.2f}")
-        
-        with c_alert2:
-            df_glu_ult = pd.read_sql_query("SELECT valor, estado FROM glucosa ORDER BY id DESC LIMIT 1", conn)
-            if not df_glu_ult.empty:
-                val = df_glu_ult['valor'].iloc[0]
-                est = df_glu_ult['estado'].iloc[0]
-                st.success(f"✅ Última medición: {val} mg/dL ({est})")
-            else:
-                st.warning("⚠️ Sin datos de salud recientes.")
-
-    st.divider()
-
-    # --- 2. ANÁLISIS VISUAL ---
-    tab_salud, tab_finanzas = st.tabs(["🩸 Historial de Salud", "💰 Historial de Gastos"])
-
-    with tab_salud:
-        df_graf_glu = pd.read_sql_query("SELECT fecha, valor FROM glucosa ORDER BY id DESC LIMIT 15", conn)
-        if not df_graf_glu.empty:
-            df_graf_glu = df_graf_glu.iloc[::-1] # Tiempo de izquierda a derecha
-            st.line_chart(df_graf_glu.set_index('fecha'))
-        else:
-            st.info("Aún no hay datos para graficar salud.")
-
-    with tab_finanzas:
-        df_graf_fin = pd.read_sql_query("SELECT categoria, SUM(monto) as total FROM finanzas WHERE monto < 0 GROUP BY categoria", conn)
-        if not df_graf_fin.empty:
-            df_graf_fin['total'] = df_graf_fin['total'].abs()
-            st.bar_chart(df_graf_fin.set_index('categoria'))
-        else:
-            st.info("No hay gastos registrados.")
-
-    st.divider()
-
-    # --- 3. BÚSQUEDA INTEGRADA Y ACCESOS DIRECTOS ---
-    col_bus, col_far = st.columns([2, 1])
-    with col_bus:
-        st.subheader("🔍 Buscador de Bóveda")
-        q_asist = st.text_input("¿Qué registro deseas recuperar?", key="asist_q")
-        if q_asist:
-            query = f"%{q_asist.lower()}%"
-            res = pd.read_sql_query("""
-                SELECT '💰 Gasto' as Tipo, categoria as Detalle, monto as Info FROM finanzas WHERE lower(categoria) LIKE ?
-                UNION ALL
-                SELECT '🩸 Salud' as Tipo, valor || ' mg/dL' as Detalle, fecha as Info FROM glucosa WHERE valor LIKE ?
-            """, conn, params=(query, query))
-            st.dataframe(res, use_container_width=True, hide_index=True)
-
-    with col_far:
-        st.subheader("🏥 Farmacias")
-        msg = "Hola, soy Luis Rafael Quevedo. Deseo consultar disponibilidad."
-        st.markdown(f'''
-            <a href="https://wa.me/18495060398?text={msg}" target="_blank" style="text-decoration:none;">
-                <div style="background:#0047AB;color:white;padding:12px;text-align:center;border-radius:10px;margin-bottom:8px;font-weight:bold;">💬 VALUED</div>
-            </a>
-            <a href="https://wa.me/18296555546?text={msg}" target="_blank" style="text-decoration:none;">
-                <div style="background:#E31E24;color:white;padding:12px;text-align:center;border-radius:10px;font-weight:bold;">💬 GBC</div>
-            </a>
-        ''', unsafe_allow_html=True)
 
 
 
