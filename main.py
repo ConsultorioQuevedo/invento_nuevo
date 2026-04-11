@@ -402,7 +402,7 @@ with st.expander("🗑️ Zona de Corrección (Peligro)"):
 
 # --- AQUÍ TERMINA EL BLOQUE DE BIOMONITOR Y EMPIEZA EL ESCÁNER ---
     elif menu == "📸 ESCÁNER IA":
-    st.header("📸 Escáner OCR de Alto Rendimiento")
+         st.header("📸 Escáner OCR de Alto Rendimiento")
     # ... resto del código del escáner
 
 
