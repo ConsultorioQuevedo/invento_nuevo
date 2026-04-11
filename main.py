@@ -391,7 +391,7 @@ try:
                 st.caption("Tendencia histórica (mg/dL)")
         else:
             st.info("No hay datos históricos en Biomonitor.")
-    except Exception as e:
+except Exception as e:
             st.warning(f"Analizando base de datos... {e}")
 
     st.divider()
