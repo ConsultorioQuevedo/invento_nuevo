@@ -8,32 +8,35 @@ import os
 import plotly.express as px
 from fpdf import FPDF
 import re
+ice_account import Credentials
+import streamlit as st
+import pandas as pd
+import sqlite3
 import requests
 import pytz
 import io
-from datetime import datetime
-from streamlit_gsheets import GSheetsConnection
-from pyzbar.pyzbar import decode
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+from PIL import Image
+from google.oauth2.service_account import Credentials # Reemplaza a oauth2client
 
-# ==========================================
-# 1. CONFIGURACIÓN E IDENTIDAD
-# ==========================================
-
+# --- 1. CONFIGURACIÓN E IDENTIDAD ---
 try:
-    from oauth2client.service_account import ServiceAccountCredentials
-    import gspread
-    NUBE_DISPONIBLE = True
-except ImportError:
+    if "gcp_service_account" in st.secrets:
+        SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=SCOPES)
+        gc = gspread.authorize(creds)
+        NUBE_DISPONIBLE = True
+    else:
+        NUBE_DISPONIBLE = False
+except Exception as e:
     NUBE_DISPONIBLE = False
 
-st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
+st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
 
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 
-# Manejo de Zona Horaria
 try:
     ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
     hora_actual = datetime.now(ZONA_HORARIA)
