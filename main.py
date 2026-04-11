@@ -17,21 +17,24 @@ from datetime import datetime
 from PIL import Image
 from google.oauth2.service_account import Credentials
 # --- 1. CONFIGURACIÓN E IDENTIDAD ---
+# --- 1. CONFIGURACIÓN E IDENTIDAD ---
+NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
+UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
+
+# Intentar conexión con Google Sheets (Nube)
 try:
     if "gcp_service_account" in st.secrets:
         SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=SCOPES)
-        gc = gspread.authorize(creds)
+        client = gspread.authorize(creds)
         NUBE_DISPONIBLE = True
     else:
         NUBE_DISPONIBLE = False
 except Exception as e:
     NUBE_DISPONIBLE = False
+    st.sidebar.warning("Nube no conectada")
 
-st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
-
-NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
-UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
+    st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
 
 try:
     ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
