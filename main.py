@@ -11,25 +11,25 @@ import requests
 import pytz
 import io
 import gspread
-import time  # <-- Falta en tu imagen
-import pytesseract  # <-- Falta en tu imagen
+import time
+import pytesseract
 from datetime import datetime
 from PIL import Image
 from google.oauth2.service_account import Credentials
-
+from streamlit_gsheets import GSheetsConnection
 
 # --- 1. CONFIGURACIÓN E IDENTIDAD ---
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
+
+st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
 
 # Conexión Segura a Google Sheets
 client = None
 NUBE_DISPONIBLE = False
 
 try:
-    # Verificamos si las credenciales existen en Streamlit Secrets
     if "gcp_service_account" in st.secrets:
-        # Cargamos credenciales directamente del diccionario de Secrets
         creds_info = st.secrets["gcp_service_account"]
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
@@ -41,9 +41,6 @@ except Exception as e:
     NUBE_DISPONIBLE = False
     st.sidebar.error(f"⚠️ Error de enlace nube: {e}")
 
-st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
-
-    
 try:
     ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
     hora_actual = datetime.now(ZONA_HORARIA)
@@ -52,7 +49,6 @@ except Exception:
     hora_actual = datetime.now(ZONA_HORARIA)
     st.warning("⚠️ Zona horaria no encontrada, usando UTC.")
 
-# URL Directa de tu Google Sheet
 URL_NUBE = "https://docs.google.com/spreadsheets/d/18030cQtLcVWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbl/edit"
 
 # ==========================================
@@ -61,43 +57,19 @@ URL_NUBE = "https://docs.google.com/spreadsheets/d/18030cQtLcVWdHXMMX2MhCu4aeyvB
 
 try:
     conn_google = st.connection("gsheets", type=GSheetsConnection)
-except Exception as e:
+except Exception:
     conn_google = None
-    st.warning("⚠️ Conexión a la nube en espera (Modo Local activo)")
-
-def sincronizar_a_google():
-    try:
-        # Definir el alcance
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
-        client = gspread.authorize(creds)
-        
-        # Abrir (o crear) la hoja de cálculo
-        # Asegúrate de haber compartido la hoja con el email que viene en el JSON
-        sheet = client.open(f"Respaldo_Quevedo_{NOMBRE_PROPIETARIO}").sheet1
-        
-        # Obtener datos de finanzas
-        df_fin = pd.read_sql_query("SELECT * FROM finanzas", conn)
-        
-        # Limpiar y actualizar Google Sheets con los datos actuales
-        sheet.clear()
-        sheet.update([df_fin.columns.values.tolist()] + df_fin.values.tolist())
-        
-        return True
-    except Exception as e:
-        print(f"Error de sincronización: {e}")
-        return False
-
 
 def registrar_en_nube_exacto(datos_dict, pestaña="DB_QUEVEDO1"):
-    try:
-        df_nube = conn_google.read(spreadsheet=URL_NUBE, worksheet=pestaña)
-        nueva_fila = pd.DataFrame([datos_dict])
-        df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
-        conn_google.update(spreadsheet=URL_NUBE, worksheet=pestaña, data=df_final)
-        st.success(f"✅ Sincronizado en la Nube -> {pestaña}")
-    except Exception as e:
-        st.error(f"❌ Error de sincronización en {pestaña}: {e}")
+    if NUBE_DISPONIBLE and conn_google:
+        try:
+            df_nube = conn_google.read(spreadsheet=URL_NUBE, worksheet=pestaña)
+            nueva_fila = pd.DataFrame([datos_dict])
+            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
+            conn_google.update(spreadsheet=URL_NUBE, worksheet=pestaña, data=df_final)
+            st.success(f"✅ Sincronizado en Nube -> {pestaña}")
+        except Exception as e:
+            st.error(f"❌ Error de sincronización: {e}")
 
 def inicializar_todo():
     base = "archivador_quevedo"
@@ -114,7 +86,6 @@ def inicializar_todo():
         "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)",
         "CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, tipo TEXT, fecha TEXT, texto_ocr TEXT)",
         "CREATE TABLE IF NOT EXISTS finanzas (id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, categoria TEXT, monto REAL, fecha TEXT)",
-        "CREATE TABLE IF NOT EXISTS inventario (id INTEGER PRIMARY KEY AUTOINCREMENT, producto TEXT, cantidad INTEGER, precio REAL, fecha TEXT)",
         "CREATE TABLE IF NOT EXISTS presupuesto (id INTEGER PRIMARY KEY, monto REAL)",
         "INSERT OR IGNORE INTO presupuesto (id, monto) VALUES (1, 0.0)"
     ] 
@@ -125,10 +96,6 @@ def inicializar_todo():
     return conn, c
 
 conn, c = inicializar_todo()
-
-# ==========================================
-# 3. FUNCIONES COMPLEMENTARIAS
-# ==========================================
 
 def borrar_ultimo(tabla):
     try:
