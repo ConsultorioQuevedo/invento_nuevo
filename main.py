@@ -14,6 +14,8 @@ import io
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 from pyzbar.pyzbar import decode
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # ==========================================
 # 1. CONFIGURACIÓN E IDENTIDAD
@@ -45,6 +47,30 @@ try:
 except Exception as e:
     conn_google = None
     st.warning("⚠️ Conexión a la nube en espera (Modo Local activo)")
+
+def sincronizar_a_google():
+    try:
+        # Definir el alcance
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+        client = gspread.authorize(creds)
+        
+        # Abrir (o crear) la hoja de cálculo
+        # Asegúrate de haber compartido la hoja con el email que viene en el JSON
+        sheet = client.open(f"Respaldo_Quevedo_{NOMBRE_PROPIETARIO}").sheet1
+        
+        # Obtener datos de finanzas
+        df_fin = pd.read_sql_query("SELECT * FROM finanzas", conn)
+        
+        # Limpiar y actualizar Google Sheets con los datos actuales
+        sheet.clear()
+        sheet.update([df_fin.columns.values.tolist()] + df_fin.values.tolist())
+        
+        return True
+    except Exception as e:
+        print(f"Error de sincronización: {e}")
+        return False
+
 
 def registrar_en_nube_exacto(datos_dict, pestaña="DB_QUEVEDO1"):
     try:
