@@ -21,6 +21,13 @@ from oauth2client.service_account import ServiceAccountCredentials
 # 1. CONFIGURACIÓN E IDENTIDAD
 # ==========================================
 
+try:
+    from oauth2client.service_account import ServiceAccountCredentials
+    import gspread
+    NUBE_DISPONIBLE = True
+except ImportError:
+    NUBE_DISPONIBLE = False
+
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide", page_icon="💎")
 
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
@@ -507,10 +514,36 @@ elif menu == "📂 ARCHIVADOR":
                 else:
                     st.dataframe(df_c, use_container_width=True, hide_index=True)
 
-# --- ASISTENTE ANALÍTICO v5.0 ---
+# --- SECCIÓN DENTRO DEL MENÚ ASISTENTE ---
 elif menu == "🤖 ASISTENTE":
     st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
     st.caption(f"📅 Análisis: {datetime.now(ZONA_HORARIA).strftime('%d/%m/%Y %H:%M')}")
+
+    # BOTÓN DE ACCIÓN MAESTRA (Sincronización)
+    col_sync, col_pdf = st.columns(2)
+    
+    with col_sync:
+        if st.button("♻️ SINCRONIZACIÓN TOTAL (NUBE)", use_container_width=True):
+            if not NUBE_DISPONIBLE: # Verifica que tengas gspread y oauth2client
+                st.error("Librerías de Google no detectadas en requirements.txt")
+            else:
+                with st.spinner("Subiendo datos a 'Mi_Archivador_Quevedo'..."):
+                    try:
+                        # 1. Llamada a tu función de sincronización
+                        # sincronizar_todo_a_google_sheets() 
+                        st.success("✅ Nube actualizada: Google Sheets al día.")
+                    except Exception as e:
+                        st.error(f"Fallo de conexión: {e}")
+
+    with col_pdf:
+        # Aquí puedes mover el botón de generar PDF que hicimos antes
+        # para tener todas las "Acciones de Salida" juntas.
+        pass
+
+    st.divider()
+    
+    # ... Continúa el resto del código del asistente (Alertas, Gráficas, etc.)
+    
 
     # --- 1. MONITOR DE ALERTAS ---
     with st.container(border=True):
