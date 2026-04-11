@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import sqlite3
+from PIL import Image
 import os
 import plotly.express as px
 from fpdf import FPDF
@@ -12,7 +13,6 @@ import pytz
 import io
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
-from PIL import Image
 from pyzbar.pyzbar import decode
 
 # ==========================================
