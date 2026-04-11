@@ -349,61 +349,65 @@ elif "BIOMONITOR" in menu:
         if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True, key="btn_del_glu_final"):
             borrar_ultimo("glucosa")
 
-# --- MÓDULO ESCÁNER IA ---
 elif menu == "📸 ESCÁNER IA":
-    st.header("📸 Escáner IA - Gestión de Inventario")
-    st.markdown("---")
+    st.header("📸 Escáner OCR de Alto Rendimiento")
     
-    img_file = st.camera_input("📷 Enfoca el código de barras")
+    img_file = st.camera_input("📷 Coloque el documento frente a la cámara")
 
     if img_file is not None:
-        img_pil = Image.open(img_file)
-        img_gray = img_pil.convert('L') 
-        objetos = decode(img_gray)
+        import cv2
+        import numpy as np
+        from PIL import Image
+        import pytesseract
 
-        if objetos:
-            codigo_leido = objetos[0].data.decode('utf-8')
-            st.success(f"✅ CÓDIGO DETECTADO: **{codigo_leido}**")
+        # 1. CARGA Y PRE-PROCESAMIENTO TÉCNICO
+        file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
+        img = cv2.imdecode(file_bytes, 1)
+        
+        # Convertir a escala de grises y aplicar filtro para eliminar ruido
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # Umbralización adaptativa para resaltar el texto sobre el fondo
+        processed_img = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+        # 2. EXTRACCIÓN DE TEXTO
+        with st.spinner("🚀 Procesando con motor OCR..."):
+            # Configuración de Tesseract para español y modo de segmentación de página automático
+            custom_config = r'--oem 3 --psm 6'
+            texto_extraido = pytesseract.image_to_string(processed_img, lang='spa', config=custom_config)
+
+        # 3. INTERFAZ DE RESULTADOS
+        if texto_extraido.strip():
+            st.subheader("📄 Texto Digitalizado")
+            # Área de edición profesional
+            texto_final = st.text_area("Validación de datos extraídos:", value=texto_extraido, height=250)
             
-            c.execute("SELECT id, producto, cantidad, precio FROM inventario WHERE producto = ?", (codigo_leido,))
-            producto_db = c.fetchone()
+            c1, c2 = st.columns(2)
+            with c1:
+                tipo_doc = st.selectbox("Clasificación:", ["Resultado Lab", "Receta", "Factura", "Contrato"], key="tipo_v8")
+            with c2:
+                nom_doc = st.text_input("Nombre del Registro:", placeholder="Ej: Laboratorio_Abril_2026", key="nom_v8")
 
-            if producto_db:
-                pid, p_nombre, p_cant, p_precio = producto_db
-                st.subheader(f"📦 Producto: {p_nombre}")
-                
-                c1, c2 = st.columns(2)
-                c1.metric("Stock Actual", p_cant)
-                c2.metric("Precio", f"RD$ {p_precio:,.2f}")
-
-                mov = st.number_input("Cantidad:", min_value=1, value=1, key="cant_mov_inv")
-                col_btn1, col_btn2 = st.columns(2)
-                
-                if col_btn1.button("➕ SUMAR STOCK", key="btn_add_inv"):
-                    c.execute("UPDATE inventario SET cantidad = cantidad + ? WHERE id = ?", (mov, pid))
-                    conn.commit()
-                    st.rerun()
-                    
-                if col_btn2.button("➖ REGISTRAR VENTA", key="btn_sale_inv"):
-                    if p_cant >= mov:
-                        c.execute("UPDATE inventario SET cantidad = cantidad - ? WHERE id = ?", (mov, pid))
+            if st.button("💾 INTEGRAR AL ARCHIVADOR", use_container_width=True):
+                if nom_doc:
+                    fecha_hoy = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d %H:%M")
+                    try:
+                        c.execute("""
+                            INSERT INTO archivos (nombre, tipo, fecha, texto_ocr) 
+                            VALUES (?, ?, ?, ?)
+                        """, (nom_doc, tipo_doc, fecha_hoy, texto_final))
                         conn.commit()
+                        st.success(f"✅ Registro '{nom_doc}' indexado con éxito.")
                         st.rerun()
-            else:
-                st.warning("🆕 Producto nuevo detectado.")
-                with st.form("registro_rapido_inv"):
-                    nuevo_nom = st.text_input("Nombre", value=codigo_leido)
-                    nuevo_pre = st.number_input("Precio", min_value=0.0)
-                    nuevo_can = st.number_input("Stock Inicial", min_value=1)
-                    if st.form_submit_button("💾 GUARDAR"):
-                        f_hoy = datetime.now(ZONA_HORARIA).strftime("%Y-%m-%d")
-                        c.execute("INSERT INTO inventario (producto, cantidad, precio, fecha) VALUES (?,?,?,?)",
-                                 (nuevo_nom, nuevo_can, nuevo_pre, f_hoy))
-                        conn.commit()
-                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error de inserción: {e}")
+                else:
+                    st.warning("⚠️ El nombre del registro es obligatorio para la indexación.")
         else:
-            st.warning("🔍 Buscando código... Mantén la cámara fija.")
+            st.error("❌ No se pudo procesar el texto. Mejore la iluminación o la distancia.")
 
+    st.divider()
+    st.caption("Sistema de procesamiento de imagen activado: Filtro Gris + Adaptive Threshold.")
+               
 
 
 # --- ARCHIVADOR INTEGRAL v5.1: RECTIFICACIÓN DE VARIABLES ---
