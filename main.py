@@ -11,10 +11,11 @@ import requests
 import pytz
 import io
 import gspread
+import time  # <-- Falta en tu imagen
+import pytesseract  # <-- Falta en tu imagen
 from datetime import datetime
 from PIL import Image
-from google.oauth2.service_account import Credentials # Reemplaza a oauth2client
-
+from google.oauth2.service_account import Credentials
 # --- 1. CONFIGURACIÓN E IDENTIDAD ---
 try:
     if "gcp_service_account" in st.secrets:
