@@ -12,3 +12,4 @@ st-gsheets-connection
 requests
 oauth2client
 gspread
+google-auth
