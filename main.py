@@ -403,7 +403,7 @@ elif menu == "📸 ESCÁNER IA":
 
         
 # --- MÓDULO ARCHIVADOR INTEGRAL v5.1 ---
-    elif menu == "📂 ARCHIVADOR":
+elif menu == "📂 ARCHIVADOR":
         st.header("📂 Archivador Inteligente v5.1")
         if st.button("♻️ DESHACER ÚLTIMO DOCUMENTO", use_container_width=True, key="btn_undo_doc"):
             borrar_ultimo("archivos")
