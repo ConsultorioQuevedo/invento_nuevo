@@ -371,37 +371,34 @@ if st.button("🚨 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True, key=
                 st.error(f"Error al procesar registro: {e}")
                     
                     
-                   
 # --- 3. AUDITORÍA Y GRÁFICA ---
 try:
-        df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
-        
-        if not df_full.empty:
-            df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'])
-            df_plot = df_full.sort_values('Fecha_Hora').dropna() 
+    df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
+    
+    if not df_full.empty:
+        df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'])
+        df_plot = df_full.sort_values('Fecha_Hora').dropna() 
 
-            col_tabla, col_grafica = st.columns([1, 1])
-            with col_tabla:
-                st.subheader("📋 Últimos Registros")
-                st.dataframe(df_full.head(10), use_container_width=True, hide_index=True)
+        col_tabla, col_grafica = st.columns([1, 1])
+        with col_tabla:
+            st.subheader("📋 Últimos Registros")
+            st.dataframe(df_full.head(10), use_container_width=True, hide_index=True)
 
-            with col_grafica:
-                st.subheader("📈 Curva de Glucosa")
-                st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
-                st.caption("Tendencia histórica (mg/dL)")
-        else:
-            st.info("No hay datos históricos en Biomonitor.")
+        with col_grafica:
+            st.subheader("📈 Curva de Glucosa")
+            st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
+            st.caption("Tendencia histórica (mg/dL)")
+    else:
+        st.info("No hay datos históricos en Biomonitor.")
 except Exception as e:
-            st.warning(f"Analizando base de datos... {e}")
+    st.warning(f"Analizando base de datos... {e}")
 
-            st.divider()
+st.divider()
 
-
-# ... viene del código de arriba
-        with st.expander("🗑️ Zona de Corrección (Peligro)"):
-            if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True):
-                borrar_ultimo("glucosa")
-                st.rerun() # Asegúrate de que esto esté dentro del IF
+with st.expander("🗑️ Zona de Corrección (Peligro)"):
+    if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True):
+        borrar_ultimo("glucosa")
+        st.rerun()                   
 
 # --- AQUÍ TERMINA EL BLOQUE DE BIOMONITOR Y EMPIEZA EL ESCÁNER ---
 
