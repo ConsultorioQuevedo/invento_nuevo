@@ -395,12 +395,21 @@ except Exception as e:
             st.warning(f"Analizando base de datos... {e}")
 
             st.divider()
-with st.expander("🗑️ Zona de Corrección (Peligro)"):
-        if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True, key="btn_del_glu_final"):
-            borrar_ultimo("glucosa")
+
+
+# ... viene del código de arriba
+        with st.expander("🗑️ Zona de Corrección (Peligro)"):
+            if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True):
+                borrar_ultimo("glucosa")
+                st.rerun() # Asegúrate de que esto esté dentro del IF
+
+# --- AQUÍ TERMINA EL BLOQUE DE BIOMONITOR Y EMPIEZA EL ESCÁNER ---
+
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Escáner OCR de Alto Rendimiento")
-    
+    # ... resto del código del escáner
+
+
     img_file = st.camera_input("📷 Coloque el documento frente a la cámara")
 
     if img_file is not None:
