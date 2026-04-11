@@ -398,7 +398,6 @@ except Exception as e:
 with st.expander("🗑️ Zona de Corrección (Peligro)"):
         if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True, key="btn_del_glu_final"):
             borrar_ultimo("glucosa")
-
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Escáner OCR de Alto Rendimiento")
     
