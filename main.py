@@ -372,6 +372,7 @@ if st.button("🚨 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True, key=
                     
                     
 # --- 3. AUDITORÍA Y GRÁFICA ---
+# --- 3. AUDITORÍA Y GRÁFICA ---
 try:
     df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
     
@@ -393,14 +394,17 @@ try:
 except Exception as e:
     st.warning(f"Analizando base de datos... {e}")
 
+# SALIDA DEL BLOQUE ANTERIOR
 st.divider()
 
+# Zona de corrección alineada con el flujo principal del BIOMONITOR
 with st.expander("🗑️ Zona de Corrección (Peligro)"):
     if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True):
         borrar_ultimo("glucosa")
-        st.rerun()                    
+        st.rerun()
 
 # --- AQUÍ TERMINA EL BLOQUE DE BIOMONITOR Y EMPIEZA EL ESCÁNER ---
+# Este elif debe estar al mismo nivel de indentación que el primer 'if menu == ...'
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Escáner OCR de Alto Rendimiento")
     
@@ -416,21 +420,18 @@ elif menu == "📸 ESCÁNER IA":
         file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
         img = cv2.imdecode(file_bytes, 1)
         
-        # Convertir a escala de grises y aplicar filtro para eliminar ruido
+        # Procesamiento para mejorar lectura de OCR
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # Umbralización adaptativa para resaltar el texto sobre el fondo
         processed_img = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
 
         # 2. EXTRACCIÓN DE TEXTO
         with st.spinner("🚀 Procesando con motor OCR..."):
-            # Configuración de Tesseract para español y modo de segmentación de página automático
             custom_config = r'--oem 3 --psm 6'
             texto_extraido = pytesseract.image_to_string(processed_img, lang='spa', config=custom_config)
 
         # 3. INTERFAZ DE RESULTADOS
         if texto_extraido.strip():
             st.subheader("📄 Texto Digitalizado")
-            # Área de edición profesional
             texto_final = st.text_area("Validación de datos extraídos:", value=texto_extraido, height=250)
             
             c1, c2 = st.columns(2)
@@ -459,7 +460,16 @@ elif menu == "📸 ESCÁNER IA":
 
     st.divider()
     st.caption("Sistema de procesamiento de imagen activado: Filtro Gris + Adaptive Threshold.")
+       
 
+
+    
+
+   
+       
+       
+            
+           
 # --- ARCHIVADOR INTEGRAL v5.1: RECTIFICACIÓN DE VARIABLES ---
 elif menu == "📂 ARCHIVADOR":
     st.header("📂 Archivador Inteligente v5.1")
