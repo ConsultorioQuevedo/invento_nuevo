@@ -398,7 +398,7 @@ st.divider()
 with st.expander("🗑️ Zona de Corrección (Peligro)"):
     if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True):
         borrar_ultimo("glucosa")
-        st.rerun()                   
+        st.rerun()                    
 
 # --- AQUÍ TERMINA EL BLOQUE DE BIOMONITOR Y EMPIEZA EL ESCÁNER ---
 elif menu == "📸 ESCÁNER IA":
@@ -459,7 +459,6 @@ elif menu == "📸 ESCÁNER IA":
 
     st.divider()
     st.caption("Sistema de procesamiento de imagen activado: Filtro Gris + Adaptive Threshold.")
-                
 
 # --- ARCHIVADOR INTEGRAL v5.1: RECTIFICACIÓN DE VARIABLES ---
 elif menu == "📂 ARCHIVADOR":
