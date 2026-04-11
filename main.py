@@ -372,8 +372,8 @@ if st.button("🚨 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True, key=
                     
                     
                    
-    # --- 3. AUDITORÍA Y GRÁFICA ---
-    try:
+# --- 3. AUDITORÍA Y GRÁFICA ---
+try:
         df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
         
         if not df_full.empty:
