@@ -778,4 +778,3 @@ with col_c2:
         """, 
         unsafe_allow_html=True
     )
-
