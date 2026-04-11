@@ -203,6 +203,7 @@ if menu == "🏠 INICIO":
                 st.write("Sin registros médicos recientes.")
 
 # --- MÓDULO 2: FINANZAS (INGENIERÍA FINANCIERA) ---
+# --- MÓDULO FINANZAS ---
 elif menu == "💰 FINANZAS":
     st.header("💰 Ingeniería Financiera: Control de Capital")
     st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
@@ -266,7 +267,7 @@ elif menu == "💰 FINANZAS":
                         "MONTO": monto_final, 
                         "TIPO": tipo_op, 
                         "USUARIO": NOMBRE_PROPIETARIO,
-                        "BALANCE_RESTANTE": nuevo_balance,
+                        "BALANCE_AL_MOMENTO": nuevo_balance,
                         "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                     }
                     registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
@@ -289,144 +290,6 @@ elif menu == "💰 FINANZAS":
             use_container_width=True, hide_index=True
         )
 
-    # AJUSTES TÉCNICOS
-    with st.popover("⚙️ Ajuste de Auditoría"):
-        nuevo_valor_base = st.number_input("Corregir Capital Total a:", value=float(capital_itinerante))
-        if st.button("Confirmar Ajuste Maestro"):
-            c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_valor_base,))
-            conn.commit()
-            st.success("Capital ajustado en base de datos.")
-            time.sleep(1)
-            st.rerun()
-
-# ==========================================
-# FIN DEL BLOQUE
-# ==========================================
-
-    # --- MÉTRICAS EN PANTALLA ---
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-        st.metric("💰 BALANCE TOTAL", f"RD$ {balance_acumulado:,.2f}")
-        st.write("Historial Acumulado")
-        st.markdown('</div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-        st.metric("🩺 ÚLTIMA GLUCOSA", f"{valor_g} mg/dL")
-        st.write("Último valor guardado")
-        st.markdown('</div>', unsafe_allow_html=True)
-    with c3:
-        st.markdown('<div class="resumen-card">', unsafe_allow_html=True)
-        st.metric("📅 ESTADO", "OPERATIVO")
-        st.write("Búnker Sincronizado")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    st.divider()
-
-    # --- REGISTROS EN TIEMPO REAL ---
-    st.subheader("📝 Registros en Tiempo Real")
-    df_historial = pd.read_sql_query("SELECT id, tipo, categoria, monto, fecha FROM finanzas ORDER BY id DESC LIMIT 20", conn)
-    
-    if not df_historial.empty:
-        st.dataframe(df_historial, use_container_width=True, height=250)
-    else:
-        st.info("No hay datos en el historial local.")
-
-    # --- GESTIÓN DE DATOS ---
-    st.subheader("⚙️ Gestión de Datos")
-    col_acc1, col_acc2 = st.columns(2)
-    
-    with col_acc1:
-        if st.button("♻️ BORRAR ÚLTIMO REGISTRO FINANCIERO", key="btn_borrar_ini"):
-            borrar_ultimo("finanzas")
-
-    with col_acc2:
-        if st.button("📊 ACTUALIZAR VISTA", key="btn_refresh_ini"):
-            st.rerun()
-
-# --- MÓDULO FINANZAS ---
-elif menu == "💰 FINANZAS":
-    st.header("💰 Ingeniería Financiera: Control de Capital")
-    st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
-
-    def obtener_presupuesto():
-        c.execute("SELECT monto FROM presupuesto WHERE id = 1")
-        res = c.fetchone()
-        return float(res[0]) if res else 0.0
-
-    def actualizar_presupuesto_maestro(monto_cambio):
-        nuevo_total = obtener_presupuesto() + monto_cambio
-        c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_total,))
-        conn.commit()
-        return nuevo_total
-
-    capital_itinerante = obtener_presupuesto()
-
-    with st.container(border=True):
-        col_m1, col_m2, col_m3 = st.columns(3)
-        with col_m1:
-            st.metric("💎 CAPITAL TOTAL", f"RD$ {capital_itinerante:,.2f}")
-        with col_m2:
-            mes_act = datetime.now().strftime('%Y-%m') 
-            df_mes = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas WHERE fecha LIKE ? AND monto < 0", 
-                                       conn, params=(f"{mes_act}%",))
-            valor_gastos = df_mes['total'].iloc[0]
-            gastos_mes = abs(float(valor_gastos)) if valor_gastos is not None else 0.0
-            st.metric("📉 GASTOS DEL MES", f"RD$ {gastos_mes:,.2f}")
-        with col_m3:
-            estado_caja = "🔵 ESTABLE" if capital_itinerante > 10000 else "🔴 CRÍTICO"
-            st.subheader(f"Status: {estado_caja}")
-
-    st.divider()
-
-    with st.expander("➕ EJECUTAR NUEVA OPERACIÓN BANCARIA", expanded=True):
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-            tipo_op = st.radio("Naturaleza:", ["GASTO (Resta)", "INGRESO (Suma)"], horizontal=True)
-            monto_op = st.number_input("Monto (RD$):", min_value=0.0, step=100.0)
-        with col_f2:
-            categoria_op = st.selectbox("Categoría:", ["Supermercado", "Salud/Medicinas", "Combustible", "Servicios", "Cobro/Ingresos", "Otros"])
-            fecha_op = st.date_input("Fecha:", datetime.now(ZONA_HORARIA))
-
-        if st.button("🔐 VALIDAR Y EJECUTAR TRANSACCIÓN", use_container_width=True):
-            if monto_op > 0:
-                monto_final = -abs(monto_op) if "GASTO" in tipo_op else abs(monto_op)
-                f_str = fecha_op.strftime('%Y-%m-%d')
-                
-                # 1. Guardar en SQLite Local
-                c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?, ?, ?, ?)", (tipo_op, categoria_op, monto_final, f_str))
-                nuevo_balance = actualizar_presupuesto_maestro(monto_final)
-                conn.commit()
-                
-                # 2. Sincronización Automática con Google Sheets
-                if NUBE_DISPONIBLE:
-                    paquete_nube = {
-                        "FECHA": f_str, 
-                        "DETALLE": categoria_op, 
-                        "MONTO": monto_final, 
-                        "TIPO": tipo_op, 
-                        "USUARIO": NOMBRE_PROPIETARIO,
-                        "BALANCE_AL_MOMENTO": nuevo_balance
-                    }
-                    registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
-                
-                st.success(f"✅ Procesado. Nuevo Capital: RD$ {nuevo_balance:,.2f}")
-                time.sleep(1)
-                st.rerun()
-
-    st.subheader("📋 Libro Mayor (Últimos Movimientos)")
-    df_history = pd.read_sql_query("SELECT fecha, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 10", conn)
-    
-    if not df_history.empty:
-        def color_monto(val):
-            color = 'red' if val < 0 else 'green'
-            return f'color: {color}; font-weight: bold'
-        
-        st.dataframe(
-            df_history.style.map(color_monto, subset=['monto']).format({'monto': 'RD$ {:,.2f}'}), 
-            use_container_width=True, hide_index=True
-        )
-
     with st.popover("⚙️ Ajuste de Auditoría"):
         nuevo_valor_base = st.number_input("Corregir Capital Total a:", value=float(capital_itinerante))
         if st.button("Confirmar Ajuste Maestro"):
@@ -434,8 +297,6 @@ elif menu == "💰 FINANZAS":
             conn.commit()
             st.success("Capital ajustado.")
             st.rerun()
-  
-         
 
 # --- MÓDULO BIOMONITOR: CONTROL DE SALUD INTEGRAL ---
 elif "BIOMONITOR" in menu:
@@ -468,7 +329,6 @@ elif "BIOMONITOR" in menu:
     if st.button("🚨 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True, key="btn_guarda_g"):
         if valor_g > 20:
             try:
-                # Preparar cadenas de tiempo
                 f_str = fecha_g.strftime('%Y-%m-%d')
                 h_str = hora_g.strftime('%H:%M')
                 
@@ -505,7 +365,6 @@ elif "BIOMONITOR" in menu:
         df_full = pd.read_sql_query("SELECT fecha, hora, valor, estado FROM glucosa ORDER BY id DESC LIMIT 30", conn)
         
         if not df_full.empty:
-            # Preparar datos para gráfica
             df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'])
             df_plot = df_full.sort_values('Fecha_Hora').dropna() 
 
@@ -517,7 +376,6 @@ elif "BIOMONITOR" in menu:
             with col_grafica:
                 st.subheader("📈 Tendencia Histórica")
                 st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
-                st.caption("Evolución de niveles mg/dL")
         else:
             st.info("No hay datos históricos en el Biomonitor local.")
     except Exception as e:
@@ -537,6 +395,29 @@ elif "BIOMONITOR" in menu:
                 st.rerun()
             except Exception as e:
                 st.error(f"Error al eliminar: {e}")
+   
+    
+   
+   
+      
+               
+
+   
+        
+
+    
+
+
+       
+   
+   
+           
+       
+      
+         
+
+
+          
 
                 
 
