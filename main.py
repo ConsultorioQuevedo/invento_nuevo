@@ -473,7 +473,7 @@ elif menu == "📂 ARCHIVADOR":
                         st.dataframe(df_c, use_container_width=True, hide_index=True)
 
 # --- MÓDULO ASISTENTE ---
-    elif menu == "🤖 ASISTENTE":
+elif menu == "🤖 ASISTENTE":
         st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
         st.caption(f"📅 Análisis: {datetime.now(ZONA_HORARIA).strftime('%d/%m/%Y %H:%M')}")
 
