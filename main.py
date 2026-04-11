@@ -394,18 +394,15 @@ try:
 except Exception as e:
     st.warning(f"Analizando base de datos... {e}")
 
-# SALIDA DEL BLOQUE ANTERIOR
 st.divider()
 
-# Zona de corrección alineada con el flujo principal del BIOMONITOR
 with st.expander("🗑️ Zona de Corrección (Peligro)"):
     if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True):
         borrar_ultimo("glucosa")
-        st.rerun()
+        st.rerun()                    
 
 # --- AQUÍ TERMINA EL BLOQUE DE BIOMONITOR Y EMPIEZA EL ESCÁNER ---
-# Este elif debe estar al mismo nivel de indentación que el primer 'if menu == ...'
-elif menu == "📸 ESCÁNER IA":
+if menu == "📸 ESCÁNER IA":
     st.header("📸 Escáner OCR de Alto Rendimiento")
     
     img_file = st.camera_input("📷 Coloque el documento frente a la cámara")
@@ -420,25 +417,44 @@ elif menu == "📸 ESCÁNER IA":
         file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
         img = cv2.imdecode(file_bytes, 1)
         
-        # Procesamiento para mejorar lectura de OCR
+        # Convertir a escala de grises y aplicar filtro para eliminar ruido
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        processed_img = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        # Umbralización adaptativa para resaltar el texto sobre el fondo
+        processed_img = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY, 11, 2
+        )
 
         # 2. EXTRACCIÓN DE TEXTO
         with st.spinner("🚀 Procesando con motor OCR..."):
+            # Configuración de Tesseract
             custom_config = r'--oem 3 --psm 6'
-            texto_extraido = pytesseract.image_to_string(processed_img, lang='spa', config=custom_config)
+            texto_extraido = pytesseract.image_to_string(
+                processed_img, lang='spa', config=custom_config
+            )
 
         # 3. INTERFAZ DE RESULTADOS
         if texto_extraido.strip():
             st.subheader("📄 Texto Digitalizado")
-            texto_final = st.text_area("Validación de datos extraídos:", value=texto_extraido, height=250)
+            texto_final = st.text_area(
+                "Validación de datos extraídos:",
+                value=texto_extraido,
+                height=250
+            )
             
             c1, c2 = st.columns(2)
             with c1:
-                tipo_doc = st.selectbox("Clasificación:", ["Resultado Lab", "Receta", "Factura", "Contrato"], key="tipo_v8")
+                tipo_doc = st.selectbox(
+                    "Clasificación:",
+                    ["Resultado Lab", "Receta", "Factura", "Contrato"],
+                    key="tipo_v8"
+                )
             with c2:
-                nom_doc = st.text_input("Nombre del Registro:", placeholder="Ej: Laboratorio_Abril_2026", key="nom_v8")
+                nom_doc = st.text_input(
+                    "Nombre del Registro:",
+                    placeholder="Ej: Laboratorio_Abril_2026",
+                    key="nom_v8"
+                )
 
             if st.button("💾 INTEGRAR AL ARCHIVADOR", use_container_width=True):
                 if nom_doc:
@@ -460,8 +476,8 @@ elif menu == "📸 ESCÁNER IA":
 
     st.divider()
     st.caption("Sistema de procesamiento de imagen activado: Filtro Gris + Adaptive Threshold.")
-       
 
+        
 
     
 
