@@ -338,33 +338,40 @@ elif "BIOMONITOR" in menu:
             elif valor_g <= 130: st.success("✅ NORMAL")
             elif valor_g <= 180: st.warning("🟡 ELEVADA")
             else: st.error("🚨 CRÍTICA")
+if st.button("🚨 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True, key="btn_guarda_g"):
+        if valor_g > 20:
+            try:
+                # 1. Preparar datos
+                f_str = fecha_g.strftime('%Y-%m-%d')
+                h_str = hora_g.strftime('%H:%M')
+                
+                # 2. Guardar Local (SQLite)
+                c.execute("INSERT INTO glucosa (valor, unidad, estado, fecha, hora) VALUES (?, ?, ?, ?, ?)",
+                          (valor_g, "mg/dL", momento, f_str, h_str))
+                conn.commit()  # <-- Aquí corregimos el punto suelto (.)
 
-        if st.button("🔐 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True, key="btn_guardar_g"):
-            if valor_g > 20: 
-                try:
-                    f_str = fecha_g.strftime('%Y-%m-%d')
-                    h_str = hora_g.strftime('%H:%M')
-                    c.execute("INSERT INTO glucosa (valor, unidad, estado, fecha, hora) VALUES (?, ?, ?, ?, ?)", 
-                              (valor_g, "mg/dL", momento, f_str, h_str))
-                    conn.commit()
-                    
+                # 3. Sincronizar Nube (Solo si está disponible)
+                if NUBE_DISPONIBLE:
                     paquete_nube = {
-                        "ID_SISTEMA": "QUEVEDO_PRO_V4", "FECHA": f_str, "HORA": h_str,
-                        "VALOR_MG_DL": valor_g, "ESTADO_MEDICO": momento,
+                        "ID_SISTEMA": "QUEVEDO_PRO_V4", 
+                        "FECHA": f_str, 
+                        "HORA": h_str,
+                        "VALOR_MG_DL": valor_g, 
+                        "ESTADO_MEDICO": momento,
                         "PROPIETARIO": NOMBRE_PROPIETARIO,
                         "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                     }
                     registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
+                
+                st.success(f"✅ Registro verificado: {valor_g} mg/dL")
+                time.sleep(1)
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"Error al procesar registro: {e}")
                     
-                    st.success(f"✅ Registro verificado: {valor_g} mg/dL")
-                    import time
-                    time.sleep(1)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"🚨 Error: {e}")
-
-    st.divider()
-
+                    
+                   
     # --- 3. AUDITORÍA Y GRÁFICA ---
     try:
         df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
