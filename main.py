@@ -401,11 +401,9 @@ with st.expander("🗑️ Zona de Corrección (Peligro)"):
         st.rerun()                   
 
 # --- AQUÍ TERMINA EL BLOQUE DE BIOMONITOR Y EMPIEZA EL ESCÁNER ---
-    elif menu == "📸 ESCÁNER IA":
-         st.header("📸 Escáner OCR de Alto Rendimiento")
-    # ... resto del código del escáner
-
-
+elif menu == "📸 ESCÁNER IA":
+    st.header("📸 Escáner OCR de Alto Rendimiento")
+    
     img_file = st.camera_input("📷 Coloque el documento frente a la cámara")
 
     if img_file is not None:
@@ -461,8 +459,7 @@ with st.expander("🗑️ Zona de Corrección (Peligro)"):
 
     st.divider()
     st.caption("Sistema de procesamiento de imagen activado: Filtro Gris + Adaptive Threshold.")
-               
-
+                
 
 # --- ARCHIVADOR INTEGRAL v5.1: RECTIFICACIÓN DE VARIABLES ---
 elif menu == "📂 ARCHIVADOR":
@@ -507,8 +504,9 @@ elif menu == "📂 ARCHIVADOR":
         with col_der:
             st.markdown("### 📄 Documentos Escaneados")
             try:
+                # MEJORA: Búsqueda profunda en nombre, tipo Y el texto extraído por OCR
                 res_docs = pd.read_sql_query("""
-                    SELECT '🖼️ Escáner' as Origen, tipo as Detalle, fecha as Info FROM archivos 
+                    SELECT '🖼️ Escáner' as Origen, nombre as Detalle, fecha as Info FROM archivos 
                     WHERE lower(tipo) LIKE ? OR lower(texto_ocr) LIKE ? OR lower(nombre) LIKE ?
                 """, conn, params=(query, query, query))
                 
@@ -529,7 +527,7 @@ elif menu == "📂 ARCHIVADOR":
     for i, (label, db_name) in enumerate(cats.items()):
         with cols[i]:
             with st.expander(label):
-                df_c = pd.read_sql_query("SELECT fecha, tipo FROM archivos WHERE tipo = ?", conn, params=(db_name,))
+                df_c = pd.read_sql_query("SELECT fecha, nombre, tipo FROM archivos WHERE tipo = ?", conn, params=(db_name,))
                 if df_c.empty:
                     st.caption("Carpeta vacía")
                 else:
