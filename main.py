@@ -132,26 +132,176 @@ st.sidebar.title("💎 LUIS R. QUEVEDO")
 menu_opcion = st.sidebar.radio("MENÚ PRINCIPAL", 
     ["🏠 INICIO", "🩺 BIOMONITOR", "💰 FINANZAS", "📂 ARCHIVADOR", "📸 ESCÁNER IA", "🤖 ASISTENTE"])
 menu = menu_opcion.strip()
+# ==========================================
+# BLOQUE INTEGRAL: INICIO + FINANZAS (v5.1)
+# ==========================================
 
-
+# --- MÓDULO 1: INICIO (PANEL DE CONTROL CENTRAL) ---
 if menu == "🏠 INICIO":
-    st.header(f"📊 Panel de Control: {NOMBRE_PROPIETARIO}")
-    
-    # --- CÁLCULOS HISTÓRICOS (Persistencia Total) ---
-    try:
-        # Sumamos TODO el historial de finanzas acumulado
-        ingresos_df = pd.read_sql_query("SELECT SUM(monto) FROM finanzas WHERE tipo LIKE '%INGRESO%'", conn)
-        gastos_df = pd.read_sql_query("SELECT SUM(monto) FROM finanzas WHERE tipo LIKE '%GASTO%'", conn)
-        
-        total_ingresos = ingresos_df.iloc[0,0] or 0
-        total_gastos = gastos_df.iloc[0,0] or 0
-        balance_acumulado = total_ingresos + total_gastos # Los gastos ya son negativos
+    st.header(f"SISTEMA QUEVEDO INTEGRAL v5.1")
+    st.subheader(f"Bienvenido, {NOMBRE_PROPIETARIO}")
 
-        # Buscamos la última glucosa registrada históricamente
-        df_glu = pd.read_sql_query("SELECT valor FROM glucosa ORDER BY id DESC LIMIT 1", conn)
-        valor_g = df_glu['valor'].iloc[0] if not df_glu.empty else 0
-    except Exception as e:
-        balance_acumulado, valor_g = 0, 0
+    # --- ESTADO DE CONEXIÓN A LA NUBE ---
+    c_st1, c_st2, c_st3 = st.columns(3)
+    with c_st1:
+        if NUBE_DISPONIBLE:
+            st.success("☁️ NUBE: CONECTADA")
+        else:
+            st.error("☁️ NUBE: DESCONECTADA")
+    
+    with c_st2:
+        st.info(f"📍 UBICACIÓN: {UBICACION_SISTEMA}")
+    
+    with c_st3:
+        st.write(f"📅 {datetime.now(ZONA_HORARIA).strftime('%d/%m/%Y %H:%M')}")
+
+    st.divider()
+
+    # --- CENTRO DE SINCRONIZACIÓN Y RESPALDO ---
+    with st.expander("🔄 Centro de Sincronización Nube", expanded=False):
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            st.markdown("### Respaldo Total")
+            st.caption("Sincroniza el historial completo de la base de datos local.")
+            if st.button("🚀 INICIAR RESPALDO MASIVO"):
+                if NUBE_DISPONIBLE:
+                    with st.spinner("Subiendo datos a la bóveda de Google..."):
+                        try:
+                            # Respaldo de Finanzas
+                            df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
+                            conn_google.update(spreadsheet=URL_NUBE, worksheet="DB_QUEVEDO1", data=df_f)
+                            st.success("✅ Historial financiero asegurado en la nube.")
+                        except Exception as e:
+                            st.error(f"Error en respaldo: {e}")
+                else:
+                    st.error("Enlace con Google no configurado.")
+        
+        with col_s2:
+            st.markdown("### Enlace Directo")
+            st.caption("Acceso rápido a tu hoja de cálculo remota.")
+            st.markdown(f'<a href="{URL_NUBE}" target="_blank"><button style="width:100%; border-radius:10px; background-color:#4CAF50; color:white; border:none; padding:10px; cursor:pointer;">🟢 ABRIR MI GOOGLE SHEET</button></a>', unsafe_allow_html=True)
+
+    st.divider()
+
+    # --- MÉTRICAS DE RESUMEN ---
+    col_res1, col_res2 = st.columns(2)
+    with col_res1:
+        with st.container(border=True):
+            st.markdown("### 💰 Estado de Bóveda")
+            c.execute("SELECT monto FROM presupuesto WHERE id = 1")
+            res_p = c.fetchone()
+            pres = res_p[0] if res_p else 0.0
+            st.metric("Capital Actual", f"RD$ {pres:,.2f}")
+    
+    with col_res2:
+        with st.container(border=True):
+            st.markdown("### 🩸 Último Biomonitor")
+            df_u = pd.read_sql_query("SELECT valor, estado FROM glucosa ORDER BY id DESC LIMIT 1", conn)
+            if not df_u.empty:
+                st.metric("Glucosa", f"{df_u['valor'].iloc[0]} mg/dL", df_u['estado'].iloc[0])
+            else:
+                st.write("Sin registros médicos recientes.")
+
+# --- MÓDULO 2: FINANZAS (INGENIERÍA FINANCIERA) ---
+elif menu == "💰 FINANZAS":
+    st.header("💰 Ingeniería Financiera: Control de Capital")
+    st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
+
+    def obtener_presupuesto():
+        c.execute("SELECT monto FROM presupuesto WHERE id = 1")
+        res = c.fetchone()
+        return float(res[0]) if res else 0.0
+
+    def actualizar_presupuesto_maestro(monto_cambio):
+        nuevo_total = obtener_presupuesto() + monto_cambio
+        c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_total,))
+        conn.commit()
+        return nuevo_total
+
+    capital_itinerante = obtener_presupuesto()
+
+    # PANEL DE MÉTRICAS FINANCIERAS
+    with st.container(border=True):
+        col_m1, col_m2, col_m3 = st.columns(3)
+        with col_m1:
+            st.metric("💎 CAPITAL TOTAL", f"RD$ {capital_itinerante:,.2f}")
+        with col_m2:
+            mes_act = datetime.now().strftime('%Y-%m') 
+            df_mes = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas WHERE fecha LIKE ? AND monto < 0", 
+                                       conn, params=(f"{mes_act}%",))
+            valor_gastos = df_mes['total'].iloc[0]
+            gastos_mes = abs(float(valor_gastos)) if valor_gastos is not None else 0.0
+            st.metric("📉 GASTOS DEL MES", f"RD$ {gastos_mes:,.2f}")
+        with col_m3:
+            estado_caja = "🔵 ESTABLE" if capital_itinerante > 10000 else "🔴 CRÍTICO"
+            st.subheader(f"Status: {estado_caja}")
+
+    st.divider()
+
+    # REGISTRO DE OPERACIONES
+    with st.expander("➕ EJECUTAR NUEVA OPERACIÓN BANCARIA", expanded=True):
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            tipo_op = st.radio("Naturaleza:", ["GASTO (Resta)", "INGRESO (Suma)"], horizontal=True)
+            monto_op = st.number_input("Monto (RD$):", min_value=0.0, step=100.0)
+        with col_f2:
+            categoria_op = st.selectbox("Categoría:", ["Supermercado", "Salud/Medicinas", "Combustible", "Servicios", "Cobro/Ingresos", "Otros"])
+            fecha_op = st.date_input("Fecha:", datetime.now(ZONA_HORARIA))
+
+        if st.button("🔐 VALIDAR Y EJECUTAR TRANSACCIÓN", use_container_width=True):
+            if monto_op > 0:
+                monto_final = -abs(monto_op) if "GASTO" in tipo_op else abs(monto_op)
+                f_str = fecha_op.strftime('%Y-%m-%d')
+                
+                # 1. Guardar en SQLite Local
+                c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?, ?, ?, ?)", (tipo_op, categoria_op, monto_final, f_str))
+                nuevo_balance = actualizar_presupuesto_maestro(monto_final)
+                conn.commit()
+                
+                # 2. Sincronización Automática con Google Sheets
+                if NUBE_DISPONIBLE:
+                    paquete_nube = {
+                        "FECHA": f_str, 
+                        "DETALLE": categoria_op, 
+                        "MONTO": monto_final, 
+                        "TIPO": tipo_op, 
+                        "USUARIO": NOMBRE_PROPIETARIO,
+                        "BALANCE_RESTANTE": nuevo_balance,
+                        "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
+                    }
+                    registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
+                
+                st.success(f"✅ Procesado. Nuevo Capital: RD$ {nuevo_balance:,.2f}")
+                time.sleep(1)
+                st.rerun()
+
+    # VISUALIZACIÓN DE DATOS
+    st.subheader("📋 Libro Mayor (Últimos Movimientos)")
+    df_history = pd.read_sql_query("SELECT fecha, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 10", conn)
+    
+    if not df_history.empty:
+        def color_monto(val):
+            color = 'red' if val < 0 else 'green'
+            return f'color: {color}; font-weight: bold'
+        
+        st.dataframe(
+            df_history.style.map(color_monto, subset=['monto']).format({'monto': 'RD$ {:,.2f}'}), 
+            use_container_width=True, hide_index=True
+        )
+
+    # AJUSTES TÉCNICOS
+    with st.popover("⚙️ Ajuste de Auditoría"):
+        nuevo_valor_base = st.number_input("Corregir Capital Total a:", value=float(capital_itinerante))
+        if st.button("Confirmar Ajuste Maestro"):
+            c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_valor_base,))
+            conn.commit()
+            st.success("Capital ajustado en base de datos.")
+            time.sleep(1)
+            st.rerun()
+
+# ==========================================
+# FIN DEL BLOQUE
+# ==========================================
 
     # --- MÉTRICAS EN PANTALLA ---
     c1, c2, c3 = st.columns(3)
@@ -193,16 +343,6 @@ if menu == "🏠 INICIO":
     with col_acc2:
         if st.button("📊 ACTUALIZAR VISTA", key="btn_refresh_ini"):
             st.rerun()
-
-    # --- ENLACES DE COMUNICACIÓN ---
-    st.divider()
-    col_l1, col_l2, col_l3 = st.columns(3)
-    num_wa = "18090000000" # Reemplaza con tu número
-    correo = "luisrafaelquevedo@gmail.com"
-
-    col_l1.link_button("💬 WHATSAPP", f"https://wa.me/{num_wa}")
-    col_l2.link_button("📧 GMAIL", f"mailto:{correo}")
-    col_l3.link_button("🏥 REFERENCIA", "https://www.referencia.do")
 
 # --- MÓDULO FINANZAS ---
 elif menu == "💰 FINANZAS":
@@ -253,13 +393,25 @@ elif menu == "💰 FINANZAS":
                 monto_final = -abs(monto_op) if "GASTO" in tipo_op else abs(monto_op)
                 f_str = fecha_op.strftime('%Y-%m-%d')
                 
+                # 1. Guardar en SQLite Local
                 c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?, ?, ?, ?)", (tipo_op, categoria_op, monto_final, f_str))
                 nuevo_balance = actualizar_presupuesto_maestro(monto_final)
+                conn.commit()
                 
-                paquete_nube = {"FECHA": f_str, "DETALLE": categoria_op, "MONTO": monto_final, "TIPO": tipo_op, "USUARIO": NOMBRE_PROPIETARIO}
-                registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
+                # 2. Sincronización Automática con Google Sheets
+                if NUBE_DISPONIBLE:
+                    paquete_nube = {
+                        "FECHA": f_str, 
+                        "DETALLE": categoria_op, 
+                        "MONTO": monto_final, 
+                        "TIPO": tipo_op, 
+                        "USUARIO": NOMBRE_PROPIETARIO,
+                        "BALANCE_AL_MOMENTO": nuevo_balance
+                    }
+                    registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
                 
                 st.success(f"✅ Procesado. Nuevo Capital: RD$ {nuevo_balance:,.2f}")
+                time.sleep(1)
                 st.rerun()
 
     st.subheader("📋 Libro Mayor (Últimos Movimientos)")
@@ -280,10 +432,12 @@ elif menu == "💰 FINANZAS":
         if st.button("Confirmar Ajuste Maestro"):
             c.execute("UPDATE presupuesto SET monto = ? WHERE id = 1", (nuevo_valor_base,))
             conn.commit()
+            st.success("Capital ajustado.")
             st.rerun()
+  
+         
 
-
-# --- MÓDULO BIOMONITOR ---
+# --- MÓDULO BIOMONITOR: CONTROL DE SALUD INTEGRAL ---
 elif "BIOMONITOR" in menu:
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
     st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
@@ -300,67 +454,95 @@ elif "BIOMONITOR" in menu:
             hora_g = st.time_input("Hora Exacta:", ahora.time(), key="input_hora_g")
         with col3:
             st.markdown("**Estado**")
-            if valor_g == 0: st.info("Esperando...")
-            elif valor_g < 70: st.error("⚠️ HIPOGLUCEMIA")
-            elif valor_g <= 130: st.success("✅ NORMAL")
-            elif valor_g <= 180: st.warning("🟡 ELEVADA")
-            else: st.error("🚨 CRÍTICA")
+            if valor_g == 0: 
+                st.info("Esperando...")
+            elif valor_g < 70: 
+                st.error("⚠️ HIPOGLUCEMIA")
+            elif valor_g <= 130: 
+                st.success("✅ NORMAL")
+            elif valor_g <= 180: 
+                st.warning("🟡 ELEVADA")
+            else: 
+                st.error("🚨 CRÍTICA")
 
     if st.button("🚨 PROCESAR Y ASEGURAR REGISTRO", use_container_width=True, key="btn_guarda_g"):
         if valor_g > 20:
             try:
+                # Preparar cadenas de tiempo
                 f_str = fecha_g.strftime('%Y-%m-%d')
                 h_str = hora_g.strftime('%H:%M')
                 
-                # Guardar Local
+                # 1. Guardar Localmente (SQLite)
                 c.execute("INSERT INTO glucosa (valor, unidad, estado, fecha, hora) VALUES (?, ?, ?, ?, ?)",
                           (valor_g, "mg/dL", momento, f_str, h_str))
                 conn.commit()
 
-                # Sincronizar Nube
+                # 2. Sincronización Automática con Google Sheets
                 if NUBE_DISPONIBLE:
-                    paquete_nube = {
-                        "ID_SISTEMA": "QUEVEDO_PRO_V4", 
-                        "FECHA": f_str, 
+                    paquete_salud = {
+                        "FECHA": f_str,
                         "HORA": h_str,
-                        "VALOR_MG_DL": valor_g, 
+                        "VALOR_MG_DL": valor_g,
                         "ESTADO_MEDICO": momento,
-                        "PROPIETARIO": NOMBRE_PROPIETARIO,
-                        "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
+                        "USUARIO": NOMBRE_PROPIETARIO,
+                        "TIPO_REGISTRO": "GLUCOSA",
+                        "TIMESTAMP_SISTEMA": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                     }
-                    registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
+                    registrar_en_nube_exacto(paquete_salud, pestaña="DB_QUEVEDO1")
                 
-                st.success(f"✅ Registro verificado: {valor_g} mg/dL")
+                st.success(f"✅ Registro verificado e indexado: {valor_g} mg/dL")
                 time.sleep(1)
                 st.rerun()
             except Exception as e:
-                st.error(f"Error al procesar registro: {e}")
+                st.error(f"Error crítico al procesar salud: {e}")
+        else:
+            st.warning("⚠️ Ingrese un valor de glucosa válido.")
 
-    # --- 2. AUDITORÍA Y GRÁFICA ---
+    st.divider()
+
+    # --- 2. AUDITORÍA VISUAL Y GRÁFICAS ---
     try:
-        df_full = pd.read_sql_query("SELECT fecha, hora, valor FROM glucosa ORDER BY id DESC LIMIT 30", conn)
+        df_full = pd.read_sql_query("SELECT fecha, hora, valor, estado FROM glucosa ORDER BY id DESC LIMIT 30", conn)
+        
         if not df_full.empty:
+            # Preparar datos para gráfica
             df_full['Fecha_Hora'] = pd.to_datetime(df_full['fecha'] + ' ' + df_full['hora'])
             df_plot = df_full.sort_values('Fecha_Hora').dropna() 
 
             col_tabla, col_grafica = st.columns([1, 1])
             with col_tabla:
-                st.subheader("📋 Últimos Registros")
-                st.dataframe(df_full.head(10), use_container_width=True, hide_index=True)
+                st.subheader("📋 Últimas Mediciones")
+                st.dataframe(df_full[['fecha', 'hora', 'valor', 'estado']].head(10), use_container_width=True, hide_index=True)
 
             with col_grafica:
-                st.subheader("📈 Curva de Glucosa")
+                st.subheader("📈 Tendencia Histórica")
                 st.line_chart(df_plot.set_index('Fecha_Hora')['valor'])
+                st.caption("Evolución de niveles mg/dL")
         else:
-            st.info("No hay datos históricos.")
+            st.info("No hay datos históricos en el Biomonitor local.")
     except Exception as e:
-        st.warning(f"Analizando base de datos... {e}")
+        st.warning(f"Sincronizando vistas de datos... {e}")
 
     st.divider()
-    with st.expander("🗑️ Zona de Corrección (Peligro)"):
-        if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True):
-            borrar_ultimo("glucosa")
 
+    # --- 3. ZONA DE ELIMINACIÓN ---
+    with st.expander("🗑️ Zona de Corrección de Glucosa (Peligro)"):
+        st.warning("Esta acción borrará el último registro médico guardado localmente.")
+        if st.button("❌ CONFIRMAR BORRADO DE ÚLTIMA MEDICIÓN", use_container_width=True):
+            try:
+                c.execute("DELETE FROM glucosa WHERE id = (SELECT MAX(id) FROM glucosa)")
+                conn.commit()
+                st.success("Registro eliminado correctamente.")
+                time.sleep(1)
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error al eliminar: {e}")
+
+                
+
+             
+    
+          
 # --- MÓDULO ESCÁNER IA ---
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Escáner OCR de Alto Rendimiento")
