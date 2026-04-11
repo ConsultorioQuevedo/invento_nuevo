@@ -394,7 +394,7 @@ try:
 except Exception as e:
             st.warning(f"Analizando base de datos... {e}")
 
-    st.divider()
+            st.divider()
     with st.expander("🗑️ Zona de Corrección (Peligro)"):
         if st.button("❌ BORRAR ÚLTIMA MEDICIÓN", use_container_width=True, key="btn_del_glu_final"):
             borrar_ultimo("glucosa")
