@@ -392,7 +392,7 @@ try:
         else:
             st.info("No hay datos históricos en Biomonitor.")
     except Exception as e:
-        st.warning(f"Analizando base de datos... {e}")
+            st.warning(f"Analizando base de datos... {e}")
 
     st.divider()
     with st.expander("🗑️ Zona de Corrección (Peligro)"):
