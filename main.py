@@ -16,26 +16,34 @@ import pytesseract  # <-- Falta en tu imagen
 from datetime import datetime
 from PIL import Image
 from google.oauth2.service_account import Credentials
-# --- 1. CONFIGURACIÓN E IDENTIDAD ---
+
+
 # --- 1. CONFIGURACIÓN E IDENTIDAD ---
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 
-# Intentar conexión con Google Sheets (Nube)
+# Conexión Segura a Google Sheets
+client = None
+NUBE_DISPONIBLE = False
+
 try:
+    # Verificamos si las credenciales existen en Streamlit Secrets
     if "gcp_service_account" in st.secrets:
-        SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=SCOPES)
+        # Cargamos credenciales directamente del diccionario de Secrets
+        creds_info = st.secrets["gcp_service_account"]
+        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         client = gspread.authorize(creds)
         NUBE_DISPONIBLE = True
     else:
-        NUBE_DISPONIBLE = False
+        st.sidebar.info("☁️ Modo Local: Credenciales no detectadas.")
 except Exception as e:
     NUBE_DISPONIBLE = False
-    st.sidebar.warning("Nube no conectada")
+    st.sidebar.error(f"⚠️ Error de enlace nube: {e}")
 
-    st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
+st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
 
+    
 try:
     ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
     hora_actual = datetime.now(ZONA_HORARIA)
