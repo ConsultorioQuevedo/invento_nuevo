@@ -89,7 +89,7 @@ except Exception:
 # ====================
 def inicializar_todo():
     # Conexión local SQLite
-    conn = sqursor()
+    conn = cursor()
     
     tablas = [
         "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)",
