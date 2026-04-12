@@ -296,7 +296,7 @@ elif menu == "💰 FINANZAS":
                     conn.commit()
                     
                     # 2. ENVÍO A GOOGLE (PESTAÑA DB_QUEVEDO1)
-                    if NUBE_DISPONIBLE:
+                    if NUBE_DISPONIBLE and client:
                         paquete_f = {
                             "FECHA": f_str,
                             "TIPO": t_simple,
@@ -306,7 +306,7 @@ elif menu == "💰 FINANZAS":
                             "PROPIETARIO": NOMBRE_PROPIETARIO,
                             "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                         }
-                        # Corrección de puntero para evitar el 404
+                        # Llamada a la función unificada del Bloque A
                         registrar_en_nube_exacto(paquete_f, "DB_QUEVEDO1")
                     
                     st.success(f"✅ {t_simple} registrado e integrado con éxito.")
@@ -336,7 +336,6 @@ elif menu == "💰 FINANZAS":
             conn.commit()
             st.success("Capital ajustado.")
             st.rerun()
-
 # --- MÓDULO BIOMONITOR: CONTROL DE SALUD INTEGRAL ---
 elif menu == "🩺 BIOMONITOR":
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
