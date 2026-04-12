@@ -16,51 +16,20 @@ import pytesseract
 from datetime import datetime
 from PIL import Image
 from google.oauth2.service_account import Credentials
+
 # --- 1. CONFIGURACIÓN E IDENTIDAD ---
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
-URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY/edit"
+# URL e ID Corregidos (Se cambió 'l' minúscula por 'I' mayúscula)
+URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3IHPedkThHaopQKfwfY/edit"
+ID_HOJA = "12DvNKDet5BRoYWlytg2qjWsm3IHPedkThHaopQKfwfY"
 
-def registrar_en_nube_exacto(datos_dict, pestaña):
-    """Envía datos a Google Sheets asegurando la conexión por ID"""
-    if NUBE_DISPONIBLE and conn_google:
-        try:
-            # ID exacto extraído de tu URL
-            ID_HOJA = "12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY"
-            
-            # 1. Intentar cargar la pestaña específica
-            try:
-                df_nube = conn_google.read(spreadsheet=ID_HOJA, worksheet=pestaña)
-            except Exception:
-                # Si la pestaña está vacía, creamos un DF limpio con las columnas del diccionario
-                df_nube = pd.DataFrame(columns=list(datos_dict.keys()))
-
-            # 2. Unir datos
-            nueva_fila = pd.DataFrame([datos_dict])
-            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True).fillna("")
-            
-            # 3. Subida directa
-            conn_google.update(spreadsheet=ID_HOJA, worksheet=pestaña, data=df_final)
-            st.toast(f"✅ SINCRONIZADO EN {pestaña}")
-            
-        except Exception as e:
-            # Si esto falla, el problema suelen ser los PERMISOS del archivo
-            st.warning(f"⚠️ Guardado local OK. Error Nube (404/Permisos): {e}")
-
+# --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
 
-# Conexión Segura a Google Sheets
+# --- CONEXIÓN SEGURA A GOOGLE SHEETS ---
 client = None
 NUBE_DISPONIBLE = False
-
-# --- COLOCAR ESTO AL INICIO DEL ARCHIVO ---
-try:
-    from streamlit_gsheets import GSheetsConnection
-    conn_google = st.connection("gsheets", type=GSheetsConnection)
-    NUBE_DISPONIBLE = True
-except Exception:
-    conn_google = None
-    NUBE_DISPONIBLE = False
 
 try:
     if "gcp_service_account" in st.secrets:
@@ -69,12 +38,14 @@ try:
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         client = gspread.authorize(creds)
         NUBE_DISPONIBLE = True
+        st.sidebar.success("☁️ NUBE: CONECTADA (MODO SEGURO)")
     else:
         st.sidebar.info("☁️ Modo Local: Credenciales no detectadas.")
 except Exception as e:
     NUBE_DISPONIBLE = False
     st.sidebar.error(f"⚠️ Error de enlace nube: {e}")
 
+# --- MANEJO DE TIEMPO ---
 try:
     ZONA_HORARIA = pytz.timezone('America/Santo_Domingo')
     hora_actual = datetime.now(ZONA_HORARIA)
@@ -83,7 +54,31 @@ except Exception:
     hora_actual = datetime.now(ZONA_HORARIA)
     st.warning("⚠️ Zona horaria no encontrada, usando UTC.")
 
+# --- FUNCIÓN DE REGISTRO UNIFICADA ---
+def registrar_en_nube_exacto(datos_dict, pestaña):
+    """Envía datos a Google Sheets asegurando la conexión por ID y gspread"""
+    if NUBE_DISPONIBLE and client:
+        try:
+            # Abrir la hoja por su ID verificado
+            sh = client.open_by_key(ID_HOJA)
+            
+            # Intentar acceder a la pestaña
+            try:
+                worksheet = sh.worksheet(pestaña)
+            except Exception:
+                st.error(f"❌ La pestaña '{pestaña}' no existe.")
+                return
 
+            # Insertar fila (append_row es más limpio que reconstruir todo el DF)
+            fila = list(datos_dict.values())
+            worksheet.append_row(fila)
+            
+            st.toast(f"✅ SINCRONIZADO EN {pestaña}")
+            
+        except Exception as e:
+            st.warning(f"⚠️ Guardado local OK. Error Nube (Permisos): {e}")
+
+# Aquí continúa tu código de inicialización de Base de Datos Local...
 # ==========================================
 # 2. BASE DE DATOS (PROTECCIÓN TOTAL)
 # ===================
