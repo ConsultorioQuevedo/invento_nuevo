@@ -232,7 +232,7 @@ with col_res1:
             pres = res_p[0] if res_p else 0.0
             st.metric("Capital Actual", f"RD$ {pres:,.2f}")
     
-    with col_res2:
+with col_res2:
         with st.container(border=True):
             st.markdown("### 🩸 Último Biomonitor")
             df_u = pd.read_sql_query("SELECT valor, estado FROM glucosa ORDER BY id DESC LIMIT 1", conn)
