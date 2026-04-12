@@ -166,8 +166,7 @@ menu_opcion = st.sidebar.radio("MENÚ PRINCIPAL",
 menu = menu_opcion.strip()
 # ==========================================
 # BLOQUE INTEGRAL: INICIO + FINANZAS (v5.1)
-# ==========================================
-
+# ===================================
 # --- MÓDULO 1: INICIO (PANEL DE CONTROL CENTRAL) ---
 if menu == "🏠 INICIO":
     st.header(f"SISTEMA QUEVEDO INTEGRAL v5.1")
@@ -241,7 +240,7 @@ with col_res2:
                 st.write("Sin registros médicos recientes.")
                 
     # --- MÓDULO FINANZAS (RESTAURADO Y UNIFICADO) ---
-    elif menu == "💰 FINANZAS":
+elif menu == "💰 FINANZAS":
     st.header("💰 Ingeniería Financiera: Control de Capital")
     st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
 
@@ -343,7 +342,8 @@ with col_res2:
             st.success("Capital ajustado.")
             st.rerun()
 
-# --- MÓDULO BIOMONITOR: CONTROL DE SALUD INTEGRAL ---
+# --- MÓDULO BIOMONITOR: CONTROL DE SALUD INTEGRAL 
+
 elif menu == "🩺 BIOMONITOR":
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
     st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
