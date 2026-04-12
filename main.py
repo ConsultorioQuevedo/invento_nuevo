@@ -222,6 +222,20 @@ elif menu == "💰 FINANZAS":
     st.header("💰 Ingeniería Financiera: Control de Capital")
     st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
 
+# --- AJUSTE DE CONEXIÓN ---
+URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY/edit"
+
+def registrar_en_nube_exacto(datos_dict, pestaña):
+    if NUBE_DISPONIBLE and conn_google:
+        try:
+            df_nube = conn_google.read(spreadsheet=URL_NUBE, worksheet=pestaña)
+            nueva_fila = pd.DataFrame([datos_dict])
+            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
+            conn_google.update(spreadsheet=URL_NUBE, worksheet=pestaña, data=df_final)
+            st.toast(f"✅ SINCRONIZADO EN {pestaña}")
+        except Exception as e:
+            st.error(f"Error Nube: {e}")    
+
     def obtener_presupuesto():
         c.execute("SELECT monto FROM presupuesto WHERE id = 1")
         res = c.fetchone()
@@ -273,22 +287,19 @@ elif menu == "💰 FINANZAS":
                 nuevo_balance = actualizar_presupuesto_maestro(monto_final)
                 conn.commit()
                 
-                # 2. Sincronización Automática con Google Sheets
-                if NUBE_DISPONIBLE:
-                    paquete_nube = {
-                        "FECHA": f_str, 
-                        "DETALLE": categoria_op, 
-                        "MONTO": monto_final, 
-                        "TIPO": tipo_op, 
-                        "USUARIO": NOMBRE_PROPIETARIO,
-                        "BALANCE_AL_MOMENTO": nuevo_balance,
-                        "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
-                    }
-                    registrar_en_nube_exacto(paquete_nube, pestaña="DB_QUEVEDO1")
+                # --- ENVÍO A GOOGLE (PESTAÑA DB_QUEVEDO1) ---
+            if NUBE_DISPONIBLE:
+                paquete_f = {
+                    "FECHA": fecha_f.strftime('%Y-%m-%d'),
+                    "TIPO": tipo.upper(),
+                    "CATEGORIA": cat.upper(),
+                    "MONTO": monto_final,
+                    "BALANCE_TOTAL": obtener_presupuesto(),
+                    "PROPIETARIO": NOMBRE_PROPIETARIO,
+                    "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
+                }
+                registrar_en_nube_exacto(paquete_f, "DB_QUEVEDO1")
                 
-                st.success(f"✅ Procesado. Nuevo Capital: RD$ {nuevo_balance:,.2f}")
-                time.sleep(1)
-                st.rerun()
 
     # VISUALIZACIÓN DE DATOS
     st.subheader("📋 Libro Mayor (Últimos Movimientos)")
