@@ -24,25 +24,31 @@ UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY/edit"
 
 def registrar_en_nube_exacto(datos_dict, pestaña):
+    """Envía datos a Google Sheets usando el ID directo para evitar el Error 404"""
     if NUBE_DISPONIBLE and conn_google:
         try:
-            # ID directo del documento (extraído de tu URL)
+            # ID REAL DE TU HOJA (No usamos la URL completa para evitar fallos de ruta)
             ID_HOJA = "12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY"
             
-            # Crear DataFrame con el nuevo dato
+            # 1. Intentar leer la pestaña (Si falla aquí, el 404 es por el nombre de la pestaña)
+            try:
+                df_nube = conn_google.read(spreadsheet=ID_HOJA, worksheet=pestaña)
+            except Exception:
+                # Si la pestaña está vacía, creamos un DF limpio con las columnas del diccionario
+                df_nube = pd.DataFrame(columns=datos_dict.keys())
+
+            # 2. Unir datos
             nueva_fila = pd.DataFrame([datos_dict])
+            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True).fillna("")
             
-            # Leer lo que ya hay para no borrar nada
-            df_actual = conn_google.read(spreadsheet=ID_HOJA, worksheet=pestaña)
-            df_final = pd.concat([df_actual, nueva_fila], ignore_index=True).fillna("")
-            
-            # Actualizar la hoja
+            # 3. Subida directa
             conn_google.update(spreadsheet=ID_HOJA, worksheet=pestaña, data=df_final)
             st.toast(f"✅ SINCRONIZADO EN {pestaña}")
             
         except Exception as e:
-            st.error(f"❌ Error de Sincronización: {e}")
-
+            # Si esto falla, el problema son los PERMISOS del archivo
+            st.warning(f"⚠️ Guardado local OK. Error Nube (404/Permisos): {e}")
+            
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
 
 # Conexión Segura a Google Sheets
