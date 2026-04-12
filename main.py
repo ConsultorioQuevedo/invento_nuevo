@@ -50,8 +50,7 @@ def registrar_en_nube_exacto(datos_dict, pestaña):
             # Si aquí sale un error, es un problema de PERMISOS (compartir el archivo)
             st.error(f"❌ Error Nube: {e}")
                 # Si la pestaña está vacía, creamos un DF limpio con las columnas del diccionario
-                df_nube = pd.DataFrame(columns=datos_dict.keys())
-
+                
             # 2. Unir datos
             nueva_fila = pd.DataFrame([datos_dict])
             df_final = pd.concat([df_nube, nueva_fila], ignore_index=True).fillna("")
