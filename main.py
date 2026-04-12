@@ -23,7 +23,7 @@ NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY/edit"
 
-def registrar_en_nube_exacto(datos_dict, pestaña):
+def registrar_en_nube_exacto(datos_dict, pestaña="DB_QUEVEDO1"):
     if NUBE_DISPONIBLE and client:
         try:
             # Abrir la hoja y la pestaña
@@ -73,17 +73,6 @@ try:
     conn_google = st.connection("gsheets", type=GSheetsConnection)
 except Exception:
     conn_google = None
-
-def registrar_en_nube_exacto(datos_dict, pestaña="DB_QUEVEDO1"):
-    if NUBE_DISPONIBLE and conn_google:
-        try:
-            df_nube = conn_google.read(spreadsheet=URL_NUBE, worksheet=pestaña)
-            nueva_fila = pd.DataFrame([datos_dict])
-            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
-            conn_google.update(spreadsheet=URL_NUBE, worksheet=pestaña, data=df_final)
-            st.success(f"✅ Sincronizado en Nube -> {pestaña}")
-        except Exception as e:
-            st.error(f"❌ Error de sincronización: {e}")
 
 def inicializar_todo():
     base = "archivador_quevedo"
