@@ -64,16 +64,7 @@ except Exception:
     st.warning("⚠️ Zona horaria no encontrada, usando UTC.")
 # ==========================================
 # 2. BASE DE DATOS (PROTECCIÓN TOTAL)
-# ==========================================
-
-# Conexión a Google Sheets (Si falla, el sistema sigue funcionando localmente)
-try:
-    from streamlit_gsheets import GSheetsConnection
-    conn_google = st.connection("gsheets", type=GSheetsConnection)
-    NUBE_DISPONIBLE = True
-except Exception:
-    conn_google = None
-    NUBE_DISPONIBLE = False
+# ====================
 
 def inicializar_todo():
     # Conexión local SQLite
