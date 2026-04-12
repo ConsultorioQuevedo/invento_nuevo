@@ -201,16 +201,13 @@ if menu == "🏠 INICIO":
                   try:
                         df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
                         sh = client.open_by_key(ID_HOJA)
-                          worksheet = sh.worksheet("DB_QUEVEDO1")
-                
-                           datos_subida = [df_f.columns.values.tolist()] + df_f.astype(str).values.tolist()
-                
-                           worksheet.clear()
-                           worksheet.update('A1', datos_subida)
-                
-                           st.success("✅ Historial financiero asegurado.")
-            except Exception as e:
-                st.error(f"Error en respaldo: {e}")
+                         worksheet = sh.worksheet("DB_QUEVEDO1") 
+                         datos_subida = [df_f.columns.values.tolist()] + df_f.astype(str).values.tolist()
+                         worksheet.clear()
+                         worksheet.update('A1', datos_subida)
+                         st.success("✅ Historial financiero asegurado.")
+                    except Exception as e:
+                         st.error(f"Error en respaldo: {e}")
     else:
         st.error("Enlace con Google no configurado.")
         
