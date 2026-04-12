@@ -241,7 +241,7 @@ with col_res2:
                 st.write("Sin registros médicos recientes.")
                 
     # --- MÓDULO FINANZAS (RESTAURADO Y UNIFICADO) ---
-elif menu == "💰 FINANZAS":
+ elif menu == "💰 FINANZAS":
     st.header("💰 Ingeniería Financiera: Control de Capital")
     st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
 
