@@ -86,10 +86,12 @@ except Exception:
 
 # ==========================================
 # 2. BASE DE DATOS (PROTECCIÓN TOTAL)
-# ====================
+# ===================
+# --- INICIALIZACIÓN ---
 def inicializar_todo():
-    # Conexión local SQLite
-    conn = cursor()
+    # Conexión local SQLite CORREGIDA
+    conn = sqlite3.connect('base_datos_quevedo.db', check_same_thread=False)
+    c = conn.cursor() # Esto define el cursor que faltaba
     
     tablas = [
         "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)",
@@ -110,20 +112,21 @@ conn, c = inicializar_todo()
 # --- MOTOR DE SINCRONIZACIÓN ---
 def registrar_en_nube_exacto(datos_dict, pestaña):
     """Envía datos a Google Sheets sin bloquear el programa local"""
-    if NUBE_DISPONIBLE and conn_google:
+    # Asegúrate de que 'NUBE_DISPONIBLE' y 'conn_google' estén definidos arriba en tu archivo
+    if 'NUBE_DISPONIBLE' in globals() and 'conn_google' in globals() and NUBE_DISPONIBLE and conn_google:
         try:
-            # ID extraído de tu URL para mayor estabilidad
-            ID_HOJA = "12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY"
+            # ID extraído de tu URL
+            ID_HOJA = "12DvNKDet5BRoYWlytg2qjWsm3IHPedkThHaopQKfwfY"
             
-            # Intentar leer la pestaña; si falla o está vacía, creamos un DataFrame con las columnas del diccionario
             try:
+                # Intentar leer la pestaña; si falla o está vacía, creamos un DataFrame
                 df_nube = conn_google.read(spreadsheet=ID_HOJA, worksheet=pestaña)
             except Exception:
                 df_nube = pd.DataFrame(columns=list(datos_dict.keys()))
 
             nueva_fila = pd.DataFrame([datos_dict])
             
-            # Concatenación robusta llenando vacíos para evitar errores de formato
+            # Concatenación robusta
             df_final = pd.concat([df_nube, nueva_fila], ignore_index=True).fillna("")
             
             # Actualización usando el ID del documento
