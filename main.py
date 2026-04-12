@@ -223,7 +223,7 @@ with st.expander("🔄 Centro de Sincronización Nube", expanded=False):
 st.divider()   
 
     # --- MÉTRICAS DE RESUMEN ---
-    col_res1, col_res2 = st.columns(2)
+    
     with col_res1:
         with st.container(border=True):
             st.markdown("### 💰 Estado de Bóveda")
