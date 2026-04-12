@@ -189,34 +189,38 @@ if menu == "🏠 INICIO":
 
     st.divider()
 
-    # --- CENTRO DE SINCRONIZACIÓN Y RESPALDO ---
-    with st.expander("🔄 Centro de Sincronización Nube", expanded=False):
-        col_s1, col_s2 = st.columns(2)
-        with col_s1:
-            st.markdown("### Respaldo Total")
-            st.caption("Sincroniza el historial completo de la base de datos local.")
+ # --- CENTRO DE SINCRONIZACIÓN Y RESPALDO ---
+with st.expander("🔄 Centro de Sincronización Nube", expanded=False):
+    col_s1, col_s2 = st.columns(2)
+    
+    with col_s1:
+        st.markdown("### Respaldo Total")
+        st.caption("Sincroniza el historial completo de la base de datos local.")
+        
         if st.button("🚀 INICIAR RESPALDO MASIVO"):
             if NUBE_DISPONIBLE and client:
-               with st.spinner("Subiendo datos..."):
-                  try:
+                with st.spinner("Subiendo datos..."):
+                    try:
                         df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
                         sh = client.open_by_key(ID_HOJA)
-                         worksheet = sh.worksheet("DB_QUEVEDO1") 
-                         datos_subida = [df_f.columns.values.tolist()] + df_f.astype(str).values.tolist()
-                         worksheet.clear()
-                         worksheet.update('A1', datos_subida)
-                         st.success("✅ Historial financiero asegurado.")
+                        worksheet = sh.worksheet("DB_QUEVEDO1")
+                        
+                        datos_subida = [df_f.columns.values.tolist()] + df_f.astype(str).values.tolist()
+                        
+                        worksheet.clear()
+                        worksheet.update('A1', datos_subida)
+                        st.success("✅ Historial financiero asegurado.")
                     except Exception as e:
-                         st.error(f"Error en respaldo: {e}")
-    else:
-        st.error("Enlace con Google no configurado.")
+                        st.error(f"Error en respaldo: {e}")
+            else:
+                st.error("Enlace con Google no configurado.")
         
-        with col_s2:
-            st.markdown("### Enlace Directo")
-            st.caption("Acceso rápido a tu hoja de cálculo remota.")
-            st.markdown(f'<a href="{URL_NUBE}" target="_blank"><button style="width:100%; border-radius:10px; background-color:#4CAF50; color:white; border:none; padding:10px; cursor:pointer;">🟢 ABRIR MI GOOGLE SHEET</button></a>', unsafe_allow_html=True)
+    with col_s2:
+        st.markdown("### Enlace Directo")
+        st.caption("Acceso rápido a tu hoja de cálculo remota.")
+        st.markdown(f'<a href="{URL_NUBE}" target="_blank"><button style="width:100%; border-radius:10px; background-color:#4CAF50; color:white; border:none; padding:10px; cursor:pointer;">🟢 ABRIR MI GOOGLE SHEET</button></a>', unsafe_allow_html=True)
 
-    st.divider()
+st.divider()   
 
     # --- MÉTRICAS DE RESUMEN ---
     col_res1, col_res2 = st.columns(2)
