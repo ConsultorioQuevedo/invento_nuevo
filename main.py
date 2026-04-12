@@ -21,6 +21,20 @@ from streamlit_gsheets import GSheetsConnection
 # --- 1. CONFIGURACIÓN E IDENTIDAD ---
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
+URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY/edit"
+
+def registrar_en_nube_exacto(datos_dict, pestaña):
+    if NUBE_DISPONIBLE and client:
+        try:
+            # Abrir la hoja y la pestaña
+            sheet = client.open_by_url(URL_NUBE).worksheet(pestaña)
+            # Convertir el diccionario a una lista en el orden de tus columnas
+            fila = list(datos_dict.values())
+            sheet.append_row(fila)
+            st.toast(f"✅ Sincronizado en {pestaña}")
+        except Exception as e:
+            st.error(f"Error de red: {e}")
+
 
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
 
