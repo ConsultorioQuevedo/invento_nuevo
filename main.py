@@ -394,34 +394,6 @@ if "BIOMONITOR" in menu:
             except Exception as e:
                 st.error(f"Error al eliminar: {e}")
    
-    
-   
-   
-      
-               
-
-   
-        
-
-    
-
-
-       
-   
-   
-           
-       
-      
-         
-
-
-          
-
-                
-
-             
-    
-          
 # --- MÓDULO ESCÁNER IA ---
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Escáner OCR de Alto Rendimiento")
@@ -621,15 +593,6 @@ elif menu == "🤖 ASISTENTE":
                 </a>
             ''', unsafe_allow_html=True)
     
-
-   
-       
-       
-            
-           
-
-
-
 # --- 4. ACCIÓN MAESTRA: REPORTE PDF PROFESIONAL v2.0 ---
 if st.button("🚀 GENERAR EXPEDIENTE EJECUTIVO", use_container_width=True, key="btn_pdf_pro"):
     st.info("Diseñando reporte de alta calidad...")
@@ -726,16 +689,6 @@ if st.button("🚀 GENERAR EXPEDIENTE EJECUTIVO", use_container_width=True, key=
     except Exception as e:
         st.error(f"🚨 Error en el motor PDF: {e}")
 
-    
-
-
-  
-
-            
-    
-
-   
-  
 # --- PIE DE PÁGINA (CRÉDITOS) ---
 st.markdown("---")
 col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
