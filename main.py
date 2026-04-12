@@ -303,7 +303,7 @@ elif menu == "💰 FINANZAS":
                             "PROPIETARIO": NOMBRE_PROPIETARIO,
                             "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                         }
-                        registrar_en_nube_exacto(paquete_f, "DB_QUEVEDO1")
+                        registrar_en_nube_exacto(paquete_ pestaña, "DB_QUEVEDO1")
                     
                     st.success(f"✅ {t_simple} registrado e integrado con éxito.")
                     time.sleep(1)
