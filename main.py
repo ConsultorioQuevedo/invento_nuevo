@@ -63,7 +63,7 @@ except Exception:
     hora_actual = datetime.now(ZONA_HORARIA)
     st.warning("⚠️ Zona horaria no encontrada, usando UTC.")
 
-URL_NUBE = "https://docs.google.com/spreadsheets/d/18030cQtLcVWdHXMMX2MhCu4aeyvB_ytVUYJX4wCpTbl/edit"
+
 
 # ==========================================
 # 2. BASE DE DATOS (PROTECCIÓN TOTAL)
