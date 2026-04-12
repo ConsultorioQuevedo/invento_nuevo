@@ -324,7 +324,7 @@ def registrar_en_nube_exacto(datos_dict, pestaña):
             st.rerun()
 
 # --- MÓDULO BIOMONITOR: CONTROL DE SALUD INTEGRAL ---
-    elif "BIOMONITOR" in menu:
+if "BIOMONITOR" in menu:
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
     st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
 
