@@ -42,6 +42,15 @@ st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
 client = None
 NUBE_DISPONIBLE = False
 
+# --- COLOCAR ESTO AL INICIO DEL ARCHIVO ---
+try:
+    from streamlit_gsheets import GSheetsConnection
+    conn_google = st.connection("gsheets", type=GSheetsConnection)
+    NUBE_DISPONIBLE = True
+except Exception:
+    conn_google = None
+    NUBE_DISPONIBLE = False
+
 try:
     if "gcp_service_account" in st.secrets:
         creds_info = st.secrets["gcp_service_account"]
