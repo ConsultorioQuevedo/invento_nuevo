@@ -23,18 +23,25 @@ NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY/edit"
 
-def registrar_en_nube_exacto(datos_dict, pestaña="DB_QUEVEDO1"):
-    if NUBE_DISPONIBLE and client:
+def registrar_en_nube_exacto(datos_dict, pestaña):
+    if NUBE_DISPONIBLE and conn_google:
         try:
-            # Abrir la hoja y la pestaña
-            sheet = client.open_by_url(URL_NUBE).worksheet(pestaña)
-            # Convertir el diccionario a una lista en el orden de tus columnas
-            fila = list(datos_dict.values())
-            sheet.append_row(fila)
-            st.toast(f"✅ Sincronizado en {pestaña}")
+            # ID directo del documento (extraído de tu URL)
+            ID_HOJA = "12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY"
+            
+            # Crear DataFrame con el nuevo dato
+            nueva_fila = pd.DataFrame([datos_dict])
+            
+            # Leer lo que ya hay para no borrar nada
+            df_actual = conn_google.read(spreadsheet=ID_HOJA, worksheet=pestaña)
+            df_final = pd.concat([df_actual, nueva_fila], ignore_index=True).fillna("")
+            
+            # Actualizar la hoja
+            conn_google.update(spreadsheet=ID_HOJA, worksheet=pestaña, data=df_final)
+            st.toast(f"✅ SINCRONIZADO EN {pestaña}")
+            
         except Exception as e:
-            st.error(f"Error de red: {e}")
-
+            st.error(f"❌ Error de Sincronización: {e}")
 
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
 
