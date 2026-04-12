@@ -195,18 +195,24 @@ if menu == "🏠 INICIO":
         with col_s1:
             st.markdown("### Respaldo Total")
             st.caption("Sincroniza el historial completo de la base de datos local.")
-            if st.button("🚀 INICIAR RESPALDO MASIVO"):
-                if NUBE_DISPONIBLE:
-                    with st.spinner("Subiendo datos a la bóveda de Google..."):
-                        try:
-                            # Respaldo de Finanzas
-                            df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
-                            conn_google.update(spreadsheet=ID_HOJA, worksheet="DB_QUEVEDO1", data=df_f)
-                            st.success("✅ Historial financiero asegurado en la nube.")
-                        except Exception as e:
-                            st.error(f"Error en respaldo: {e}")
-                else:
-                    st.error("Enlace con Google no configurado.")
+           if st.button("🚀 INICIAR RESPALDO MASIVO"):
+           if NUBE_DISPONIBLE and client:
+        with st.spinner("Subiendo datos..."):
+            try:
+                df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
+                sh = client.open_by_key(ID_HOJA)
+                worksheet = sh.worksheet("DB_QUEVEDO1")
+                
+                datos_subida = [df_f.columns.values.tolist()] + df_f.astype(str).values.tolist()
+                
+                worksheet.clear()
+                worksheet.update('A1', datos_subida)
+                
+                st.success("✅ Historial financiero asegurado.")
+            except Exception as e:
+                st.error(f"Error en respaldo: {e}")
+    else:
+        st.error("Enlace con Google no configurado.")
         
         with col_s2:
             st.markdown("### Enlace Directo")
