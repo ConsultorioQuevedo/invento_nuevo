@@ -87,7 +87,7 @@ except Exception:
     conn.commit()
     return conn, c
 
-   conn, c = inicializar_todo()
+    conn, c = inicializar_todo()
 
 def borrar_ultimo(tabla):
     try:
