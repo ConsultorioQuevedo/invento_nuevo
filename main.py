@@ -16,8 +16,6 @@ import pytesseract
 from datetime import datetime
 from PIL import Image
 from google.oauth2.service_account import Credentials
-
-
 # --- 1. CONFIGURACIÓN E IDENTIDAD ---
 NOMBRE_PROPIETARIO = "LUIS RAFAEL QUEVEDO"
 UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
@@ -27,30 +25,16 @@ def registrar_en_nube_exacto(datos_dict, pestaña):
     """Envía datos a Google Sheets asegurando la conexión por ID"""
     if NUBE_DISPONIBLE and conn_google:
         try:
-            # Usamos el ID exacto que extraje de tu imagen
+            # ID exacto extraído de tu URL
             ID_HOJA = "12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY"
             
-            # Intentar cargar la pestaña específica
+            # 1. Intentar cargar la pestaña específica
             try:
-                # Importante: El nombre en 'pestaña' debe ser IDENTICO al del Excel
                 df_nube = conn_google.read(spreadsheet=ID_HOJA, worksheet=pestaña)
             except Exception:
-                # Si la pestaña no existe o está vacía, iniciamos un DataFrame nuevo
+                # Si la pestaña está vacía, creamos un DF limpio con las columnas del diccionario
                 df_nube = pd.DataFrame(columns=list(datos_dict.keys()))
 
-            # Insertar la nueva fila
-            nueva_fila = pd.DataFrame([datos_dict])
-            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True).fillna("")
-            
-            # Subir de nuevo a la nube
-            conn_google.update(spreadsheet=ID_HOJA, worksheet=pestaña, data=df_final)
-            st.toast(f"✅ SINCRONIZADO EN {pestaña}")
-            
-        except Exception as e:
-            # Si aquí sale un error, es un problema de PERMISOS (compartir el archivo)
-            st.error(f"❌ Error Nube: {e}")
-                # Si la pestaña está vacía, creamos un DF limpio con las columnas del diccionario
-                
             # 2. Unir datos
             nueva_fila = pd.DataFrame([datos_dict])
             df_final = pd.concat([df_nube, nueva_fila], ignore_index=True).fillna("")
@@ -60,9 +44,9 @@ def registrar_en_nube_exacto(datos_dict, pestaña):
             st.toast(f"✅ SINCRONIZADO EN {pestaña}")
             
         except Exception as e:
-            # Si esto falla, el problema son los PERMISOS del archivo
+            # Si esto falla, el problema suelen ser los PERMISOS del archivo
             st.warning(f"⚠️ Guardado local OK. Error Nube (404/Permisos): {e}")
-            
+
 st.set_page_config(page_title="SISTEMA QUEVEDO PRO", layout="wide")
 
 # Conexión Segura a Google Sheets
@@ -98,14 +82,14 @@ except Exception:
     ZONA_HORARIA = pytz.utc 
     hora_actual = datetime.now(ZONA_HORARIA)
     st.warning("⚠️ Zona horaria no encontrada, usando UTC.")
+
+
 # ==========================================
 # 2. BASE DE DATOS (PROTECCIÓN TOTAL)
 # ====================
-
 def inicializar_todo():
     # Conexión local SQLite
-    conn = sqlite3.connect('bunker_quevedo.db', check_same_thread=False)
-    c = conn.cursor()
+    conn = sqursor()
     
     tablas = [
         "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)",
@@ -128,12 +112,22 @@ def registrar_en_nube_exacto(datos_dict, pestaña):
     """Envía datos a Google Sheets sin bloquear el programa local"""
     if NUBE_DISPONIBLE and conn_google:
         try:
-            # Reemplaza URL_NUBE por tu link real si no lo tienes arriba
-            URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY/edit"
-            df_nube = conn_google.read(spreadsheet=URL_NUBE, worksheet=pestaña)
+            # ID extraído de tu URL para mayor estabilidad
+            ID_HOJA = "12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY"
+            
+            # Intentar leer la pestaña; si falla o está vacía, creamos un DataFrame con las columnas del diccionario
+            try:
+                df_nube = conn_google.read(spreadsheet=ID_HOJA, worksheet=pestaña)
+            except Exception:
+                df_nube = pd.DataFrame(columns=list(datos_dict.keys()))
+
             nueva_fila = pd.DataFrame([datos_dict])
-            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
-            conn_google.update(spreadsheet=URL_NUBE, worksheet=pestaña, data=df_final)
+            
+            # Concatenación robusta llenando vacíos para evitar errores de formato
+            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True).fillna("")
+            
+            # Actualización usando el ID del documento
+            conn_google.update(spreadsheet=ID_HOJA, worksheet=pestaña, data=df_final)
             st.toast(f"✅ SINCRONIZADO EN {pestaña}")
         except Exception as e:
             st.warning(f"⚠️ Guardado local OK. Error Nube: {e}")
@@ -151,9 +145,6 @@ def borrar_ultimo(tabla):
             st.info(f"No hay datos para borrar en {tabla}.")
     except Exception as e:
         st.error(f"Error al borrar en {tabla}: {e}")
-
-
-
 # ==========================================
 # 4. INTERFAZ Y ESTILOS
 # ==========================================
@@ -212,7 +203,7 @@ if menu == "🏠 INICIO":
                         try:
                             # Respaldo de Finanzas
                             df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
-                            conn_google.update(spreadsheet=URL_NUBE, worksheet="DB_QUEVEDO1", data=df_f)
+                            conn_google.update(spreadsheet=ID_HOJA, worksheet="DB_QUEVEDO1", data=df_f)
                             st.success("✅ Historial financiero asegurado en la nube.")
                         except Exception as e:
                             st.error(f"Error en respaldo: {e}")
@@ -244,8 +235,8 @@ if menu == "🏠 INICIO":
                 st.metric("Glucosa", f"{df_u['valor'].iloc[0]} mg/dL", df_u['estado'].iloc[0])
             else:
                 st.write("Sin registros médicos recientes.")
-
-# --- MÓDULO FINANZAS (RESTAURADO Y UNIFICADO) ---
+                
+    # --- MÓDULO FINANZAS (RESTAURADO Y UNIFICADO) ---
 elif menu == "💰 FINANZAS":
     st.header("💰 Ingeniería Financiera: Control de Capital")
     st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
@@ -317,7 +308,8 @@ elif menu == "💰 FINANZAS":
                             "PROPIETARIO": NOMBRE_PROPIETARIO,
                             "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                         }
-                        registrar_en_nube_exacto(paquete_f,"DB_QUEVEDO1")
+                        # Corrección de puntero para evitar el 404
+                        registrar_en_nube_exacto(paquete_f, "DB_QUEVEDO1")
                     
                     st.success(f"✅ {t_simple} registrado e integrado con éxito.")
                     time.sleep(1)
@@ -348,7 +340,7 @@ elif menu == "💰 FINANZAS":
             st.rerun()
 
 # --- MÓDULO BIOMONITOR: CONTROL DE SALUD INTEGRAL ---
-if "BIOMONITOR" in menu:
+elif menu == "🩺 BIOMONITOR":
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
     st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
 
@@ -386,7 +378,7 @@ if "BIOMONITOR" in menu:
                           (valor_g, "mg/dL", momento, f_str, h_str))
                 conn.commit()
 
-                # 2. Sincronización Automática con Google Sheets
+                # 2. Sincronización Automática
                 if NUBE_DISPONIBLE:
                     paquete_salud = {
                         "FECHA": f_str,
@@ -397,7 +389,7 @@ if "BIOMONITOR" in menu:
                         "TIPO_REGISTRO": "GLUCOSA",
                         "TIMESTAMP_SISTEMA": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                     }
-                    registrar_en_nube_exacto(paquete_salud,"DB_SALUD1")
+                    registrar_en_nube_exacto(paquete_salud, "DB_SALUD1")
                 
                 st.success(f"✅ Registro verificado e indexado: {valor_g} mg/dL")
                 time.sleep(1)
@@ -444,7 +436,9 @@ if "BIOMONITOR" in menu:
                 st.rerun()
             except Exception as e:
                 st.error(f"Error al eliminar: {e}")
-   
+            
+ 
+  
 # --- MÓDULO ESCÁNER IA ---
 elif menu == "📸 ESCÁNER IA":
     st.header("📸 Escáner OCR de Alto Rendimiento")
