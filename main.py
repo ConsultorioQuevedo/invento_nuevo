@@ -196,9 +196,9 @@ if menu == "🏠 INICIO":
             st.markdown("### Respaldo Total")
             st.caption("Sincroniza el historial completo de la base de datos local.")
             if st.button("🚀 INICIAR RESPALDO MASIVO"):
-            if NUBE_DISPONIBLE and client:
-             with st.spinner("Subiendo datos..."):
-             try:
+             if NUBE_DISPONIBLE and client:
+              with st.spinner("Subiendo datos..."):
+              try:
                 df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
                 sh = client.open_by_key(ID_HOJA)
                 worksheet = sh.worksheet("DB_QUEVEDO1")
