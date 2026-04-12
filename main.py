@@ -231,7 +231,6 @@ with col_res1:
             res_p = c.fetchone()
             pres = res_p[0] if res_p else 0.0
             st.metric("Capital Actual", f"RD$ {pres:,.2f}")
-    
 with col_res2:
         with st.container(border=True):
             st.markdown("### 🩸 Último Biomonitor")
