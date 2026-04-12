@@ -383,7 +383,7 @@ if "BIOMONITOR" in menu:
                         "TIPO_REGISTRO": "GLUCOSA",
                         "TIMESTAMP_SISTEMA": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                     }
-                    registrar_en_nube_exacto(paquete_salud, pestaña="DB_QUEVEDO1")
+                    registrar_en_nube_exacto(paquete_salud, pestaña="DB_SALUD1")
                 
                 st.success(f"✅ Registro verificado e indexado: {valor_g} mg/dL")
                 time.sleep(1)
