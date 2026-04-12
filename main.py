@@ -85,7 +85,7 @@ except Exception:
         c.execute(sql)
     
     conn.commit()
-    return conn, c
+return conn, c
 
     conn, c = inicializar_todo()
 
