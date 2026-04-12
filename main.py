@@ -24,16 +24,31 @@ UBICACION_SISTEMA = "Santo Domingo, Rep. Dom."
 URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY/edit"
 
 def registrar_en_nube_exacto(datos_dict, pestaña):
-    """Envía datos a Google Sheets usando el ID directo para evitar el Error 404"""
+    """Envía datos a Google Sheets asegurando la conexión por ID"""
     if NUBE_DISPONIBLE and conn_google:
         try:
-            # ID REAL DE TU HOJA (No usamos la URL completa para evitar fallos de ruta)
+            # Usamos el ID exacto que extraje de tu imagen
             ID_HOJA = "12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY"
             
-            # 1. Intentar leer la pestaña (Si falla aquí, el 404 es por el nombre de la pestaña)
+            # Intentar cargar la pestaña específica
             try:
+                # Importante: El nombre en 'pestaña' debe ser IDENTICO al del Excel
                 df_nube = conn_google.read(spreadsheet=ID_HOJA, worksheet=pestaña)
             except Exception:
+                # Si la pestaña no existe o está vacía, iniciamos un DataFrame nuevo
+                df_nube = pd.DataFrame(columns=list(datos_dict.keys()))
+
+            # Insertar la nueva fila
+            nueva_fila = pd.DataFrame([datos_dict])
+            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True).fillna("")
+            
+            # Subir de nuevo a la nube
+            conn_google.update(spreadsheet=ID_HOJA, worksheet=pestaña, data=df_final)
+            st.toast(f"✅ SINCRONIZADO EN {pestaña}")
+            
+        except Exception as e:
+            # Si aquí sale un error, es un problema de PERMISOS (compartir el archivo)
+            st.error(f"❌ Error Nube: {e}")
                 # Si la pestaña está vacía, creamos un DF limpio con las columnas del diccionario
                 df_nube = pd.DataFrame(columns=datos_dict.keys())
 
@@ -303,7 +318,7 @@ elif menu == "💰 FINANZAS":
                             "PROPIETARIO": NOMBRE_PROPIETARIO,
                             "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                         }
-                        registrar_en_nube_exacto(paquete_ pestaña, "DB_QUEVEDO1")
+                        registrar_en_nube_exacto(paquete_ f, "DB_QUEVEDO1")
                     
                     st.success(f"✅ {t_simple} registrado e integrado con éxito.")
                     time.sleep(1)
@@ -383,7 +398,7 @@ if "BIOMONITOR" in menu:
                         "TIPO_REGISTRO": "GLUCOSA",
                         "TIMESTAMP_SISTEMA": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                     }
-                    registrar_en_nube_exacto(paquete_salud, pestaña="DB_SALUD1")
+                    registrar_en_nube_exacto(paquete_salud,"DB_SALUD1")
                 
                 st.success(f"✅ Registro verificado e indexado: {valor_g} mg/dL")
                 time.sleep(1)
