@@ -224,7 +224,7 @@ st.divider()
 
     # --- MÉTRICAS DE RESUMEN ---
     
-    with col_res1:
+with col_res1:
         with st.container(border=True):
             st.markdown("### 💰 Estado de Bóveda")
             c.execute("SELECT monto FROM presupuesto WHERE id = 1")
