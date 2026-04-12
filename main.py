@@ -336,6 +336,7 @@ elif menu == "💰 FINANZAS":
             conn.commit()
             st.success("Capital ajustado.")
             st.rerun()
+
 # --- MÓDULO BIOMONITOR: CONTROL DE SALUD INTEGRAL ---
 elif menu == "🩺 BIOMONITOR":
     st.header("🩸 Inteligencia Médica: Control de Glucosa")
@@ -375,8 +376,8 @@ elif menu == "🩺 BIOMONITOR":
                           (valor_g, "mg/dL", momento, f_str, h_str))
                 conn.commit()
 
-                # 2. Sincronización Automática
-                if NUBE_DISPONIBLE:
+                # 2. Sincronización Automática (Inserción corregida)
+                if NUBE_DISPONIBLE and client:
                     paquete_salud = {
                         "FECHA": f_str,
                         "HORA": h_str,
@@ -386,6 +387,7 @@ elif menu == "🩺 BIOMONITOR":
                         "TIPO_REGISTRO": "GLUCOSA",
                         "TIMESTAMP_SISTEMA": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
                     }
+                    # Llamada a la función unificada enviando a la pestaña de salud
                     registrar_en_nube_exacto(paquete_salud, "DB_SALUD1")
                 
                 st.success(f"✅ Registro verificado e indexado: {valor_g} mg/dL")
@@ -432,8 +434,7 @@ elif menu == "🩺 BIOMONITOR":
                 time.sleep(1)
                 st.rerun()
             except Exception as e:
-                st.error(f"Error al eliminar: {e}")
-            
+                st.error(f"Error al eliminar: {e}")            
  
   
 # --- MÓDULO ESCÁNER IA ---
@@ -476,76 +477,91 @@ elif menu == "📸 ESCÁNER IA":
             st.error("❌ No se pudo procesar el texto.")
     st.caption("Filtro Gris + Adaptive Threshold Activado.")
 
-        
 # --- MÓDULO ARCHIVADOR INTEGRAL v5.1 ---
 elif menu == "📂 ARCHIVADOR":
-        st.header("📂 Archivador Inteligente v5.1")
-        if st.button("♻️ DESHACER ÚLTIMO DOCUMENTO", use_container_width=True, key="btn_undo_doc"):
-            borrar_ultimo("archivos")
-        st.divider()
+    st.header("📂 Archivador Inteligente v5.1")
+    
+    # Botón para deshacer el último registro (Usa tu función borrar_ultimo)
+    if st.button("♻️ DESHACER ÚLTIMO DOCUMENTO", use_container_width=True, key="btn_undo_doc"):
+        try:
+            c.execute("DELETE FROM archivos WHERE id = (SELECT MAX(id) FROM archivos)")
+            conn.commit()
+            st.success("Último documento eliminado de la base local.")
+            time.sleep(1)
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error al borrar: {e}")
 
-        # 1. Entrada de búsqueda robusta
-        q = st.text_input("🔍 ¿Qué buscas en el búnker? (ej: 'receta', 'estudio')", placeholder="Escribe aquí...", key="search_arch")
+    st.divider()
+
+    # 1. ENTRADA DE BÚSQUEDA ROBUSTA
+    q = st.text_input("🔍 ¿Qué buscas en el búnker? (ej: 'receta', 'estudio')", placeholder="Escribe aquí...", key="search_arch")
+    
+    if q:
+        query = f"%{q.lower()}%"
+        st.subheader(f"🔎 Resultados para: {q}")
         
-        if q:
-            query = f"%{q.lower()}%"
-            st.subheader(f"🔎 Resultados para: {q}")
-            
-            # Traducción inteligente
-            terminos_salud = ["glucosa", "azucar", "diabetes", "mg", "sangre", "medicion", "doctor", "cita"]
-            es_salud = any(t in q.lower() for t in terminos_salud)
+        # Traducción inteligente para cruzar datos con el Biomonitor
+        terminos_salud = ["glucosa", "azucar", "diabetes", "mg", "sangre", "medicion", "doctor", "cita"]
+        es_salud = any(t in q.lower() for t in terminos_salud)
 
-            col_izq, col_der = st.columns(2)
+        col_izq, col_der = st.columns(2)
 
-            with col_izq:
-                st.markdown("### 🩺 Registros Médicos")
+        with col_izq:
+            st.markdown("### 🩺 Registros Médicos")
+            try:
+                if es_salud:
+                    res_bio = pd.read_sql_query("""
+                        SELECT '🩸 Glucosa' as Origen, valor || ' mg/dL' as Detalle, fecha as Info 
+                        FROM glucosa WHERE estado LIKE ? OR fecha LIKE ?
+                        ORDER BY id DESC LIMIT 10
+                    """, conn, params=(query, query))
+                else:
+                    res_bio = pd.DataFrame()
+
+                if not res_bio.empty:
+                    st.dataframe(res_bio, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No se hallaron datos médicos.")
+            except Exception as e:
+                st.caption("Esperando registros médicos...")
+
+        with col_der:
+            st.markdown("### 📄 Documentos Escaneados")
+            try:
+                res_docs = pd.read_sql_query("""
+                    SELECT '🖼️ Escáner' as Origen, nombre as Detalle, fecha as Info FROM archivos 
+                    WHERE lower(tipo) LIKE ? OR lower(texto_ocr) LIKE ? OR lower(nombre) LIKE ?
+                """, conn, params=(query, query, query))
+                
+                if not res_docs.empty:
+                    st.dataframe(res_docs, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No hay documentos que coincidan.")
+            except Exception as e:
+                st.caption("Error al consultar archivos.")
+
+    st.divider()
+
+    # 2. CARPETAS VISUALES (ORGANIZACIÓN POR CATEGORÍA)
+    st.subheader("📁 Carpetas del Sistema")
+    # Asegúrate de que estos nombres coincidan con los que usas al guardar
+    cats = {"💊 RECETAS": "Factura", "🧪 LABS": "Resultado Médico", "💰 COTIZ": "Cotización"}
+    
+    cols = st.columns(3)
+    for i, (label, db_name) in enumerate(cats.items()):
+        with cols[i]:
+            with st.expander(label):
                 try:
-                    if es_salud:
-                        res_bio = pd.read_sql_query("""
-                            SELECT '🩸 Glucosa' as Origen, valor || ' mg/dL' as Detalle, fecha as Info 
-                            FROM glucosa WHERE estado LIKE ? OR fecha LIKE ?
-                            ORDER BY id DESC LIMIT 10
-                        """, conn, params=(query, query))
-                    else:
-                        res_bio = pd.DataFrame()
-
-                    if not res_bio.empty:
-                        st.dataframe(res_bio, use_container_width=True, hide_index=True)
-                    else:
-                        st.info("No se hallaron datos médicos.")
-                except Exception as e:
-                    st.caption("Esperando registros médicos...")
-
-            with col_der:
-                st.markdown("### 📄 Documentos Escaneados")
-                try:
-                    res_docs = pd.read_sql_query("""
-                        SELECT '🖼️ Escáner' as Origen, nombre as Detalle, fecha as Info FROM archivos 
-                        WHERE lower(tipo) LIKE ? OR lower(texto_ocr) LIKE ? OR lower(nombre) LIKE ?
-                    """, conn, params=(query, query, query))
-                    
-                    if not res_docs.empty:
-                        st.dataframe(res_docs, use_container_width=True, hide_index=True)
-                    else:
-                        st.info("No hay documentos que coincidan.")
-                except Exception as e:
-                    st.caption("Error al consultar archivos.")
-
-        st.divider()
-
-        # 2. CARPETAS VISUALES
-        st.subheader("📁 Carpetas del Sistema")
-        cats = {"💊 RECETAS": "Receta Médica", "🧪 LABS": "Resultado Lab", "💰 COTIZ": "Cotización"}
-        
-        cols = st.columns(3)
-        for i, (label, db_name) in enumerate(cats.items()):
-            with cols[i]:
-                with st.expander(label):
                     df_c = pd.read_sql_query("SELECT fecha, nombre, tipo FROM archivos WHERE tipo = ? ORDER BY id DESC", conn, params=(db_name,))
                     if df_c.empty:
-                        st.caption("Carpeta vacía")
+                        st.caption(f"No hay {label.lower()} registradas.")
                     else:
-                        st.dataframe(df_c, use_container_width=True, hide_index=True)
+                        st.dataframe(df_c[['fecha', 'nombre']], use_container_width=True, hide_index=True)
+                except Exception as e:
+                    st.caption("Error al cargar carpeta.")
+
+    st.divider()        
 
 # --- MÓDULO ASISTENTE ---
 elif menu == "🤖 ASISTENTE":
