@@ -62,18 +62,24 @@ except Exception:
     ZONA_HORARIA = pytz.utc 
     hora_actual = datetime.now(ZONA_HORARIA)
     st.warning("⚠️ Zona horaria no encontrada, usando UTC.")
-
-
-
 # ==========================================
 # 2. BASE DE DATOS (PROTECCIÓN TOTAL)
 # ==========================================
 
+# Conexión a Google Sheets (Si falla, el sistema sigue funcionando localmente)
 try:
+    from streamlit_gsheets import GSheetsConnection
     conn_google = st.connection("gsheets", type=GSheetsConnection)
+    NUBE_DISPONIBLE = True
 except Exception:
     conn_google = None
+    NUBE_DISPONIBLE = False
 
+def inicializar_todo():
+    # Conexión local SQLite
+    conn = sqlite3.connect('bunker_quevedo.db', check_same_thread=False)
+    c = conn.cursor()
+    
     tablas = [
         "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)",
         "CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, tipo TEXT, fecha TEXT, texto_ocr TEXT)",
@@ -85,9 +91,25 @@ except Exception:
         c.execute(sql)
     
     conn.commit()
-return conn, c
+    return conn, c
 
-    conn, c = inicializar_todo()
+# Ejecutar la inicialización
+conn, c = inicializar_todo()
+
+# --- MOTOR DE SINCRONIZACIÓN ---
+def registrar_en_nube_exacto(datos_dict, pestaña):
+    """Envía datos a Google Sheets sin bloquear el programa local"""
+    if NUBE_DISPONIBLE and conn_google:
+        try:
+            # Reemplaza URL_NUBE por tu link real si no lo tienes arriba
+            URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY/edit"
+            df_nube = conn_google.read(spreadsheet=URL_NUBE, worksheet=pestaña)
+            nueva_fila = pd.DataFrame([datos_dict])
+            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
+            conn_google.update(spreadsheet=URL_NUBE, worksheet=pestaña, data=df_final)
+            st.toast(f"✅ SINCRONIZADO EN {pestaña}")
+        except Exception as e:
+            st.warning(f"⚠️ Guardado local OK. Error Nube: {e}")
 
 def borrar_ultimo(tabla):
     try:
@@ -102,6 +124,8 @@ def borrar_ultimo(tabla):
             st.info(f"No hay datos para borrar en {tabla}.")
     except Exception as e:
         st.error(f"Error al borrar en {tabla}: {e}")
+
+
 
 # ==========================================
 # 4. INTERFAZ Y ESTILOS
