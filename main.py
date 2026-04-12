@@ -74,17 +74,6 @@ try:
 except Exception:
     conn_google = None
 
-def inicializar_todo():
-    base = "archivador_quevedo"
-    folders = ["BIOMONITOR", "FINANZAS", "ARCHIVADOR", "ESCANER"]
-    if not os.path.exists(base):
-        os.makedirs(base)
-    for f in folders:
-        os.makedirs(os.path.join(base, f), exist_ok=True)
-    
-    conn = sqlite3.connect("sistema_quevedo_integral.db", check_same_thread=False)
-    c = conn.cursor()
-    
     tablas = [
         "CREATE TABLE IF NOT EXISTS glucosa (id INTEGER PRIMARY KEY AUTOINCREMENT, valor REAL, unidad TEXT, estado TEXT, fecha TEXT, hora TEXT)",
         "CREATE TABLE IF NOT EXISTS archivos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, tipo TEXT, fecha TEXT, texto_ocr TEXT)",
