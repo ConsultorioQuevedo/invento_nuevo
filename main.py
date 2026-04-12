@@ -201,9 +201,9 @@ if menu == "🏠 INICIO":
                   try:
                         df_f = pd.read_sql_query("SELECT * FROM finanzas", conn)
                         sh = client.open_by_key(ID_HOJA)
-                         worksheet = sh.worksheet("DB_QUEVEDO1")
+                          worksheet = sh.worksheet("DB_QUEVEDO1")
                 
-                          datos_subida = [df_f.columns.values.tolist()] + df_f.astype(str).values.tolist()
+                           datos_subida = [df_f.columns.values.tolist()] + df_f.astype(str).values.tolist()
                 
                            worksheet.clear()
                            worksheet.update('A1', datos_subida)
