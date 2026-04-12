@@ -216,26 +216,12 @@ if menu == "🏠 INICIO":
             else:
                 st.write("Sin registros médicos recientes.")
 
-# --- MÓDULO 2: FINANZAS (INGENIERÍA FINANCIERA) ---
-# --- MÓDULO FINANZAS ---
+# --- MÓDULO FINANZAS (RESTAURADO Y UNIFICADO) ---
 elif menu == "💰 FINANZAS":
     st.header("💰 Ingeniería Financiera: Control de Capital")
     st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
 
-# --- AJUSTE DE CONEXIÓN ---
-URL_NUBE = "https://docs.google.com/spreadsheets/d/12DvNKDet5BRoYWlytg2qjWsm3lHPedKThHaopQKfwfY/edit"
-
-def registrar_en_nube_exacto(datos_dict, pestaña):
-    if NUBE_DISPONIBLE and conn_google:
-        try:
-            df_nube = conn_google.read(spreadsheet=URL_NUBE, worksheet=pestaña)
-            nueva_fila = pd.DataFrame([datos_dict])
-            df_final = pd.concat([df_nube, nueva_fila], ignore_index=True)
-            conn_google.update(spreadsheet=URL_NUBE, worksheet=pestaña, data=df_final)
-            st.toast(f"✅ SINCRONIZADO EN {pestaña}")
-        except Exception as e:
-            st.error(f"Error Nube: {e}")    
-
+    # --- FUNCIONES INTERNAS ---
     def obtener_presupuesto():
         c.execute("SELECT monto FROM presupuesto WHERE id = 1")
         res = c.fetchone()
@@ -255,7 +241,7 @@ def registrar_en_nube_exacto(datos_dict, pestaña):
         with col_m1:
             st.metric("💎 CAPITAL TOTAL", f"RD$ {capital_itinerante:,.2f}")
         with col_m2:
-            mes_act = datetime.now().strftime('%Y-%m') 
+            mes_act = datetime.now(ZONA_HORARIA).strftime('%Y-%m') 
             df_mes = pd.read_sql_query("SELECT SUM(monto) as total FROM finanzas WHERE fecha LIKE ? AND monto < 0", 
                                        conn, params=(f"{mes_act}%",))
             valor_gastos = df_mes['total'].iloc[0]
@@ -279,31 +265,40 @@ def registrar_en_nube_exacto(datos_dict, pestaña):
 
         if st.button("🔐 VALIDAR Y EJECUTAR TRANSACCIÓN", use_container_width=True):
             if monto_op > 0:
-                monto_final = -abs(monto_op) if "GASTO" in tipo_op else abs(monto_op)
-                f_str = fecha_op.strftime('%Y-%m-%d')
-                
-                # 1. Guardar en SQLite Local
-                c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?, ?, ?, ?)", (tipo_op, categoria_op, monto_final, f_str))
-                nuevo_balance = actualizar_presupuesto_maestro(monto_final)
-                conn.commit()
-                
-                # --- ENVÍO A GOOGLE (PESTAÑA DB_QUEVEDO1) ---
-            if NUBE_DISPONIBLE:
-                paquete_f = {
-                    "FECHA": fecha_f.strftime('%Y-%m-%d'),
-                    "TIPO": tipo.upper(),
-                    "CATEGORIA": cat.upper(),
-                    "MONTO": monto_final,
-                    "BALANCE_TOTAL": obtener_presupuesto(),
-                    "PROPIETARIO": NOMBRE_PROPIETARIO,
-                    "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
-                }
-                registrar_en_nube_exacto(paquete_f, "DB_QUEVEDO1")
-                
+                try:
+                    # Ajuste de signos y textos
+                    monto_final = -abs(monto_op) if "GASTO" in tipo_op else abs(monto_op)
+                    f_str = fecha_op.strftime('%Y-%m-%d')
+                    t_simple = "GASTO" if monto_final < 0 else "INGRESO"
+                    
+                    # 1. Guardar en SQLite Local
+                    c.execute("INSERT INTO finanzas (tipo, categoria, monto, fecha) VALUES (?, ?, ?, ?)", 
+                              (t_simple, categoria_op, monto_final, f_str))
+                    actualizar_presupuesto_maestro(monto_final)
+                    conn.commit()
+                    
+                    # 2. ENVÍO A GOOGLE (PESTAÑA DB_QUEVEDO1)
+                    if NUBE_DISPONIBLE:
+                        paquete_f = {
+                            "FECHA": f_str,
+                            "TIPO": t_simple,
+                            "CATEGORIA": categoria_op.upper(),
+                            "MONTO": monto_final,
+                            "BALANCE_TOTAL": obtener_presupuesto(),
+                            "PROPIETARIO": NOMBRE_PROPIETARIO,
+                            "TIMESTAMP": datetime.now(ZONA_HORARIA).strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                        registrar_en_nube_exacto(paquete_f, "DB_QUEVEDO1")
+                    
+                    st.success(f"✅ {t_simple} registrado e integrado con éxito.")
+                    time.sleep(1)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error en el proceso: {e}")
 
-    # VISUALIZACIÓN DE DATOS
+    # VISUALIZACIÓN DE DATOS (LIBRO MAYOR)
     st.subheader("📋 Libro Mayor (Últimos Movimientos)")
-    df_history = pd.read_sql_query("SELECT fecha, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 10", conn)
+    df_history = pd.read_sql_query("SELECT fecha, tipo, categoria, monto FROM finanzas ORDER BY id DESC LIMIT 10", conn)
     
     if not df_history.empty:
         def color_monto(val):
