@@ -170,7 +170,7 @@ menu = menu_opcion.strip()
 
 # --- MÓDULO 1: INICIO (PANEL DE CONTROL CENTRAL) ---
 if menu == "🏠 INICIO":
-    st.header(f"SISTEMA QUEVEDO INTEGRAL v5.1")
+    st.header(f"SISTEMA QUEVEDO INTEGRAL ")
     st.subheader(f"Bienvenido, {NOMBRE_PROPIETARIO}")
 
     # --- ESTADO DE CONEXIÓN A LA NUBE ---
@@ -463,7 +463,7 @@ elif menu == "🩺 BIOMONITOR":
   
 # --- MÓDULO ESCÁNER IA ---
 elif menu == "📸 ESCÁNER IA":
-    st.header("📸 Escáner OCR de Alto Rendimiento")
+    st.header("📸 De Alto Rendimiento")
     img_file = st.camera_input("📷 Coloque el documento frente a la cámara")
 
     if img_file is not None:
@@ -503,7 +503,7 @@ elif menu == "📸 ESCÁNER IA":
 
 # --- MÓDULO ARCHIVADOR INTEGRAL v5.1 ---
 elif menu == "📂 ARCHIVADOR":
-    st.header("📂 Archivador Inteligente v5.1")
+    st.header("📂 Archivador Inteligente ")
     
     # Botón para deshacer el último registro (Usa tu función borrar_ultimo)
     if st.button("♻️ DESHACER ÚLTIMO DOCUMENTO", use_container_width=True, key="btn_undo_doc"):
@@ -589,7 +589,7 @@ elif menu == "📂 ARCHIVADOR":
 
 # --- MÓDULO ASISTENTE ---
 elif menu == "🤖 ASISTENTE":
-        st.header(f"🤖 Asistente Virtual: {NOMBRE_PROPIETARIO}")
+        st.header(f"🤖 Asist. de {NOMBRE_PROPIETARIO}")
         st.caption(f"📅 Análisis: {datetime.now(ZONA_HORARIA).strftime('%d/%m/%Y %H:%M')}")
 
         # BOTONES DE ACCIÓN
