@@ -245,7 +245,7 @@ if menu == "🏠 INICIO":
                 
 # --- MÓDULO FINANZAS (RESTAURADO Y UNIFICADO) ---
 elif menu == "💰 FINANZAS":
-    st.header("💰 Ingeniería Financiera: Control de Capital")
+    st.header("💰 Ingeniería Financiera")
     st.markdown(f"**Propietario:** {NOMBRE_PROPIETARIO} | **Estado:** Auditoría Activa")
 
     # --- FUNCIONES INTERNAS ---
