@@ -170,7 +170,7 @@ menu = menu_opcion.strip()
 
 # --- MÓDULO 1: INICIO (PANEL DE CONTROL CENTRAL) ---
 if menu == "🏠 INICIO":
-    st.header(f"SISTEMA QUEVEDO INTEGRAL ")
+    st.header(f"SISTEMA QUEVEDO ")
     st.subheader(f"Bienvenido, {NOMBRE_PROPIETARIO}")
 
     # --- ESTADO DE CONEXIÓN A LA NUBE ---
