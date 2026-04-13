@@ -363,7 +363,7 @@ elif menu == "🩸 BIOMONITOR":
 # --- MÓDULO BIOMONITOR: CONTROL DE SALUD INTEGRAL 
 
 elif menu == "🩺 BIOMONITOR":
-    st.header("🩸 Inteligencia Médica: Control de Glucosa")
+    st.header("🩸  Control de Glucosa")
     st.markdown(f"**Usuario:** {NOMBRE_PROPIETARIO} | **Ubicación:** {UBICACION_SISTEMA}")
 
     # --- 1. ENTRADA DE DATOS ---
